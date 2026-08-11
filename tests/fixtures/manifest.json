@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.1.0",
+  "parser_version": "0.1.0",
+  "feature_version": "0.1.0",
+  "samples": [
+    {
+      "sample_id": "minimal",
+      "source": "local",
+      "beatmap_id": 1000001,
+      "beatmapset_id": 2000001,
+      "mapper": "fixture-mapper",
+      "reference": "minimal.osu",
+      "checksum": "sha256:09dbdf72b13daab07965da9086e86892a2b77e044518bdb839604037e71ebfe8",
+      "metadata": {"difficulty_name": "Normal"}
+    },
+    {
+      "sample_id": "timing_changes",
+      "source": "local",
+      "beatmap_id": 1000002,
+      "beatmapset_id": 2000001,
+      "mapper": "fixture-mapper",
+      "reference": "timing_changes.osu",
+      "checksum": "sha256:2e5161a1b98ae5d9a73ec58f4f527d70e65e345ac351030b59475cbd9d8c2677",
+      "metadata": {"difficulty_name": "Insane"}
+    },
+    {
+      "sample_id": "sliders",
+      "source": "local",
+      "beatmap_id": 1000003,
+      "beatmapset_id": 2000003,
+      "mapper": "fixture-mapper",
+      "reference": "sliders.osu",
+      "checksum": "sha256:1357aeee6ea24c305fbbee817583e862df6547a6d64321b09b5a323481192213",
+      "metadata": {"difficulty_name": "SliderLab"}
+    },
+    {
+      "sample_id": "unusual_sv",
+      "source": "local",
+      "beatmap_id": 1000004,
+      "beatmapset_id": 2000004,
+      "mapper": "fixture-mapper",
+      "reference": "unusual_sv.osu",
+      "checksum": "sha256:237aef5593a508a78b05fc75bdc074387d90c8a5c61035dba2db05a1cf68e97e",
+      "metadata": {"difficulty_name": "SVLab"}
+    }
+  ]
+}

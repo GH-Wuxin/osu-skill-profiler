@@ -1,0 +1,39 @@
+osu file format v14
+
+[General]
+AudioFilename: audio.mp3
+Mode: 0
+
+[Metadata]
+Title:Synthetic Timing Changes
+Creator:fixture-mapper
+Version:Insane
+BeatmapID:1000002
+BeatmapSetID:2000001
+
+[Difficulty]
+HPDrainRate:6
+CircleSize:5
+OverallDifficulty:9
+ApproachRate:9
+SliderMultiplier:1.6
+SliderTickRate:1
+
+[TimingPoints]
+1000,500,4,2,1,60,1,0
+2000,-100,4,2,1,60,0,0
+5000,250,4,2,1,60,1,0
+6000,-200,4,2,1,60,0,0
+
+[HitObjects]
+64,64,1000,1,0,0:0:0:0:
+128,128,1500,1,0,0:0:0:0:
+192,192,2000,1,0,0:0:0:0:
+256,256,2500,1,0,0:0:0:0:
+320,320,3000,1,0,0:0:0:0:
+384,320,5000,1,0,0:0:0:0:
+448,256,5200,1,0,0:0:0:0:
+448,192,5400,1,0,0:0:0:0:
+384,128,5600,1,0,0:0:0:0:
+320,64,5800,1,0,0:0:0:0:
+

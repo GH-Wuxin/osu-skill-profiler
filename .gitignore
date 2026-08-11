@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Build artifacts
+build/
+dist/
+
+# Generated dataset/training artifacts (never commit large or derived data)
+training/datasets/*
+!training/datasets/.gitkeep
+training/splits/*
+!training/splits/.gitkeep
+training/weak_labels/*
+!training/weak_labels/.gitkeep
+
+# Local outputs from CLI smoke tests
+out/
+*.profile.json

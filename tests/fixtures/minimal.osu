@@ -1,0 +1,34 @@
+osu file format v14
+
+[General]
+AudioFilename: audio.mp3
+Mode: 0
+
+[Metadata]
+Title:Synthetic Minimal
+TitleUnicode:Synthetic Minimal
+Artist:Fixture
+ArtistUnicode:Fixture
+Creator:fixture-mapper
+Version:Normal
+BeatmapID:1000001
+BeatmapSetID:2000001
+
+[Difficulty]
+HPDrainRate:5
+CircleSize:4
+OverallDifficulty:8
+ApproachRate:9
+SliderMultiplier:1.8
+SliderTickRate:1
+
+[TimingPoints]
+1000,500,4,2,1,60,1,0
+
+[HitObjects]
+64,64,1000,1,0,0:0:0:0:
+192,192,1500,1,0,0:0:0:0:
+320,64,2000,2,0,B|320:192|192:320,1,180,0:0:0:0:
+448,320,3500,8,0,4000,0:0:0:0:
+256,256,4500,1,0,0:0:0:0:
+

@@ -1,0 +1,174 @@
+{
+  "taxonomy_version": "v0.0.1",
+  "status": "PROVISIONAL",
+  "purpose": "Candidate axes for osu!standard skill profiling. This is NOT a final taxonomy and NOT a ground-truth definition; every entry is a provisional hypothesis to be tested with data.",
+  "model_version_separation": "model_version and taxonomy_version are independent fields in every output. Changing one never implies the other.",
+  "skills": [
+    {
+      "id": "jump_aim",
+      "category": "Aim",
+      "provisional_definition": "Ability to place cursor accurately and quickly onto distant, isolated targets.",
+      "not": "Not a measure of raw distance alone; not a label for maps that merely have large spacing with slow rhythm.",
+      "candidate_signals": [
+        "large normalized inter-object distances",
+        "short delta times on large distances",
+        "high movement velocity",
+        "low tolerance for angular error"
+      ],
+      "known_ambiguity": "Large spacing can also be driven by reading difficulty; jump_aim may overlap with precision and reading at high AR."
+    },
+    {
+      "id": "flow_aim",
+      "category": "Aim",
+      "provisional_definition": "Ability to move cursor smoothly through connected, curved patterns without stopping.",
+      "not": "Not the same as slider play; not a measure of discrete jumps.",
+      "candidate_signals": [
+        "small turn angles",
+        "continuous low-velocity movement",
+        "low direction-change ratio",
+        "connected geometry between consecutive objects"
+      ],
+      "known_ambiguity": "Flow maps often contain sliders, so flow_aim and slider_complexity can correlate in naive feature space."
+    },
+    {
+      "id": "precision",
+      "category": "Aim",
+      "provisional_definition": "Ability to hit small targets and short, tightly spaced movements with high accuracy.",
+      "not": "Not a synonym for accuracy stat (OD); OD is context, not skill evidence by itself.",
+      "candidate_signals": [
+        "short distances",
+        "high local density",
+        "small target geometry",
+        "high CS context",
+        "sharp angle changes"
+      ],
+      "known_ambiguity": "Short tightly spaced patterns are also speed patterns; precision and speed share the same raw spacing signals."
+    },
+    {
+      "id": "awkward_aim",
+      "category": "Aim",
+      "provisional_definition": "Ability to handle unusual, uncomfortable cursor paths that resist learned muscle memory.",
+      "not": "Not a measurable feature from geometry alone; it is a claim about human difficulty and therefore needs annotation.",
+      "candidate_signals": [
+        "irregular angle distributions",
+        "unexpected direction changes",
+        "non-uniform spacing patterns"
+      ],
+      "known_ambiguity": "This is the least objectively defined aim axis; geometry signals are weak and must not be treated as evidence without human validation."
+    },
+    {
+      "id": "burst",
+      "category": "Tapping",
+      "provisional_definition": "Ability to tap short clusters of notes at high rate.",
+      "not": "Not a measure of sustained streams; not a measure of finger alternation skill.",
+      "candidate_signals": [
+        "runs of gaps <= 250ms",
+        "burst lengths",
+        "burst density"
+      ],
+      "known_ambiguity": "Short bursts at the same BPM as streams differ only in length, making the burst/stream boundary a label decision, not a raw measurement."
+    },
+    {
+      "id": "stream",
+      "category": "Tapping",
+      "provisional_definition": "Ability to tap long continuous runs of equally spaced notes.",
+      "not": "Not a measure of finger independence; not stamina by itself.",
+      "candidate_signals": [
+        "long dense sections",
+        "low interval diversity within the section",
+        "sustained object rate"
+      ],
+      "known_ambiguity": "Long streams also demand stamina; separating stream skill from stamina requires duration-controlled comparison."
+    },
+    {
+      "id": "speed",
+      "category": "Tapping",
+      "provisional_definition": "Ability to tap at high BPM with acceptable accuracy.",
+      "not": "Not the same as map BPM; BPM is context and speed is the human response to it.",
+      "candidate_signals": [
+        "high local BPM",
+        "short delta times",
+        "high object rate"
+      ],
+      "known_ambiguity": "High BPM dense sections also recruit stamina; speed and stamina are confounded in short maps."
+    },
+    {
+      "id": "stamina",
+      "category": "Tapping",
+      "provisional_definition": "Ability to sustain high tapping rate over time without degradation.",
+      "not": "Not a single-map local property; it is inherently duration-dependent and must be evaluated over sustained sections.",
+      "candidate_signals": [
+        "long continuous dense sections",
+        "duration-weighted density",
+        "late-map density relative to early-map density"
+      ],
+      "known_ambiguity": "A map can be dense but short; calling that stamina would be a category error without duration normalization."
+    },
+    {
+      "id": "finger_control",
+      "category": "Tapping",
+      "provisional_definition": "Ability to execute uneven, alternating or non-standard tap patterns.",
+      "not": "Not a measure of raw speed; not derivable from a single rhythm statistic.",
+      "candidate_signals": [
+        "high interval diversity",
+        "irregular rhythm patterns",
+        "mixed short/long intervals"
+      ],
+      "known_ambiguity": "Rhythm irregularity may be a reading problem rather than a tapping problem; separating the two needs annotation."
+    },
+    {
+      "id": "reading",
+      "category": "Reading / Rhythm",
+      "provisional_definition": "Ability to perceive and react to object patterns under time pressure, especially with high approach rate or unusual spacing.",
+      "not": "Not a feature that can be computed from geometry alone; AR is context, not reading skill.",
+      "candidate_signals": [
+        "high AR context",
+        "short reaction windows",
+        "irregular object placement"
+      ],
+      "known_ambiguity": "Reading is a perceptual skill; no deterministic feature can prove it without player data."
+    },
+    {
+      "id": "rhythm_complexity",
+      "category": "Reading / Rhythm",
+      "provisional_definition": "Rhythmic irregularity and diversity of intervals in the map.",
+      "not": "Not a claim that the map is hard to read for any specific player.",
+      "candidate_signals": [
+        "rhythm entropy",
+        "interval diversity",
+        "interval ratio variance",
+        "off-grid delta times"
+      ],
+      "known_ambiguity": "Irregular rhythm can be easy for a skilled reader; complexity is a property of the pattern, difficulty is a property of the player."
+    },
+    {
+      "id": "slider_complexity",
+      "category": "Slider",
+      "provisional_definition": "Complexity contributed by slider geometry, repeats, length and velocity.",
+      "not": "Not a measure of aim; not a measure of slider accuracy (player-side).",
+      "candidate_signals": [
+        "slider ratio",
+        "repeat counts",
+        "slider length",
+        "slider velocity",
+        "slider-to-circle transitions"
+      ],
+      "known_ambiguity": "Sliders with many repeats are also rhythmically dense; slider complexity overlaps rhythm_complexity."
+    }
+  ],
+  "convenience_labels": [
+    {
+      "id": "tech",
+      "status": "PROVISIONAL_CONVENIENCE_ONLY",
+      "definition": "A convenience label that may later be derived from multiple atomic skills. It is NOT an atomic skill and must never be used as a base label.",
+      "derived_from": [
+        "awkward_aim",
+        "finger_control",
+        "rhythm_complexity",
+        "flow_aim"
+      ],
+      "note": "The exact derivation rule is deliberately undefined until human annotation exists."
+    }
+  ]
+}
+
