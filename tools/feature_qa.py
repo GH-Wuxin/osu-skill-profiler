@@ -8,7 +8,7 @@ Phases (gated, deterministic):
 
 Every map runs the full chain:
 
-  parse -> normalize -> 104 features -> segment (fixed 5s windows) -> aggregate
+  parse -> normalize -> corrected Feature contract -> segment (fixed 5s windows) -> aggregate
 
 No skill labels are produced. No taxonomy is touched. Anomalies are written
 to disk with full provenance (sample_id/path/checksum/feature/value), never
@@ -29,7 +29,7 @@ import sys
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SRC = Path(__file__).resolve().parent.parent / "src"
 if str(SRC) not in sys.path:
@@ -37,16 +37,18 @@ if str(SRC) not in sys.path:
 
 from osu_skill_profiler import SCHEMA_VERSION
 from osu_skill_profiler.features.extractor import FeatureExtractor
+from osu_skill_profiler.features.schema import FEATURE_SCHEMA, FEATURE_VERSION
 from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import OsuParseError, parse_osu_file
 from osu_skill_profiler.segments.aggregator import aggregate_features
 from osu_skill_profiler.segments.fixed_time import FixedTimeWindowStrategy
 
-EXPECTED_FEATURE_COUNT = 104
+EXPECTED_FEATURE_COUNT = len(FEATURE_SCHEMA)
 DEFAULT_SEED = 20260810
 WINDOW_MS = 5000.0
 RESERVOIR_SIZE = 20000
 UNIQUE_CAP = 8192
+MOMENT_SCHEMA_VERSION = 1
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +332,7 @@ def _process_map(rec: dict) -> dict:
         "slider_ratio": rec["slider_ratio"],
         "timing_count": rec["timing_count"],
         "green_count": rec["green_count"],
+        "feature_version": FEATURE_VERSION,
     }
     t0 = time.perf_counter()
     try:
@@ -386,16 +389,72 @@ def _process_map(rec: dict) -> dict:
     return out
 
 
-def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: bool) -> dict:
+def _resume_record_complete(rec: dict) -> bool:
+    features = rec.get("features")
+    return (
+        rec.get("ok") is True
+        and rec.get("feature_version") == FEATURE_VERSION
+        and rec.get("feature_count") == EXPECTED_FEATURE_COUNT
+        and isinstance(features, dict)
+        and len(features) == EXPECTED_FEATURE_COUNT
+        and isinstance(rec.get("segment_count"), int)
+        and rec.get("index_span_consistent") is True
+        and rec.get("segment_nonfinite_count") == 0
+        and rec.get("agg_nonfinite_count") == 0
+        and rec.get("agg_serializable") is True
+    )
+
+
+def _prepare_resume_records(
+    out_path: Path,
+    resume: bool,
+    is_complete: Callable[[dict], bool],
+) -> set[str]:
+    """Keep only unique, schema-complete successful rows before resuming.
+
+    A failed, partial, stale-version, malformed or duplicate row is not a
+    completed map. When any such row exists, rewrite the JSONL atomically from
+    the retained raw lines before new work is appended. This makes interrupted
+    full-corpus runs retry incomplete work without leaving duplicate IDs.
+    """
+
+    if not resume or not out_path.exists():
+        return set()
     done: set[str] = set()
-    if resume and out_path.exists():
-        with out_path.open(encoding="utf-8") as fh:
-            for line in fh:
-                if line.strip():
-                    try:
-                        done.add(json.loads(line)["sample_id"])
-                    except (json.JSONDecodeError, KeyError):
-                        pass
+    clean = True
+    tmp_path = out_path.with_name(f"{out_path.name}.resume.tmp")
+    with out_path.open(encoding="utf-8") as source, tmp_path.open("w", encoding="utf-8") as retained:
+        for raw_line in source:
+            if not raw_line.strip():
+                clean = False
+                continue
+            try:
+                rec = json.loads(raw_line)
+            except json.JSONDecodeError:
+                clean = False
+                continue
+            sample_id = rec.get("sample_id")
+            if (
+                not isinstance(sample_id, str)
+                or not sample_id
+                or sample_id in done
+                or not is_complete(rec)
+            ):
+                clean = False
+                continue
+            done.add(sample_id)
+            retained.write(raw_line if raw_line.endswith("\n") else raw_line + "\n")
+            if not raw_line.endswith("\n"):
+                clean = False
+    if clean:
+        tmp_path.unlink()
+    else:
+        os.replace(tmp_path, out_path)
+    return done
+
+
+def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: bool) -> dict:
+    done = _prepare_resume_records(out_path, resume, _resume_record_complete)
     todo = [r for r in records if r["sample_id"] not in done]
     print(f"extract total={len(records)} done={len(done)} todo={len(todo)} workers={workers}", flush=True)
     start = time.time()
@@ -415,7 +474,7 @@ def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: b
             with multiprocessing.Pool(processes=workers, maxtasksperchild=200) as pool:
                 iterator = pool.imap(_process_map, todo, chunksize=8)
                 for idx, rec in enumerate(iterator, 1):
-                    fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+                    fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
                     if rec["ok"]:
                         ok_count += 1
                     else:
@@ -428,7 +487,7 @@ def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: b
                         )
                 return {"ok": ok_count, "fail": fail_count, "elapsed_s": time.time() - start}
         for idx, rec in enumerate(iterator, 1):
-            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
             if rec["ok"]:
                 ok_count += 1
             else:
@@ -465,21 +524,100 @@ def _pearson(xs: list[float], ys: list[float]) -> float | None:
     n = len(xs)
     if n < 30:
         return None
-    mx = sum(xs) / n
-    my = sum(ys) / n
+    scale_x = max((abs(value) for value in xs), default=0.0)
+    scale_y = max((abs(value) for value in ys), default=0.0)
+    if scale_x == 0.0 or scale_y == 0.0:
+        return None
+    scaled_xs = [value / scale_x for value in xs]
+    scaled_ys = [value / scale_y for value in ys]
+    mx = statistics.fmean(scaled_xs)
+    my = statistics.fmean(scaled_ys)
     num = 0.0
     dx = 0.0
     dy = 0.0
-    for x, y in zip(xs, ys):
+    for x, y in zip(scaled_xs, scaled_ys):
         ax = x - mx
         ay = y - my
         num += ax * ay
         dx += ax * ax
         dy += ay * ay
-    den = math.sqrt(dx * dy)
+    den = math.sqrt(dx) * math.sqrt(dy)
     if den == 0:
         return None
     return num / den
+
+
+class _ScaledMoments:
+    """Mergeable Welford moments normalised by the largest absolute value."""
+
+    def __init__(self) -> None:
+        self.count = 0
+        self.scale = 0.0
+        self.mean_scaled = 0.0
+        self.m2_scaled = 0.0
+
+    def update(self, value: float) -> None:
+        magnitude = abs(value)
+        if magnitude > self.scale:
+            if self.scale > 0.0:
+                factor = self.scale / magnitude
+                self.mean_scaled *= factor
+                self.m2_scaled *= factor * factor
+            self.scale = magnitude
+        scaled = value / self.scale if self.scale else 0.0
+        self.count += 1
+        delta = scaled - self.mean_scaled
+        self.mean_scaled += delta / self.count
+        self.m2_scaled += delta * (scaled - self.mean_scaled)
+
+    def merge(self, count: int, scale: float, mean_scaled: float, m2_scaled: float) -> None:
+        if count <= 0:
+            return
+        if not all(math.isfinite(value) for value in (scale, mean_scaled, m2_scaled)) or scale < 0.0 or m2_scaled < 0.0:
+            raise ValueError("invalid scaled moment summary")
+        if self.count == 0:
+            self.count = count
+            self.scale = scale
+            self.mean_scaled = mean_scaled
+            self.m2_scaled = m2_scaled
+            return
+        target_scale = max(self.scale, scale)
+        if target_scale == 0.0:
+            self.count += count
+            return
+        left_factor = self.scale / target_scale
+        right_factor = scale / target_scale
+        left_mean = self.mean_scaled * left_factor
+        right_mean = mean_scaled * right_factor
+        left_m2 = self.m2_scaled * left_factor * left_factor
+        right_m2 = m2_scaled * right_factor * right_factor
+        total = self.count + count
+        delta = right_mean - left_mean
+        self.mean_scaled = left_mean + delta * count / total
+        self.m2_scaled = left_m2 + right_m2 + delta * delta * self.count * count / total
+        self.count = total
+        self.scale = target_scale
+
+    def snapshot(self) -> dict[str, float | int]:
+        return {
+            "moments_version": MOMENT_SCHEMA_VERSION,
+            "count": self.count,
+            "scale": self.scale,
+            "mean_scaled": self.mean_scaled,
+            "m2_scaled": self.m2_scaled,
+        }
+
+    def mean(self) -> float | None:
+        if self.count == 0:
+            return None
+        coefficient = min(1.0, max(-1.0, self.mean_scaled))
+        return coefficient * self.scale
+
+    def std(self) -> float:
+        if self.count <= 1 or self.scale == 0.0:
+            return 0.0
+        coefficient = min(1.0, math.sqrt(max(0.0, self.m2_scaled / self.count)))
+        return coefficient * self.scale
 
 
 class _StreamAccumulator:
@@ -494,11 +632,9 @@ class _StreamAccumulator:
         self.zero = 0
         self.min: float | None = None
         self.max: float | None = None
-        self.mean = 0.0
-        self.m2 = 0.0
+        self.moments = _ScaledMoments()
         self.values: list[float] = [] if exact else []
         self.reservoir: list[float] = []
-        self.seen = 0
         self.unique: set[float] = set()
         self.unique_capped = False
 
@@ -517,17 +653,14 @@ class _StreamAccumulator:
             self.min = value
         if self.max is None or value > self.max:
             self.max = value
-        self.seen += 1
-        delta = value - self.mean
-        self.mean += delta / self.seen
-        self.m2 += delta * (value - self.mean)
+        self.moments.update(value)
         if self.exact:
             self.values.append(value)
         else:
             if len(self.reservoir) < RESERVOIR_SIZE:
                 self.reservoir.append(value)
             else:
-                j = self.rng.randrange(self.seen)
+                j = self.rng.randrange(self.moments.count)
                 if j < RESERVOIR_SIZE:
                     self.reservoir[j] = value
         if len(self.unique) < UNIQUE_CAP:
@@ -551,8 +684,8 @@ class _StreamAccumulator:
             "nonfinite": self.nonfinite,
             "min": self.min,
             "max": self.max,
-            "mean": round(self.mean, 6) if self.seen else None,
-            "std": round(math.sqrt(self.m2 / self.seen), 6) if self.seen > 1 else 0.0,
+            "mean": round(self.moments.mean(), 6) if self.moments.count else None,
+            "std": round(self.moments.std(), 6),
             "zero_rate": round(self.zero / present, 6) if present else 0.0,
             "unique_count": len(self.unique) if not self.unique_capped else f">={UNIQUE_CAP}",
             "unique_capped": self.unique_capped,
@@ -734,6 +867,7 @@ def _stats_pass(jsonl: Path, phase: str, exact: bool, seed: int) -> dict:
     slow_maps.sort(key=lambda r: -float(r["latency_ms"]))
     return {
         "phase": phase,
+        "feature_version": FEATURE_VERSION,
         "records": records,
         "ok": ok_records,
         "failures": len(failures),
@@ -824,6 +958,7 @@ def _outlier_pass(jsonl: Path, stats: dict, out_path: Path) -> dict:
                                 },
                                 ensure_ascii=False,
                                 sort_keys=True,
+                                allow_nan=False,
                             )
                             + "\n"
                         )
@@ -851,6 +986,7 @@ def _write_report(out_dir: Path, selection_meta: dict, phase_results: dict[str, 
     lines.append("")
     lines.append(f"- generated: {time.strftime('%Y-%m-%d %H:%M:%S %z')}")
     lines.append(f"- schema_version: {selection_meta.get('schema_version')}")
+    lines.append(f"- feature_version: {FEATURE_VERSION}")
     lines.append(f"- seed: {selection_meta.get('seed')}")
     lines.append(f"- manifest_total: {selection_meta.get('manifest_total')}")
     lines.append(f"- eligible: {selection_meta.get('eligible')} (known-broken excluded: {selection_meta.get('known_broken_excluded')})")
@@ -923,7 +1059,7 @@ def _verdict(result: dict) -> tuple[str, str]:
     if result["failures"] > 0:
         reasons.append(f"{result['failures']} extraction failures")
     if result["feature_count_distribution"] and any(int(k) != EXPECTED_FEATURE_COUNT for k in result["feature_count_distribution"]):
-        reasons.append("feature count != 104")
+        reasons.append(f"Feature {FEATURE_VERSION} count != {EXPECTED_FEATURE_COUNT}")
     nonfinite = [k for k, st in result["feature_stats"].items() if st["nonfinite"] > 0]
     if nonfinite:
         reasons.append(f"output NaN/Inf in {len(nonfinite)} features")
@@ -944,15 +1080,15 @@ def _verdict(result: dict) -> tuple[str, str]:
 def _write_phase_outputs(out_dir: Path, phase: str, selection_meta: dict, result: dict, outlier: dict) -> None:
     suffix = phase if phase != "full" else ""
     stats_path = out_dir / f"feature_stats_{phase}.json"
-    stats_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    stats_path.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     corr_path = out_dir / ("feature_correlations.json" if phase == "full" else f"feature_correlations_{phase}.json")
-    corr_path.write_text(json.dumps(result["correlation"], ensure_ascii=False, indent=2), encoding="utf-8")
+    corr_path.write_text(json.dumps(result["correlation"], ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     seg_path = out_dir / ("segment_stats.json" if phase == "full" else f"segment_stats_{phase}.json")
-    seg_path.write_text(json.dumps(result["segment"], ensure_ascii=False, indent=2), encoding="utf-8")
+    seg_path.write_text(json.dumps(result["segment"], ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     slow_path = out_dir / ("slow_maps.jsonl" if phase == "full" else f"slow_maps_{phase}.jsonl")
     with slow_path.open("w", encoding="utf-8") as fh:
         for rec in result["performance"]["slowest_50"]:
-            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
     outlier_path = out_dir / ("feature_outliers.jsonl" if phase == "full" else f"feature_outliers_{phase}.jsonl")
     # outlier file already written by _outlier_pass; keep a phase summary
 def run_phase(
@@ -977,7 +1113,7 @@ def run_phase(
         flush=True,
     )
     (out_dir / f"selection_{phase}.jsonl").write_text(
-        "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in records) + "\n",
+        "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True, allow_nan=False) for r in records) + "\n",
         encoding="utf-8",
     )
     jsonl = out_dir / f"feature_qa_{phase}.jsonl"
@@ -997,7 +1133,7 @@ def run_phase(
     outlier_summary = _outlier_pass(jsonl, result, out_dir / ("feature_outliers.jsonl" if phase == "full" else f"feature_outliers_{phase}.jsonl"))
     _write_phase_outputs(out_dir, phase, selection_meta, result, outlier_summary)
     (out_dir / f"outlier_summary_{phase}.json").write_text(
-        json.dumps(outlier_summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(outlier_summary, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
     )
     phase_results = {}
     for other in ("5k", "20k", "full"):
@@ -1026,13 +1162,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", required=True, help="Songs root directory for relative manifest references")
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--workers", type=int, default=min(8, (os.cpu_count() or 4)))
+    parser.add_argument("--workers", type=int, default=min(2, (os.cpu_count() or 2)))
     parser.add_argument("--resume", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if not 1 <= args.workers <= 4:
+        parser.error("--workers must be between 1 and 4")
     manifest = Path(args.manifest)
     failures = Path(args.failures) if args.failures else manifest.with_name("std_manifest.failures.jsonl")
     run_phase(

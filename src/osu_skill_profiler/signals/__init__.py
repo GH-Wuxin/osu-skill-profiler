@@ -1,4 +1,4 @@
-"""Local Signal Layer v0.2.
+"""Versioned Local Signal layers.
 
 Deterministic, gameplay-aware, per-object observable signals extracted from
 parsed .osu beatmaps. This layer is independent of the frozen v0.1 feature
@@ -14,6 +14,7 @@ Layers used by this package:
 
 from __future__ import annotations
 
-SIGNAL_VERSION = "0.2.0"
+LEGACY_SIGNAL_VERSION = "0.2.0"
+SIGNAL_VERSION = "0.3.0"
 
-__all__ = ["SIGNAL_VERSION"]
+__all__ = ["LEGACY_SIGNAL_VERSION", "SIGNAL_VERSION"]

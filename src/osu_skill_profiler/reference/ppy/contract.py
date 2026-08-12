@@ -1,4 +1,4 @@
-"""Machine-readable contract for Official Reference Signal Layer v0.1.
+"""Versioned machine-readable contract for Official Reference Signals.
 
 Every ``ref.ppy.*`` value is an OFFICIAL_REFERENCE measurement: it contains
 ppy/osu difficulty tuning policy from the pinned upstream revision.  It is
@@ -15,7 +15,8 @@ UPSTREAM_REPOSITORY = "ppy/osu"
 UPSTREAM_COMMIT = "b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e"
 UPSTREAM_DIFFICULTY_VERSION = 20260706
 
-REFERENCE_VERSION = "0.1.0"
+LEGACY_REFERENCE_VERSION = "0.1.0"
+REFERENCE_VERSION = "0.2.0"
 
 # Evaluator source mapping used by every contract entry.
 _UPSTREAM_FILES = {
@@ -60,7 +61,7 @@ def _entry(
     }
 
 
-REFERENCE_SCHEMA: dict[str, dict] = {
+REFERENCE_SCHEMA_V01: dict[str, dict] = {
     # ---- structural identity (not reference policy) ---------------------
     "ref.original_index": {
         "classification": "IDENTITY",
@@ -239,6 +240,22 @@ REFERENCE_SCHEMA: dict[str, dict] = {
     ),
 }
 
+# Reference v0.2 keeps the field surface stable. Its semantic version changes
+# because preprocessing now consumes corrected Local v0.3 slider semantics
+# and Reading uses the pinned current-object opacity identity.
+REFERENCE_SCHEMA_V02: dict[str, dict] = {
+    name: dict(entry) for name, entry in REFERENCE_SCHEMA_V01.items()
+}
+REFERENCE_SCHEMA = REFERENCE_SCHEMA_V02
+
+
+def reference_schema(version: str) -> dict[str, dict]:
+    if version == LEGACY_REFERENCE_VERSION:
+        return REFERENCE_SCHEMA_V01
+    if version == REFERENCE_VERSION:
+        return REFERENCE_SCHEMA_V02
+    raise ValueError(f"unsupported reference version: {version}")
+
 
 REFERENCE_NUMERIC_SIGNALS = tuple(
     name
@@ -258,8 +275,12 @@ SEGMENT_AGGREGATION_POLICY: dict[str, tuple[str, ...]] = {
 
 __all__ = [
     "REFERENCE_SCHEMA",
+    "REFERENCE_SCHEMA_V01",
+    "REFERENCE_SCHEMA_V02",
     "REFERENCE_NUMERIC_SIGNALS",
     "REFERENCE_VERSION",
+    "LEGACY_REFERENCE_VERSION",
+    "reference_schema",
     "SEGMENT_SUMMARY_FIELDS",
     "SEGMENT_AGGREGATION_POLICY",
     "UPSTREAM_REPOSITORY",

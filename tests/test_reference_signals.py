@@ -19,8 +19,9 @@ import unittest
 
 from osu_skill_profiler.parser.osu_parser import parse_osu
 from osu_skill_profiler.reference.ppy.contract import (
+    LEGACY_REFERENCE_VERSION,
     REFERENCE_NUMERIC_SIGNALS,
-    REFERENCE_SCHEMA,
+    REFERENCE_SCHEMA_V01,
 )
 from osu_skill_profiler.reference.ppy.extractor import ReferenceSignalExtractor, reference_rows
 from osu_skill_profiler.reference.ppy.preprocess import build_ref_objects
@@ -47,7 +48,11 @@ def _map(
 
 
 def _rows(beatmap_text: str) -> list[dict]:
-    return ReferenceSignalExtractor().extract(parse_osu(text=beatmap_text))["objects"]
+    # This is the historical Reference v0.1 suite. Corrected v0.2 identity
+    # semantics have independent expectations in the remediation suite.
+    return ReferenceSignalExtractor(LEGACY_REFERENCE_VERSION).extract(
+        parse_osu(text=beatmap_text)
+    )["objects"]
 
 
 class ReferenceStructureTests(unittest.TestCase):
@@ -63,7 +68,7 @@ class ReferenceStructureTests(unittest.TestCase):
         )
         rows = _rows(text)
         self.assertEqual(len(rows), 5)
-        expected_keys = set(REFERENCE_SCHEMA)
+        expected_keys = set(REFERENCE_SCHEMA_V01)
         for index, row in enumerate(rows):
             self.assertEqual(set(row), expected_keys)
             self.assertEqual(row["ref.original_index"], index)

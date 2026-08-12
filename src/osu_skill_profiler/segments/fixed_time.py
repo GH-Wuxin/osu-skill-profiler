@@ -32,7 +32,7 @@ class FixedTimeWindowStrategy:
         sorted_objects = tuple(objects[idx] for idx in order)
         sorted_map = NormalizedBeatmap(beatmap=nmap.beatmap, objects=sorted_objects)
         start = sorted_objects[0].time_ms
-        end = max(obj.end_time_ms() for obj in sorted_objects)
+        end = max(extractor.object_end_time_ms(obj) for obj in sorted_objects)
         # Bucket by window index so absurdly large timestamps cannot create an
         # unbounded loop; windows are still aligned to the earliest object.
         buckets: dict[int, list[int]] = {}

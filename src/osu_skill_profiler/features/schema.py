@@ -1,4 +1,4 @@
-"""Stable machine-readable schema for every feature name the extractor emits."""
+"""Versioned machine-readable schemas for deterministic Feature layers."""
 
 from __future__ import annotations
 
@@ -24,7 +24,11 @@ def _expand(name: str, unit: str, description: str, level: str = "map_and_segmen
     }
 
 
-FEATURE_SCHEMA: dict = {
+LEGACY_FEATURE_VERSION = "0.1.0"
+FEATURE_VERSION = "0.2.0"
+
+
+FEATURE_SCHEMA_V01: dict = {
     **_expand("temporal.delta_time_ms", "ms", "gap between consecutive hit object start times"),
     **_expand("temporal.bpm", "beats/min", "local BPM at each hit object"),
     "temporal.object_count": _describe_entry("count", "number of hit objects"),
@@ -75,3 +79,56 @@ FEATURE_SCHEMA: dict = {
     "difficulty.SliderTickRate": _describe_entry("ticks/beat", "slider tick rate", "difficulty_context"),
 }
 
+
+# Feature v0.2 keeps every unaffected v0.1 field, corrects total slider
+# duration through the extractor, and replaces the two historically misnamed
+# repeat fields with unambiguous repeat/span counts.
+FEATURE_SCHEMA_V02: dict = {
+    key: dict(value)
+    for key, value in FEATURE_SCHEMA_V01.items()
+    if key not in ("slider.repeats_total", "slider.repeats_max")
+}
+for _key, _entry in FEATURE_SCHEMA_V02.items():
+    if _key.startswith("slider.duration_ms_"):
+        _entry["description"] = _entry["description"].replace(
+            "estimated slider duration",
+            "total slider duration across all spans",
+        )
+FEATURE_SCHEMA_V02.update(
+    {
+        "slider.repeat_count_total": _describe_entry(
+            "count", "sum of true slider repeat counts (span_count - 1)"
+        ),
+        "slider.repeat_count_max": _describe_entry(
+            "count", "maximum true slider repeat count"
+        ),
+        "slider.span_count_total": _describe_entry(
+            "count", "sum of slider span counts from the .osu slides field"
+        ),
+        "slider.span_count_max": _describe_entry(
+            "count", "maximum slider span count"
+        ),
+    }
+)
+
+# Public alias is the corrected current contract. Historical callers must ask
+# for FEATURE_SCHEMA_V01 explicitly.
+FEATURE_SCHEMA = FEATURE_SCHEMA_V02
+
+
+def feature_schema(version: str) -> dict:
+    if version == LEGACY_FEATURE_VERSION:
+        return FEATURE_SCHEMA_V01
+    if version == FEATURE_VERSION:
+        return FEATURE_SCHEMA_V02
+    raise ValueError(f"unsupported feature version: {version}")
+
+
+__all__ = [
+    "FEATURE_SCHEMA",
+    "FEATURE_SCHEMA_V01",
+    "FEATURE_SCHEMA_V02",
+    "FEATURE_VERSION",
+    "LEGACY_FEATURE_VERSION",
+    "feature_schema",
+]

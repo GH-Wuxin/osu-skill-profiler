@@ -1,4 +1,4 @@
-"""Stable machine-readable contract for Local Signal Layer v0.2.
+"""Versioned machine-readable contracts for Local Signal layers.
 
 Every signal is an *observable* (Layer A) measurement of gameplay geometry or
 reaction context.  Nothing here is an official difficulty final and nothing is
@@ -14,7 +14,8 @@ UPSTREAM_REPOSITORY = "ppy/osu"
 UPSTREAM_COMMIT = "b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e"
 UPSTREAM_DIFFICULTY_VERSION = 20260706
 
-SIGNAL_VERSION = "0.2.0"
+LEGACY_SIGNAL_VERSION = "0.2.0"
+SIGNAL_VERSION = "0.3.0"
 
 # ---------------------------------------------------------------------------
 # schema
@@ -48,7 +49,7 @@ def _entry(
 
 # Every numeric/typed field emitted per object.  Names use the ls.* namespace
 # so they can never collide with the frozen v0.1 feature names.
-SIGNAL_SCHEMA: dict[str, dict] = {
+SIGNAL_SCHEMA_V02: dict[str, dict] = {
     "ls.original_index": _entry(
         unit="index",
         description="0-based index in the .osu file order of [HitObjects]",
@@ -219,7 +220,10 @@ SIGNAL_SCHEMA: dict[str, dict] = {
     ),
     "ls.slider_duration_ms": _entry(
         unit="ms",
-        description="path-based slider duration (expected/calculated distance / velocity)",
+        description=(
+            "historical v0.2 compressed duration: one-span path distance / "
+            "velocity, emitted under an ambiguous total-duration name"
+        ),
         upstream_inspiration="Slider.EndTime - Slider.StartTime",
         missing_semantics="None for non-sliders or unknown duration",
     ),
@@ -269,16 +273,79 @@ SIGNAL_SCHEMA: dict[str, dict] = {
 }
 
 
-NUMERIC_SIGNALS = tuple(
-    name
-    for name, entry in SIGNAL_SCHEMA.items()
-    if entry["unit"] not in ("enum", "list", "bool") and name not in (
-        "ls.original_index",
-        "ls.time_sorted_index",
-        "ls.lazy_end_position_x_px",
-        "ls.lazy_end_position_y_px",
-    )
+SIGNAL_SCHEMA_V03: dict[str, dict] = {
+    name: dict(entry) for name, entry in SIGNAL_SCHEMA_V02.items()
+}
+SIGNAL_SCHEMA_V03["ls.travel_distance_cs_normalised"] = _entry(
+    unit="normalised px",
+    description="slider lazy travel distance * max(1, repeat_count^0.3); 0.0 for non-sliders",
+    upstream_inspiration="OsuDifficultyHitObject.TravelDistance",
+    missing_semantics="None when slider geometry/duration is unknown; 0.0 for non-sliders",
 )
+SIGNAL_SCHEMA_V03["ls.slider_duration_ms"] = _entry(
+    unit="ms",
+    description="deprecated compatibility alias of ls.slider_total_duration_ms",
+    upstream_inspiration="Slider.EndTime - Slider.StartTime",
+    missing_semantics="None for non-sliders or unknown duration",
+)
+SIGNAL_SCHEMA_V03.update(
+    {
+        "ls.slider_repeat_count": _entry(
+            unit="count",
+            description="true repeat count (slider span count - 1)",
+            upstream_inspiration="Slider.RepeatCount",
+            missing_semantics="None for non-sliders",
+        ),
+        "ls.slider_single_span_duration_ms": _entry(
+            unit="ms",
+            description="duration of one slider span (path distance / velocity)",
+            upstream_inspiration="Slider.SpanDuration",
+            missing_semantics="None for non-sliders or unknown duration",
+        ),
+        "ls.slider_total_duration_ms": _entry(
+            unit="ms",
+            description="total duration across every span",
+            upstream_inspiration="Slider.EndTime - Slider.StartTime",
+            missing_semantics="None for non-sliders or unknown duration",
+        ),
+    }
+)
+
+SIGNAL_SCHEMA = SIGNAL_SCHEMA_V03
+
+
+def signal_schema(version: str) -> dict[str, dict]:
+    if version == LEGACY_SIGNAL_VERSION:
+        return SIGNAL_SCHEMA_V02
+    if version == SIGNAL_VERSION:
+        return SIGNAL_SCHEMA_V03
+    raise ValueError(f"unsupported signal version: {version}")
+
+
+def _numeric_signals(schema: dict[str, dict]) -> tuple[str, ...]:
+    return tuple(
+        name
+        for name, entry in schema.items()
+        if entry["unit"] not in ("enum", "list", "bool") and name not in (
+            "ls.original_index",
+            "ls.time_sorted_index",
+            "ls.lazy_end_position_x_px",
+            "ls.lazy_end_position_y_px",
+        )
+    )
+
+
+NUMERIC_SIGNALS_V02 = _numeric_signals(SIGNAL_SCHEMA_V02)
+NUMERIC_SIGNALS_V03 = _numeric_signals(SIGNAL_SCHEMA_V03)
+NUMERIC_SIGNALS = NUMERIC_SIGNALS_V03
+
+
+def numeric_signals(version: str) -> tuple[str, ...]:
+    if version == LEGACY_SIGNAL_VERSION:
+        return NUMERIC_SIGNALS_V02
+    if version == SIGNAL_VERSION:
+        return NUMERIC_SIGNALS_V03
+    raise ValueError(f"unsupported signal version: {version}")
 
 SEGMENT_SUMMARY_FIELDS = ("mean", "p90", "max")
 
@@ -314,7 +381,7 @@ def migration_table() -> dict:
 
     return {
         "from_feature_version": "0.1.0",
-        "to_feature_version": SIGNAL_VERSION,
+        "to_feature_version": LEGACY_SIGNAL_VERSION,
         "policy": (
             "v0.1 frozen contract remains loadable and byte-deterministic. "
             "v0.2 signals live in the ls.* namespace and never rewrite v0.1 "
@@ -331,7 +398,11 @@ def migration_table() -> dict:
 
 __all__ = [
     "SIGNAL_SCHEMA",
+    "SIGNAL_SCHEMA_V02",
+    "SIGNAL_SCHEMA_V03",
     "NUMERIC_SIGNALS",
+    "NUMERIC_SIGNALS_V02",
+    "NUMERIC_SIGNALS_V03",
     "SEGMENT_SUMMARY_FIELDS",
     "DUPLICATE_ALIASES",
     "migration_table",
@@ -339,4 +410,7 @@ __all__ = [
     "UPSTREAM_COMMIT",
     "UPSTREAM_DIFFICULTY_VERSION",
     "SIGNAL_VERSION",
+    "LEGACY_SIGNAL_VERSION",
+    "signal_schema",
+    "numeric_signals",
 ]

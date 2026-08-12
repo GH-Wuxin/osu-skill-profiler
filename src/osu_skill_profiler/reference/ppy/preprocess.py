@@ -19,7 +19,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from ...parser.model import Beatmap
+from ...signals.contract import LEGACY_SIGNAL_VERSION, SIGNAL_VERSION
 from ...signals.extractor import LocalSignalExtractor
+from .contract import LEGACY_REFERENCE_VERSION, REFERENCE_VERSION
 
 
 @dataclass(frozen=True)
@@ -97,15 +99,28 @@ def _is_blocked(provenance) -> bool:
     )
 
 
-def build_ref_objects(beatmap: Beatmap) -> list[RefObject]:
+def build_ref_objects(
+    beatmap: Beatmap,
+    reference_version: str = REFERENCE_VERSION,
+) -> list[RefObject]:
     """Build file-order ``RefObject`` records from a parsed beatmap.
 
     Raw object 0 carries structural identity and no difficulty-row values
     (the pinned upstream difficulty list starts at the second raw object).
     """
 
+    if reference_version == LEGACY_REFERENCE_VERSION:
+        local_version = LEGACY_SIGNAL_VERSION
+    elif reference_version == REFERENCE_VERSION:
+        local_version = SIGNAL_VERSION
+    else:
+        raise ValueError(f"unsupported reference version: {reference_version}")
+
     geometries_out: list = []
-    rows = LocalSignalExtractor()._extract_rows(beatmap, _geometries_out=geometries_out)  # noqa: SLF001 - intentional isolated reuse
+    rows = LocalSignalExtractor(local_version)._extract_rows(  # noqa: SLF001 - intentional isolated reuse
+        beatmap,
+        _geometries_out=geometries_out,
+    )
     objects = list(beatmap.hit_objects)
     result: list[RefObject] = []
 

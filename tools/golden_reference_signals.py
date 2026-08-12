@@ -1,6 +1,7 @@
 """Golden Reference Signal Corpus (Gate B).
 
-Independent golden expectations for Official Reference Signal Layer v0.1.
+Independent golden expectations for the corrected Official Reference Signal
+Layer.
 
 The pinned upstream executable parity harness is BLOCKED in this environment
 (.NET runtimes only, no SDK), so expectations are SOURCE_AUDITED: numeric
@@ -37,8 +38,9 @@ from osu_skill_profiler.reference.ppy.contract import (  # noqa: E402
     UPSTREAM_DIFFICULTY_VERSION,
 )
 from osu_skill_profiler.reference.ppy.extractor import ReferenceSignalExtractor  # noqa: E402
+from osu_skill_profiler.signals.contract import SIGNAL_VERSION  # noqa: E402
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_reference_v01"
+OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_reference_v02"
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -487,11 +489,12 @@ def main(argv: list[str] | None = None) -> int:
         for fixture_id, fixture in fixtures().items():
             records = _verdicts(fixture_id, fixture)
             for record in records:
-                fh.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+                fh.write(json.dumps(record, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
             all_records.extend(records)
             failures.extend([r for r in records if r["verdict"] == "FAIL"])
     summary = {
         "contract_version": REFERENCE_VERSION,
+        "local_signal_version": SIGNAL_VERSION,
         "upstream_commit": UPSTREAM_COMMIT,
         "upstream_difficulty_version": UPSTREAM_DIFFICULTY_VERSION,
         "fixture_count": len(fixtures()),
@@ -502,8 +505,8 @@ def main(argv: list[str] | None = None) -> int:
         "upstream_parity_harness": "BLOCKED (no .NET SDK; expectations SOURCE_AUDITED)",
     }
     with (args.out_dir / "golden_reference_summary.json").open("w", encoding="utf-8") as fh:
-        json.dump(summary, fh, ensure_ascii=False, indent=2, sort_keys=True)
-    print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+        json.dump(summary, fh, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
+    print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False))
     return 0 if not failures else 1
 
 

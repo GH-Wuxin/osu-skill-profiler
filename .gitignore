@@ -21,3 +21,6 @@ training/weak_labels/*
 # Local outputs from CLI smoke tests
 out/
 *.profile.json
+
+# Agent progress checkpoints (never commit)
+tmp/

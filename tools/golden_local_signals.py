@@ -1,4 +1,4 @@
-"""Golden Local Signal Corpus (Gate B).
+"""Golden corrected Local Signal Corpus (Gate B).
 
 Builds a deterministic set of synthetic .osu fixtures covering circles, jumps,
 streams, sliders, repeat sliders, low/high CS and AR, BPM/SV changes,
@@ -6,7 +6,7 @@ simultaneous objects, legacy format, spinner context and Aspire-like
 pathological values.  For every fixture the tool records:
 
   - sample_id, checksum, upstream commit, difficulty version, feature version
-  - per-object expected/reference primitive values and tolerance policy
+  - per-object independent/source-audited primitive values and tolerance policy
   - local extractor values and per-signal comparison verdict
 
 The upstream parity harness is intentionally not a runtime dependency of the
@@ -28,6 +28,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from osu_skill_profiler.parser.osu_parser import parse_osu
+from osu_skill_profiler.features.schema import FEATURE_VERSION
 from osu_skill_profiler.signals.contract import (
     SIGNAL_VERSION,
     UPSTREAM_COMMIT,
@@ -35,7 +36,7 @@ from osu_skill_profiler.signals.contract import (
 )
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_v02"
+OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_v03"
 
 
 def _fmt(value: float) -> str:
@@ -134,7 +135,7 @@ def fixtures() -> dict[str, dict]:
         "tolerance": 1e-6,
     }
     f["g_slider_repeat2"] = {
-        "description": "repeat slider slides=2, hand-computed lazy geometry",
+        "description": "repeat slider slides=2, corrected total timing and hand-computed lazy geometry",
         "map": _map(
             "g_slider_repeat2",
             "HPDrainRate:5\nCircleSize:4\nOverallDifficulty:8\nApproachRate:9\nSliderMultiplier:1\nSliderTickRate:1",
@@ -142,16 +143,21 @@ def fixtures() -> dict[str, dict]:
             ["64,64,1000,2,0,L|264:64,2,200,0:0:0:0:"],
         ),
         "exact": {
-            "slider_duration": [1000.0],
+            # 200px / 0.2px/ms = 1000ms per span; 2 spans = 2000ms.
+            "slider_duration": [2000.0],
+            "slider_single_span_duration": [1000.0],
+            "slider_total_duration": [2000.0],
+            "slider_repeat_count": [1],
             "slider_span_count": [2],
             "slider_tick_count": [2],
             "slider_nested_object_count": [5],
-            "lazy_travel_time": [964.0],
-            "lazy_end_position_x": [144.09092224],
+            "lazy_travel_time": [1964.0],
+            "lazy_end_position_x": [136.89092224],
             "lazy_end_position_y": [64.0],
-            # Audited reference values for the 2-span lazy cursor loop.
-            "lazy_travel_distance": [338.2921721392475],
-            "travel_distance": [416.4865178075513],
+            # Audited hand values for head/tick/repeat/tick/lazy-tail loop.
+            "lazy_travel_distance": [348.1565487974492],
+            # One true repeat means max(1, repeat_count^0.3) == 1.
+            "travel_distance": [348.1565487974492],
         },
         "tolerance": 1e-4,
     }
@@ -164,10 +170,14 @@ def fixtures() -> dict[str, dict]:
             ["64,64,1000,2,0,L|264:64,3,200,0:0:0:0:"],
         ),
         "exact": {
+            "slider_duration": [3000.0],
+            "slider_single_span_duration": [1000.0],
+            "slider_total_duration": [3000.0],
+            "slider_repeat_count": [2],
             "slider_span_count": [3],
             "slider_tick_count": [3],
             "slider_nested_object_count": [7],
-            "lazy_travel_time": [964.0],
+            "lazy_travel_time": [2964.0],
         },
         "tolerance": 1e-6,
     }
@@ -420,6 +430,9 @@ def _verify_fixture(sample_id: str, fixture: dict) -> dict:
         "radius": "ls.radius_px",
         "cs_scale": "ls.cs_scale",
         "slider_duration": "ls.slider_duration_ms",
+        "slider_single_span_duration": "ls.slider_single_span_duration_ms",
+        "slider_total_duration": "ls.slider_total_duration_ms",
+        "slider_repeat_count": "ls.slider_repeat_count",
         "slider_velocity": "ls.slider_velocity_px_per_ms",
         "lazy_travel_time": "ls.lazy_travel_time_ms",
         "travel_time": "ls.travel_time_ms",
@@ -470,7 +483,9 @@ def _verify_fixture(sample_id: str, fixture: dict) -> dict:
         "upstream_repository": "ppy/osu",
         "upstream_commit": UPSTREAM_COMMIT,
         "upstream_difficulty_version": UPSTREAM_DIFFICULTY_VERSION,
-        "feature_version": SIGNAL_VERSION,
+        "feature_version": FEATURE_VERSION,
+        "signal_version": SIGNAL_VERSION,
+        "expectation_source": "SOURCE_AUDITED",
         "tolerance": tolerance,
         "object_count": len(rows),
         "expected_checks": sum(len(v) for v in exact.values()),
@@ -489,7 +504,8 @@ def main(argv: list[str] | None = None) -> int:
 
     reports = [_verify_fixture(sample_id, fixture) for sample_id, fixture in fixtures().items()]
     corpus = {
-        "schema_version": "0.2.0",
+        "schema_version": SIGNAL_VERSION,
+        "feature_version": FEATURE_VERSION,
         "signal_version": SIGNAL_VERSION,
         "upstream_commit": UPSTREAM_COMMIT,
         "upstream_difficulty_version": UPSTREAM_DIFFICULTY_VERSION,
@@ -502,7 +518,7 @@ def main(argv: list[str] | None = None) -> int:
         "samples": reports,
     }
     (args.out_dir / "golden_corpus.json").write_text(
-        json.dumps(corpus, ensure_ascii=False, indent=2, sort_keys=True),
+        json.dumps(corpus, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False),
         encoding="utf-8",
     )
     fixture_dir = args.out_dir / "fixtures"

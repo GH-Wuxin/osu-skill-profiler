@@ -16,6 +16,8 @@ from typing import Optional
 
 from ..parser.model import Beatmap, HitObject
 from ..parser.osu_parser import effective_timing
+from ..slider_semantics import canonical_slider_counts, canonical_slider_timing
+from . import LEGACY_SIGNAL_VERSION, SIGNAL_VERSION
 from .path import SliderPath, build_slider_path
 
 MIN_DELTA_TIME = 25.0
@@ -48,6 +50,9 @@ class SliderGeometry:
     velocity_px_per_ms: Optional[float] = None
     duration_ms: Optional[float] = None
     span_duration_ms: Optional[float] = None
+    single_span_duration_ms: Optional[float] = None
+    total_duration_ms: Optional[float] = None
+    repeat_count: int = 0
     span_count: int = 1
     tick_distance: Optional[float] = None
     nested: tuple[NestedObject, ...] = ()
@@ -157,15 +162,23 @@ def _effective_velocity(beatmap: Beatmap, time_ms: float) -> tuple[Optional[floa
     return velocity, beat_length_ms, slider_multiplier, tuple(provenance)
 
 
-def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float], cs_radius: Optional[float]) -> SliderGeometry:
+def _build_geometry(
+    beatmap: Beatmap,
+    obj: HitObject,
+    start: tuple[float, float],
+    cs_radius: Optional[float],
+    signal_version: str = SIGNAL_VERSION,
+) -> SliderGeometry:
+    if signal_version not in (LEGACY_SIGNAL_VERSION, SIGNAL_VERSION):
+        raise ValueError(f"unsupported signal version: {signal_version}")
     provenance: list[str] = []
-    slides = obj.slider_slides
-    span_count = max(1, int(slides)) if slides is not None else 1
-    if slides is not None and slides <= 0:
-        provenance.append("slider_slides_nonpositive")
+    counts = canonical_slider_counts(obj.slider_slides)
+    repeat_count = counts.repeat_count
+    span_count = counts.span_count
+    provenance.extend(counts.provenance)
     if span_count > MAX_SLIDER_SPANS:
         provenance.append(f"slider_spans_exceeded:{span_count}")
-        return SliderGeometry(span_count=span_count, provenance=tuple(provenance))
+        return SliderGeometry(repeat_count=repeat_count, span_count=span_count, provenance=tuple(provenance))
 
     expected_distance = obj.slider_pixel_length
     if expected_distance is None:
@@ -177,7 +190,7 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
     velocity, beat_length_ms, _slider_multiplier, velocity_provenance = _effective_velocity(beatmap, obj.time_ms)
     provenance.extend(velocity_provenance)
     if velocity is None:
-        return SliderGeometry(span_count=span_count, provenance=tuple(provenance))
+        return SliderGeometry(repeat_count=repeat_count, span_count=span_count, provenance=tuple(provenance))
 
     # The .osu slider start position is the hit object position; upstream
     # prepends it to the control point list, so the path always starts at
@@ -190,13 +203,13 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
         # with unbounded O(n^2) work; the slider keeps unknown-geometry missing
         # semantics plus a provenance flag (never a fabricated path).
         provenance.append(f"path_blocked:{path.blocked_reason}")
-        return SliderGeometry(span_count=span_count, provenance=tuple(provenance))
+        return SliderGeometry(repeat_count=repeat_count, span_count=span_count, provenance=tuple(provenance))
     if path.non_finite_input:
         provenance.append("path_nonfinite_input")
     path_distance = path.distance
     if not math.isfinite(path_distance) or path_distance < 0:
         provenance.append("path_distance_invalid")
-        return SliderGeometry(path=path, velocity_px_per_ms=velocity, span_count=span_count, provenance=tuple(provenance))
+        return SliderGeometry(path=path, velocity_px_per_ms=velocity, repeat_count=repeat_count, span_count=span_count, provenance=tuple(provenance))
     if path_distance == 0:
         provenance.append("path_distance_zero")
         return SliderGeometry(
@@ -204,6 +217,9 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
             velocity_px_per_ms=velocity,
             duration_ms=0.0,
             span_duration_ms=0.0,
+            single_span_duration_ms=0.0,
+            total_duration_ms=0.0,
+            repeat_count=repeat_count,
             span_count=span_count,
             tick_distance=0.0,
             nested=(NestedObject("head", obj.time_ms, start, 0.0),),
@@ -216,14 +232,25 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
             provenance=tuple(provenance),
         )
 
-    try:
-        duration_ms = path_distance / velocity
-    except OverflowError:
-        duration_ms = math.inf
-    if not math.isfinite(duration_ms) or duration_ms <= 0:
+    timing = canonical_slider_timing(path_distance, velocity, span_count)
+    if timing is None:
         provenance.append("slider_duration_invalid")
-        return SliderGeometry(path=path, velocity_px_per_ms=velocity, span_count=span_count, provenance=tuple(provenance))
-    span_duration_ms = duration_ms / span_count
+        return SliderGeometry(
+            path=path,
+            velocity_px_per_ms=velocity,
+            repeat_count=repeat_count,
+            span_count=span_count,
+            provenance=tuple(provenance),
+        )
+    single_span_duration_ms = timing.single_span_duration_ms
+    total_duration_ms = timing.total_slider_duration_ms
+    if signal_version == LEGACY_SIGNAL_VERSION:
+        # Historical Local v0.2 failure mode retained only for explicit replay.
+        duration_ms = single_span_duration_ms
+        span_duration_ms = single_span_duration_ms / span_count
+    else:
+        duration_ms = total_duration_ms
+        span_duration_ms = single_span_duration_ms
 
     tick_rate = beatmap.difficulty.get("SliderTickRate")
     if tick_rate is None:
@@ -247,6 +274,7 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
         return SliderGeometry(
             path=path,
             velocity_px_per_ms=velocity,
+            repeat_count=repeat_count,
             span_count=span_count,
             provenance=tuple(provenance),
         )
@@ -288,7 +316,17 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
     tail_position = _path_position(path, start, tail_progress)
     events.append(NestedObject("tail", obj.time_ms + duration_ms, tail_position, tail_progress))
 
+    nested = tuple(events)
+    last_real_tick: Optional[NestedObject] = None
+    for event in events:
+        if event.kind == "tick":
+            last_real_tick = event
     tracking_end_time_ms = max(obj.time_ms + duration_ms + TAIL_LENIENCY, obj.time_ms + duration_ms / 2.0)
+    late_real_tick = last_real_tick is not None and last_real_tick.time_ms > tracking_end_time_ms
+    if late_real_tick and signal_version != LEGACY_SIGNAL_VERSION:
+        # Pinned OsuDifficultyHitObject updates tracking end before computing
+        # lazy end progress.
+        tracking_end_time_ms = last_real_tick.time_ms
     lazy_travel_time_ms = tracking_end_time_ms - obj.time_ms
     end_time_min = lazy_travel_time_ms / span_duration_ms
     if end_time_min % 2 >= 1:
@@ -297,14 +335,9 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
         end_time_min %= 1
     lazy_end_initial = _path_position(path, start, end_time_min)
 
-    nested = tuple(events)
-    last_real_tick: Optional[NestedObject] = None
-    for event in events:
-        if event.kind == "tick":
-            last_real_tick = event
     reordered = False
     lazy_nested = events
-    if last_real_tick is not None and last_real_tick.time_ms > tracking_end_time_ms:
+    if late_real_tick:
         lazy_nested = [event for event in events if event is not last_real_tick]
         lazy_nested.append(last_real_tick)
         reordered = True
@@ -328,6 +361,9 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
                     velocity_px_per_ms=velocity,
                     duration_ms=duration_ms,
                     span_duration_ms=span_duration_ms,
+                    single_span_duration_ms=single_span_duration_ms,
+                    total_duration_ms=total_duration_ms,
+                    repeat_count=repeat_count,
                     span_count=span_count,
                     tick_distance=tick_distance,
                     nested=nested,
@@ -369,6 +405,9 @@ def _build_geometry(beatmap: Beatmap, obj: HitObject, start: tuple[float, float]
         velocity_px_per_ms=velocity,
         duration_ms=duration_ms,
         span_duration_ms=span_duration_ms,
+        single_span_duration_ms=single_span_duration_ms,
+        total_duration_ms=total_duration_ms,
+        repeat_count=repeat_count,
         span_count=span_count,
         tick_distance=tick_distance,
         nested=nested,

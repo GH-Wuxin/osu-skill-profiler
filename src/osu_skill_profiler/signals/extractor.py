@@ -16,12 +16,13 @@ from typing import Any, Optional
 
 from ..parser.model import Beatmap, HitObject
 from .contract import (
-    NUMERIC_SIGNALS,
+    LEGACY_SIGNAL_VERSION,
     SEGMENT_SUMMARY_FIELDS,
-    SIGNAL_SCHEMA,
     SIGNAL_VERSION,
     UPSTREAM_COMMIT,
     UPSTREAM_DIFFICULTY_VERSION,
+    numeric_signals,
+    signal_schema,
 )
 from .slider import (
     ASSUMED_SLIDER_RADIUS,
@@ -81,12 +82,20 @@ def _scaled_mean(values: list[float]) -> float:
     return scale * (sum(v / scale for v in values) / len(values))
 
 
-def _travel_distance_cs(geometry: Optional[SliderGeometry]) -> Optional[float]:
+def _travel_distance_cs(
+    geometry: Optional[SliderGeometry],
+    signal_version: str,
+) -> Optional[float]:
     if geometry is None:
         return 0.0
     if geometry.lazy_travel_distance_cs is None:
         return None
-    return geometry.lazy_travel_distance_cs * max(1.0, geometry.span_count ** 0.3)
+    bonus_count = (
+        geometry.span_count
+        if signal_version == LEGACY_SIGNAL_VERSION
+        else geometry.repeat_count
+    )
+    return geometry.lazy_travel_distance_cs * max(1.0, bonus_count ** 0.3)
 
 
 def _percentile(sorted_values: list[float], q: float) -> float:
@@ -102,17 +111,29 @@ def _percentile(sorted_values: list[float], q: float) -> float:
 
 
 class LocalSignalExtractor:
-    """Extracts the v0.2 per-object local signal table and segment summaries."""
+    """Extract a version-selected local signal table and segment summaries."""
 
     signal_version = SIGNAL_VERSION
 
+    def __init__(self, signal_version: str = SIGNAL_VERSION) -> None:
+        # Resolve both contracts eagerly so unsupported versions fail before
+        # any beatmap work or partial output is produced.
+        signal_schema(signal_version)
+        numeric_signals(signal_version)
+        self.signal_version = signal_version
+
     def extract(self, beatmap: Beatmap) -> dict:
         rows = self._extract_rows(beatmap)
-        segments = segment_local_signals(rows, window_ms=SEGMENT_WINDOW_MS)
+        segments = segment_local_signals(
+            rows,
+            window_ms=SEGMENT_WINDOW_MS,
+            signal_version=self.signal_version,
+        )
+        schema = signal_schema(self.signal_version)
         missing_counts: dict[str, int] = {}
         nonfinite_counts: dict[str, int] = {}
         for row in rows:
-            for key in SIGNAL_SCHEMA:
+            for key in schema:
                 if key in ("ls.provenance",):
                     continue
                 value = row.get(key)
@@ -121,7 +142,7 @@ class LocalSignalExtractor:
                 elif isinstance(value, float) and not math.isfinite(value):
                     nonfinite_counts[key] = nonfinite_counts.get(key, 0) + 1
         return {
-            "signal_version": SIGNAL_VERSION,
+            "signal_version": self.signal_version,
             "upstream_repository": "ppy/osu",
             "upstream_commit": UPSTREAM_COMMIT,
             "upstream_difficulty_version": UPSTREAM_DIFFICULTY_VERSION,
@@ -174,7 +195,15 @@ class LocalSignalExtractor:
         geometries: list[Optional[SliderGeometry]] = []
         for obj in raw_objects:
             if obj.object_type == "slider":
-                geometries.append(_build_geometry(beatmap, obj, (float(obj.x), float(obj.y)), cs_radius))
+                geometries.append(
+                    _build_geometry(
+                        beatmap,
+                        obj,
+                        (float(obj.x), float(obj.y)),
+                        cs_radius,
+                        signal_version=self.signal_version,
+                    )
+                )
             else:
                 geometries.append(None)
         if _geometries_out is not None:
@@ -242,6 +271,10 @@ class LocalSignalExtractor:
             # ---- slider-specific raw geometry -----------------------------
             if geometry is not None:
                 row["ls.slider_duration_ms"] = geometry.duration_ms
+                if self.signal_version != LEGACY_SIGNAL_VERSION:
+                    row["ls.slider_repeat_count"] = geometry.repeat_count
+                    row["ls.slider_single_span_duration_ms"] = geometry.single_span_duration_ms
+                    row["ls.slider_total_duration_ms"] = geometry.total_duration_ms
                 row["ls.slider_velocity_px_per_ms"] = geometry.velocity_px_per_ms
                 row["ls.slider_path_distance_px"] = (
                     geometry.path.distance if geometry.path is not None else None
@@ -249,7 +282,10 @@ class LocalSignalExtractor:
                 row["ls.slider_span_count"] = geometry.span_count
                 row["ls.slider_tick_count"] = sum(1 for e in geometry.nested if e.kind == "tick") if geometry.nested else None
                 row["ls.slider_nested_object_count"] = len(geometry.nested) if geometry.nested else None
-                row["ls.travel_distance_cs_normalised"] = _travel_distance_cs(geometry)
+                row["ls.travel_distance_cs_normalised"] = _travel_distance_cs(
+                    geometry,
+                    self.signal_version,
+                )
                 row["ls.travel_time_ms"] = (
                     max(geometry.lazy_travel_time_ms, MIN_DELTA_TIME)
                     if geometry.lazy_travel_time_ms is not None
@@ -269,6 +305,10 @@ class LocalSignalExtractor:
                     provenance.extend(geometry.provenance)
             else:
                 row["ls.slider_duration_ms"] = None
+                if self.signal_version != LEGACY_SIGNAL_VERSION:
+                    row["ls.slider_repeat_count"] = None
+                    row["ls.slider_single_span_duration_ms"] = None
+                    row["ls.slider_total_duration_ms"] = None
                 row["ls.slider_velocity_px_per_ms"] = None
                 row["ls.slider_path_distance_px"] = None
                 row["ls.slider_span_count"] = None
@@ -354,7 +394,10 @@ class LocalSignalExtractor:
                     if i >= 2 and raw_objects[i - 2].object_type != "spinner":
                         last_last_geometry = geometries[i - 2]
                         angle_last_cursor = last_cursor
-                        previous_travel = _travel_distance_cs(last_geometry)
+                        previous_travel = _travel_distance_cs(
+                            last_geometry,
+                            self.signal_version,
+                        )
                         if previous_travel is not None and previous_travel > 0:
                             angle_last_cursor = previous
                         last_last_cursor = (
@@ -412,7 +455,11 @@ class LocalSignalExtractor:
         return rows
 
 
-def segment_local_signals(rows: list[dict], window_ms: float = SEGMENT_WINDOW_MS) -> list[dict]:
+def segment_local_signals(
+    rows: list[dict],
+    window_ms: float = SEGMENT_WINDOW_MS,
+    signal_version: str = SIGNAL_VERSION,
+) -> list[dict]:
     """Fixed-time-window segment summaries (mean/p90/max per numeric signal)."""
 
     if not rows:
@@ -431,7 +478,7 @@ def segment_local_signals(rows: list[dict], window_ms: float = SEGMENT_WINDOW_MS
         window_end = min(window_start + window_ms, end)
         members = [ordered[idx] for idx in indices]
         aggregates: dict[str, dict[str, float]] = {}
-        for name in NUMERIC_SIGNALS:
+        for name in numeric_signals(signal_version):
             values = [
                 float(m[name])
                 for m in members

@@ -34,6 +34,7 @@ from .diff_utils import (
     smoothstep_bell_curve_unit,
 )
 from .preprocess import RefObject
+from .contract import LEGACY_REFERENCE_VERSION, REFERENCE_VERSION
 
 _MAX_DELTA = 2**31 - 1
 
@@ -613,7 +614,12 @@ def _time_nerf_factor(delta_time_ms: float) -> float:
     return clamp(2.0 - delta_time_ms / 1500.0, 0.0, 1.0)
 
 
-def _past_object_difficulty_influence(objects: list[RefObject], i: int, curr: RefObject) -> Optional[float]:
+def _past_object_difficulty_influence(
+    objects: list[RefObject],
+    i: int,
+    curr: RefObject,
+    reference_version: str = REFERENCE_VERSION,
+) -> Optional[float]:
     if curr.preempt_ms is None:
         return None
     total = 0.0
@@ -626,7 +632,15 @@ def _past_object_difficulty_influence(objects: list[RefObject], i: int, curr: Re
             break
         if loop_obj.start_time_ms < curr.start_time_ms - curr.preempt_ms:
             break
-        opacity = _opacity_at(loop_obj, loop_obj.start_time_ms)
+        if reference_version == LEGACY_REFERENCE_VERSION:
+            # Historical Reference v0.1 identity bug retained for exact replay.
+            opacity = _opacity_at(loop_obj, loop_obj.start_time_ms)
+        elif reference_version == REFERENCE_VERSION:
+            # Pinned ReadingEvaluator:
+            # currObj.OpacityAt(loopObj.BaseObject.StartTime, false)
+            opacity = _opacity_at(curr, loop_obj.start_time_ms)
+        else:
+            raise ValueError(f"unsupported reference version: {reference_version}")
         lazy_jump = _num(loop_obj.lazy_jump_distance_cs)
         if opacity is None or lazy_jump is None:
             return None
@@ -713,7 +727,11 @@ def _constant_angle_nerf_factor(objects: list[RefObject], i: int, curr: RefObjec
         return 1.0
 
 
-def reading(objects: list[RefObject], i: int) -> Optional[float]:
+def reading(
+    objects: list[RefObject],
+    i: int,
+    reference_version: str = REFERENCE_VERSION,
+) -> Optional[float]:
     """ReadingEvaluator.EvaluateDifficultyOf(current, hidden=false)."""
 
     if i < 1:
@@ -727,7 +745,12 @@ def reading(objects: list[RefObject], i: int) -> Optional[float]:
         return None
 
     velocity = max(1.0, lazy_jump / curr_adj)
-    past_influence = _past_object_difficulty_influence(objects, i, curr)
+    past_influence = _past_object_difficulty_influence(
+        objects,
+        i,
+        curr,
+        reference_version=reference_version,
+    )
     if past_influence is None:
         return None
     visible_density = _current_visible_object_density(objects, i, curr)

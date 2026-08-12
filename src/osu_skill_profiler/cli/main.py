@@ -55,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     local_signals = subparsers.add_parser(
         "extract-local-signals",
-        help="per-object Local Signal Layer v0.2 document (observable signals only)",
+        help="per-object corrected Local Signal Layer document (observable signals only)",
     )
     local_signals.add_argument("map", type=Path)
     local_signals.add_argument("--out", type=Path)
@@ -63,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     reference_signals = subparsers.add_parser(
         "extract-reference-signals",
-        help="per-object Official Reference Signal Layer v0.1 document (REFERENCE_ONLY, never ground truth)",
+        help="per-object corrected Official Reference Signal document (REFERENCE_ONLY, never ground truth)",
     )
     reference_signals.add_argument("map", type=Path)
     reference_signals.add_argument("--out", type=Path)

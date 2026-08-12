@@ -1,4 +1,4 @@
-"""Local Signal Layer v0.2 corpus QA (Gates C/D/E).
+"""Corrected Local Signal Layer corpus QA (Gates C/D/E).
 
 Phases (gated, deterministic):
 
@@ -8,12 +8,12 @@ Phases (gated, deterministic):
 
 Every map runs the full chain:
 
-  parse -> normalize -> v0.1 features (frozen regression)
-                      -> v0.2 per-object local signals
+  parse -> normalize -> corrected Feature contract
+                      -> corrected per-object Local Signal contract
                       -> fixed-time 5s segment summaries
 
-No skill labels are produced, no taxonomy is touched, and no v0.1 feature is
-modified.  Per-object rows are stored for the 5k/20k phases (exact object-level
+No skill labels are produced and no taxonomy is touched. Per-object rows are
+stored for the 5k/20k phases (exact object-level
 statistics).  The full phase keeps bounded per-map signal summaries plus a
 deterministic per-signal reservoir, so no map's object table is retained in
 memory.  Anomalies are written with full provenance and are never silently
@@ -44,23 +44,27 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 # Reuse the deterministic manifest selection and online-stat infrastructure
-# from the frozen v0.1 QA pipeline.
+# from the Feature QA pipeline.
 from feature_qa import (  # noqa: E402
+    MOMENT_SCHEMA_VERSION,
     RESERVOIR_SIZE,
     UNIQUE_CAP,
     build_selection,
     _dist_summary,
     _pearson,
     _percentile,
+    _prepare_resume_records,
+    _ScaledMoments,
     _StreamAccumulator,
 )
 from osu_skill_profiler.features.extractor import FeatureExtractor  # noqa: E402
+from osu_skill_profiler.features.schema import FEATURE_SCHEMA, FEATURE_VERSION  # noqa: E402
 from osu_skill_profiler.parser.normalized import normalize  # noqa: E402
 from osu_skill_profiler.parser.osu_parser import parse_osu_file  # noqa: E402
 from osu_skill_profiler.signals.contract import NUMERIC_SIGNALS, SIGNAL_SCHEMA, SIGNAL_VERSION  # noqa: E402
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor  # noqa: E402
 
-EXPECTED_FEATURE_COUNT = 104
+EXPECTED_FEATURE_COUNT = len(FEATURE_SCHEMA)
 DEFAULT_SEED = 20260810
 WINDOW_MS = 5000.0
 EXTREME_FINITE_ABS = 1e12
@@ -127,14 +131,14 @@ class _LocalSignalAccumulator(_StreamAccumulator):
         if max_value is not None and (self.max is None or max_value > self.max):
             self.max = max_value
         if count:
-            mean2 = summary["sum"] / count
-            m2_2 = summary["sum_sq"] - count * mean2 * mean2
-            n1 = self.seen
-            total_n = n1 + count
-            delta = mean2 - self.mean
-            self.mean += delta * count / total_n
-            self.m2 += m2_2 + delta * delta * n1 * count / total_n
-            self.seen = total_n
+            if summary.get("moments_version") != MOMENT_SCHEMA_VERSION:
+                raise ValueError("unsupported per-map moment summary")
+            self.moments.merge(
+                count,
+                float(summary["scale"]),
+                float(summary["mean_scaled"]),
+                float(summary["m2_scaled"]),
+            )
         if not self.exact:
             for value in summary.get("reservoir") or []:
                 self._reservoir_feed += 1
@@ -166,8 +170,7 @@ def _map_signal_summaries(rows: list[dict], seed: int) -> dict[str, dict]:
         zero = 0
         min_value: float | None = None
         max_value: float | None = None
-        total = 0.0
-        total_sq = 0.0
+        moments = _ScaledMoments()
         reservoir: list[float] = []
         rng = random.Random(f"{seed}:{sig}")
         for row in rows:
@@ -186,8 +189,7 @@ def _map_signal_summaries(rows: list[dict], seed: int) -> dict[str, dict]:
                 min_value = value
             if max_value is None or value > max_value:
                 max_value = value
-            total += value
-            total_sq += value * value
+            moments.update(value)
             if len(reservoir) < PER_MAP_RESERVOIR:
                 reservoir.append(value)
             else:
@@ -195,13 +197,11 @@ def _map_signal_summaries(rows: list[dict], seed: int) -> dict[str, dict]:
                 if slot < PER_MAP_RESERVOIR:
                     reservoir[slot] = value
         summaries[sig] = {
-            "count": count,
+            **moments.snapshot(),
             "missing": missing,
             "nonfinite": nonfinite,
             "min": min_value,
             "max": max_value,
-            "sum": total,
-            "sum_sq": total_sq,
             "zero": zero,
             "reservoir": reservoir,
         }
@@ -279,6 +279,7 @@ def _validate_segments(rows: list[dict], segments: list[dict]) -> dict:
     covered = total_objects == n
     consistent = True
     nonfinite_aggregates = 0
+    aggregate_consistency_failures = 0
     prev_end = None
     for seg in segments:
         start_idx = int(seg.get("start_idx") or 0)
@@ -297,12 +298,16 @@ def _validate_segments(rows: list[dict], segments: list[dict]) -> dict:
             if "max" in agg and "p90" in agg:
                 mx = agg.get("max")
                 p90 = agg.get("p90")
-                if isinstance(mx, (int, float)) and isinstance(p90, (int, float)) and mx < p90:
-                    consistent = False
+                if isinstance(mx, (int, float)) and isinstance(p90, (int, float)):
+                    scale = max(1.0, abs(float(mx)), abs(float(p90)))
+                    if float(mx) + 1e-12 * scale < float(p90):
+                        consistent = False
+                        aggregate_consistency_failures += 1
     return {
         "segment_consistent": consistent and covered,
         "coverage_consistent": covered,
         "aggregate_nonfinite_count": nonfinite_aggregates,
+        "aggregate_consistency_failures": aggregate_consistency_failures,
     }
 
 
@@ -336,6 +341,7 @@ def _process_map(rec: dict, store_objects: bool, seed: int) -> dict:
         "timing_count": rec["timing_count"],
         "green_count": rec["green_count"],
         "signal_version": SIGNAL_VERSION,
+        "feature_version": FEATURE_VERSION,
         "objects": None,
         "signal_summaries": None,
         "slider_count": None,
@@ -360,8 +366,8 @@ def _process_map(rec: dict, store_objects: bool, seed: int) -> dict:
         out["feature_latency_ms"] = round((time.perf_counter() - t1) * 1000, 3)
         out["feature_count"] = len(features)
         if len(features) != EXPECTED_FEATURE_COUNT:
-            out["error_type"] = "V01FeatureCountMismatch"
-            out["error"] = f"expected {EXPECTED_FEATURE_COUNT} v0.1 features, got {len(features)}"
+            out["error_type"] = "FeatureCountMismatch"
+            out["error"] = f"expected {EXPECTED_FEATURE_COUNT} Feature {FEATURE_VERSION} fields, got {len(features)}"
             out["latency_ms"] = round((time.perf_counter() - t0) * 1000, 3)
             return out
         try:
@@ -425,16 +431,44 @@ def _process_map(rec: dict, store_objects: bool, seed: int) -> dict:
     return out
 
 
+def _resume_record_complete(rec: dict, store_objects: bool) -> bool:
+    validation = rec.get("validation")
+    if store_objects:
+        payload_ok = isinstance(rec.get("objects"), list)
+    else:
+        summaries = rec.get("signal_summaries")
+        payload_ok = isinstance(summaries, dict) and all(
+            isinstance(summary, dict) and summary.get("moments_version") == MOMENT_SCHEMA_VERSION
+            for summary in summaries.values()
+        )
+    return (
+        rec.get("ok") is True
+        and rec.get("feature_version") == FEATURE_VERSION
+        and rec.get("signal_version") == SIGNAL_VERSION
+        and rec.get("feature_count") == EXPECTED_FEATURE_COUNT
+        and rec.get("feature_serializable") is True
+        and rec.get("feature_nonfinite_count") == 0
+        and rec.get("serializable") is True
+        and isinstance(validation, dict)
+        and validation.get("unknown_key_count") == 0
+        and validation.get("missing_schema_key_count") == 0
+        and validation.get("nonfinite_count") == 0
+        and validation.get("original_order_ok") is True
+        and validation.get("time_sorted_ok") is True
+        and validation.get("coverage_consistent") is True
+        and validation.get("segment_consistent") is True
+        and validation.get("aggregate_nonfinite_count") == 0
+        and validation.get("aggregate_consistency_failures") == 0
+        and payload_ok
+    )
+
+
 def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: bool, store_objects: bool, seed: int) -> dict:
-    done: set[str] = set()
-    if resume and out_path.exists():
-        with out_path.open(encoding="utf-8") as fh:
-            for line in fh:
-                if line.strip():
-                    try:
-                        done.add(json.loads(line)["sample_id"])
-                    except (json.JSONDecodeError, KeyError):
-                        pass
+    done = _prepare_resume_records(
+        out_path,
+        resume,
+        lambda rec: _resume_record_complete(rec, store_objects),
+    )
     todo = [r for r in records if r["sample_id"] not in done]
     print(f"extract total={len(records)} done={len(done)} todo={len(todo)} workers={workers}", flush=True)
     if not todo:
@@ -453,7 +487,7 @@ def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: b
             with multiprocessing.Pool(processes=workers, maxtasksperchild=200) as pool:
                 iterator = pool.imap(worker, todo, chunksize=8)
                 for idx, rec in enumerate(iterator, 1):
-                    fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+                    fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
                     if rec["ok"]:
                         ok_count += 1
                     else:
@@ -466,7 +500,7 @@ def _run_extraction(records: list[dict], out_path: Path, workers: int, resume: b
                         )
                 return {"ok": ok_count, "fail": fail_count, "elapsed_s": time.time() - start}
         for idx, rec in enumerate(iterator, 1):
-            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
             if rec["ok"]:
                 ok_count += 1
             else:
@@ -525,7 +559,8 @@ def _stats_pass(jsonl: Path, phase: str, exact: bool, seed: int) -> dict:
     total_short_lt1000 = 0
     total_segments = 0
     total_objects = 0
-    consistency_fail = 0
+    coverage_fail = 0
+    segment_consistency_fail = 0
     ordering_fail = 0
     segment_nonfinite_maps = 0
     serialize_fail = 0
@@ -590,7 +625,9 @@ def _stats_pass(jsonl: Path, phase: str, exact: bool, seed: int) -> dict:
             total_objects += int(rec.get("object_count") or 0)
             validation = rec.get("validation") or {}
             if not validation.get("coverage_consistent"):
-                consistency_fail += 1
+                coverage_fail += 1
+            if not validation.get("segment_consistent") or int(validation.get("aggregate_consistency_failures") or 0) > 0:
+                segment_consistency_fail += 1
             if not validation.get("original_order_ok") or not validation.get("time_sorted_ok"):
                 ordering_fail += 1
             if int(validation.get("aggregate_nonfinite_count") or 0) > 0:
@@ -665,6 +702,8 @@ def _stats_pass(jsonl: Path, phase: str, exact: bool, seed: int) -> dict:
         scaling[key] = _log_log_slope(xs, scaling_y)
     return {
         "phase": phase,
+        "feature_version": FEATURE_VERSION,
+        "signal_version": SIGNAL_VERSION,
         "records": records,
         "ok": ok_records,
         "failures": len(failures),
@@ -690,7 +729,8 @@ def _stats_pass(jsonl: Path, phase: str, exact: bool, seed: int) -> dict:
             "empty_segments": total_empty,
             "short_segments_lt100ms": total_short_lt100,
             "short_segments_lt1000ms": total_short_lt1000,
-            "coverage_consistency_failures": consistency_fail,
+            "coverage_consistency_failures": coverage_fail,
+            "segment_consistency_failures": segment_consistency_fail,
             "ordering_failures": ordering_fail,
             "segment_aggregate_nonfinite_maps": segment_nonfinite_maps,
             "serialize_failures": serialize_fail,
@@ -831,6 +871,7 @@ def _outlier_pass(jsonl: Path, stats: dict, out_path: Path, store_objects: bool)
                                         },
                                         ensure_ascii=False,
                                         sort_keys=True,
+                                        allow_nan=False,
                                     )
                                     + "\n"
                                 )
@@ -854,6 +895,7 @@ def _outlier_pass(jsonl: Path, stats: dict, out_path: Path, store_objects: bool)
                             },
                             ensure_ascii=False,
                             sort_keys=True,
+                            allow_nan=False,
                         )
                         + "\n"
                     )
@@ -900,6 +942,7 @@ def _outlier_pass(jsonl: Path, stats: dict, out_path: Path, store_objects: bool)
                             },
                             ensure_ascii=False,
                             sort_keys=True,
+                            allow_nan=False,
                         )
                         + "\n"
                     )
@@ -938,13 +981,15 @@ def _verdict(result: dict) -> tuple[str, str]:
     if result["failures"] > 0:
         reasons.append(f"{result['failures']} extraction failures")
     if result["feature_count_distribution"] and any(int(k) != EXPECTED_FEATURE_COUNT for k in result["feature_count_distribution"]):
-        reasons.append("v0.1 feature count != 104")
+        reasons.append(f"Feature {FEATURE_VERSION} count != {EXPECTED_FEATURE_COUNT}")
     nonfinite = [k for k, st in result["signal_stats"].items() if st["nonfinite"] > 0]
     if nonfinite:
         reasons.append(f"output NaN/Inf in {len(nonfinite)} signals")
     seg = result["segment"]
     if seg["coverage_consistency_failures"]:
         reasons.append(f"{seg['coverage_consistency_failures']} segment coverage failures")
+    if seg["segment_consistency_failures"]:
+        reasons.append(f"{seg['segment_consistency_failures']} segment aggregate consistency failures")
     if seg["ordering_failures"]:
         reasons.append(f"{seg['ordering_failures']} ordering failures")
     if seg["segment_aggregate_nonfinite_maps"]:
@@ -955,15 +1000,16 @@ def _verdict(result: dict) -> tuple[str, str]:
         reasons.append("failure rate > 0.1%")
     if reasons:
         return "BLOCKED", "; ".join(reasons)
-    return "PASS", "no NaN/Inf, no serialization/ordering/coverage failures, v0.1 frozen, signal stats stable"
+    return "PASS", "no NaN/Inf, no serialization/ordering/coverage failures, corrected version provenance recorded, signal stats stable"
 
 
 def _write_report(out_dir: Path, selection_meta: dict, phase_results: dict[str, dict], outlier_summaries: dict[str, dict]) -> None:
     lines: list[str] = []
-    lines.append("# Local Signal Layer v0.2 QA Report")
+    lines.append(f"# Local Signal Layer {SIGNAL_VERSION} QA Report")
     lines.append("")
     lines.append(f"- generated: {time.strftime('%Y-%m-%d %H:%M:%S %z')}")
     lines.append(f"- signal_version: {SIGNAL_VERSION}")
+    lines.append(f"- feature_version: {FEATURE_VERSION}")
     lines.append(f"- seed: {selection_meta.get('seed')}")
     lines.append(f"- manifest_total: {selection_meta.get('manifest_total')}")
     lines.append(f"- eligible: {selection_meta.get('eligible')} (known-broken excluded: {selection_meta.get('known_broken_excluded')})")
@@ -980,7 +1026,7 @@ def _write_report(out_dir: Path, selection_meta: dict, phase_results: dict[str, 
         lines.append(f"## Phase {phase}")
         lines.append("")
         lines.append(f"- records: {result['records']}, ok: {result['ok']}, failures: {result['failures']}")
-        lines.append(f"- v0.1 feature_count_distribution: {result['feature_count_distribution']}")
+        lines.append(f"- Feature {FEATURE_VERSION} count distribution: {result['feature_count_distribution']}")
         lines.append(f"- core (non-pathological/non-aspire) records: {result.get('core_records')}")
         core_nonfinite = [k for k, st in result.get("signal_stats_core", {}).items() if st["nonfinite"] > 0]
         lines.append(f"- core signals with output NaN/Inf: {len(core_nonfinite)} {core_nonfinite[:5]}")
@@ -1036,19 +1082,19 @@ def _write_report(out_dir: Path, selection_meta: dict, phase_results: dict[str, 
 def _write_phase_outputs(out_dir: Path, phase: str, result: dict, outlier: dict) -> None:
     suffix = phase if phase != "full" else ""
     (out_dir / f"local_signal_stats_{phase}.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
     )
     corr_path = out_dir / ("local_signal_correlations.json" if phase == "full" else f"local_signal_correlations_{phase}.json")
-    corr_path.write_text(json.dumps(result["correlation"], ensure_ascii=False, indent=2), encoding="utf-8")
+    corr_path.write_text(json.dumps(result["correlation"], ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     (out_dir / ("local_signal_segment_stats.json" if phase == "full" else f"local_signal_segment_stats_{phase}.json")).write_text(
-        json.dumps(result["segment"], ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(result["segment"], ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
     )
     slow_path = out_dir / ("local_signal_slow_maps.jsonl" if phase == "full" else f"local_signal_slow_maps_{phase}.jsonl")
     with slow_path.open("w", encoding="utf-8") as fh:
         for rec in result["performance"]["slowest_50"]:
-            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n")
     (out_dir / f"outlier_summary_{phase}.json").write_text(
-        json.dumps(outlier, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(outlier, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
     )
 
 
@@ -1074,7 +1120,7 @@ def run_phase(
         flush=True,
     )
     (out_dir / f"selection_{phase}.jsonl").write_text(
-        "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in records) + "\n",
+        "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True, allow_nan=False) for r in records) + "\n",
         encoding="utf-8",
     )
     store_objects = phase in EXACT_PHASES
@@ -1121,13 +1167,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", required=True, help="Songs root directory for relative manifest references")
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--workers", type=int, default=min(8, (os.cpu_count() or 4)))
+    parser.add_argument("--workers", type=int, default=min(2, (os.cpu_count() or 2)))
     parser.add_argument("--resume", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if not 1 <= args.workers <= 4:
+        parser.error("--workers must be between 1 and 4")
     manifest = Path(args.manifest)
     failures = Path(args.failures) if args.failures else manifest.with_name("std_manifest.failures.jsonl")
     run_phase(

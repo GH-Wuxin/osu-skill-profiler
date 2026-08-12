@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 
 from ..parser.normalized import NormalizedBeatmap, NormalizedObject
+from .schema import FEATURE_VERSION, LEGACY_FEATURE_VERSION
 from .stats import describe, percentile, shannon_entropy_bits
 
 BURST_250_MS = 250.0
@@ -86,7 +87,19 @@ def _rhythm_bucket(delta_ms: float) -> int:
 class FeatureExtractor:
     """Extracts a flat, deterministic feature dict from a NormalizedBeatmap."""
 
-    feature_version = "0.1.0"
+    feature_version = FEATURE_VERSION
+
+    def __init__(self, feature_version: str = FEATURE_VERSION) -> None:
+        if feature_version not in (LEGACY_FEATURE_VERSION, FEATURE_VERSION):
+            raise ValueError(f"unsupported feature version: {feature_version}")
+        self.feature_version = feature_version
+
+    def object_end_time_ms(self, obj: NormalizedObject) -> float:
+        """Return the end-time semantic owned by this Feature version."""
+
+        if self.feature_version == LEGACY_FEATURE_VERSION:
+            return obj.end_time_ms()
+        return obj.canonical_end_time_ms()
 
     def extract(self, nmap: NormalizedBeatmap) -> dict:
         objects = nmap.objects
@@ -97,7 +110,7 @@ class FeatureExtractor:
         deltas_desc = describe(deltas)
         features["temporal.object_count"] = float(len(objects))
         map_start = objects[0].time_ms
-        map_end = max((obj.end_time_ms() for obj in objects), default=map_start)
+        map_end = max((self.object_end_time_ms(obj) for obj in objects), default=map_start)
         features["temporal.map_duration_ms"] = map_end - map_start
         duration_s = max((map_end - map_start) / 1000.0, 1e-9)
         features["temporal.density_objects_per_s"] = len(objects) / duration_s
@@ -185,7 +198,12 @@ class FeatureExtractor:
         # ---- slider -------------------------------------------------------
         sliders = [obj for obj in objects if obj.raw.object_type == "slider"]
         features["slider.slider_ratio"] = len(sliders) / len(objects) if objects else None
-        slider_durations = [obj.slider_duration_ms for obj in sliders]
+        slider_durations = [
+            obj.slider_duration_ms
+            if self.feature_version == LEGACY_FEATURE_VERSION
+            else obj.slider_total_duration_ms
+            for obj in sliders
+        ]
         for key, value in describe(slider_durations).items():
             features[f"slider.duration_ms_{key}"] = value
         slider_velocities = [obj.slider_velocity_px_per_s for obj in sliders]
@@ -194,9 +212,20 @@ class FeatureExtractor:
         slider_lengths = [obj.raw.slider_pixel_length for obj in sliders if obj.raw.slider_pixel_length is not None]
         for key, value in describe(slider_lengths).items():
             features[f"slider.length_px_{key}"] = value
-        slider_repeats = [float(obj.raw.slider_slides or 0) for obj in sliders]
-        features["slider.repeats_total"] = sum(slider_repeats)
-        features["slider.repeats_max"] = max(slider_repeats, default=0.0)
+        if self.feature_version == LEGACY_FEATURE_VERSION:
+            # Historical v0.1 behavior: raw .osu span counts were emitted
+            # under misleading repeat names. This branch is immutable replay,
+            # not the corrected contract.
+            legacy_span_counts = [float(obj.raw.slider_slides or 0) for obj in sliders]
+            features["slider.repeats_total"] = sum(legacy_span_counts)
+            features["slider.repeats_max"] = max(legacy_span_counts, default=0.0)
+        else:
+            repeat_counts = [float(obj.slider_repeat_count or 0) for obj in sliders]
+            span_counts = [float(obj.slider_span_count or 1) for obj in sliders]
+            features["slider.repeat_count_total"] = sum(repeat_counts)
+            features["slider.repeat_count_max"] = max(repeat_counts, default=0.0)
+            features["slider.span_count_total"] = sum(span_counts)
+            features["slider.span_count_max"] = max(span_counts, default=0.0)
         transitions = sum(
             1
             for idx in range(1, len(objects))
@@ -227,7 +256,7 @@ class FeatureExtractor:
                 "section.peak_density_window_start_ms": None,
             }
         start = objects[0].time_ms
-        end = max(obj.end_time_ms() for obj in objects)
+        end = max(self.object_end_time_ms(obj) for obj in objects)
         # Bucket objects by fixed-window index computed from the first object's
         # time. This bounds the number of windows by object count and stays
         # correct even when a map contains absurdly large timestamps.

@@ -13,7 +13,12 @@ import unittest
 from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import parse_osu, parse_osu_file
 from osu_skill_profiler.features.extractor import FeatureExtractor
-from osu_skill_profiler.signals.contract import DUPLICATE_ALIASES, SIGNAL_SCHEMA, migration_table
+from osu_skill_profiler.signals.contract import (
+    DUPLICATE_ALIASES,
+    LEGACY_SIGNAL_VERSION,
+    SIGNAL_SCHEMA_V02,
+    migration_table,
+)
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor, segment_local_signals
 from osu_skill_profiler.signals.slider import (
     approach_rate_preempt_ms,
@@ -25,7 +30,9 @@ FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
 
 
 def _extract(text: str) -> dict:
-    return LocalSignalExtractor().extract(parse_osu(text))
+    # This file is the historical Local Signal v0.2 regression suite. New
+    # corrected semantics live in test_foundation_remediation_v01.py.
+    return LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(parse_osu(text))
 
 
 def _object(text: str, index: int) -> dict:
@@ -441,8 +448,8 @@ class SafetyTests(unittest.TestCase):
             self.assertTrue(not isinstance(value, float) or math.isfinite(value))
 
     def test_deterministic_repeat(self):
-        out1 = LocalSignalExtractor().extract(parse_osu_file(FIXTURES / "sliders.osu"))
-        out2 = LocalSignalExtractor().extract(parse_osu_file(FIXTURES / "sliders.osu"))
+        out1 = LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(parse_osu_file(FIXTURES / "sliders.osu"))
+        out2 = LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(parse_osu_file(FIXTURES / "sliders.osu"))
         self.assertEqual(out1, out2)
 
     def test_out_of_order_times_preserve_both_indices(self):
@@ -479,7 +486,7 @@ class SafetyTests(unittest.TestCase):
 
 class SegmentTests(unittest.TestCase):
     def test_segment_aggregation_covers_all_objects(self):
-        out = LocalSignalExtractor().extract(parse_osu_file(FIXTURES / "sliders.osu"))
+        out = LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(parse_osu_file(FIXTURES / "sliders.osu"))
         segments = out["segments"]
         self.assertEqual(sum(seg["object_count"] for seg in segments), out["object_count"])
         for segment in segments:
@@ -497,10 +504,10 @@ class SegmentTests(unittest.TestCase):
 
 class ContractTests(unittest.TestCase):
     def test_every_emitted_key_is_in_schema(self):
-        out = LocalSignalExtractor().extract(parse_osu_file(FIXTURES / "minimal.osu"))
+        out = LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(parse_osu_file(FIXTURES / "minimal.osu"))
         for row in out["objects"]:
             for key in row:
-                self.assertIn(key, SIGNAL_SCHEMA, f"unknown signal {key}")
+                self.assertIn(key, SIGNAL_SCHEMA_V02, f"unknown signal {key}")
 
     def test_v01_duplicate_aliases_hold(self):
         nmap = normalize(parse_osu_file(FIXTURES / "sliders.osu"))
@@ -532,7 +539,7 @@ class ComplexityTests(unittest.TestCase):
         for n in (1000, 2000, 4000, 8000):
             text = build(n)
             start = time.perf_counter()
-            LocalSignalExtractor().extract(parse_osu(text))
+            LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(parse_osu(text))
             timings.append(time.perf_counter() - start)
         # 8k must not be anywhere near 64x slower than 1k; generous bound of 32x.
         self.assertLess(timings[3], max(32.0 * timings[0], 8.0))

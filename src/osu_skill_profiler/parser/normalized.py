@@ -13,6 +13,7 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
+from ..slider_semantics import canonical_slider_counts
 from .model import Beatmap, HitObject
 from .osu_parser import OsuParseError, effective_timing
 
@@ -36,12 +37,27 @@ class NormalizedObject:
     local_bpm: float
     local_sv: float
     local_density_per_s: float
+    # Historical Feature v0.1 compatibility field.  It is the single-span
+    # duration even though the legacy name did not say so.
     slider_duration_ms: Optional[float] = None
     slider_velocity_px_per_s: Optional[float] = None
+    slider_repeat_count: Optional[int] = None
+    slider_span_count: Optional[int] = None
+    slider_single_span_duration_ms: Optional[float] = None
+    slider_total_duration_ms: Optional[float] = None
 
     def end_time_ms(self) -> float:
+        """Historical Feature v0.1 end-time semantics."""
+
         if self.raw.object_type == "slider" and self.slider_duration_ms is not None:
             return self.time_ms + self.slider_duration_ms
+        return self.raw.end_time_ms()
+
+    def canonical_end_time_ms(self) -> float:
+        """Corrected total-slider end time for Feature v0.2+ consumers."""
+
+        if self.raw.object_type == "slider" and self.slider_total_duration_ms is not None:
+            return self.time_ms + self.slider_total_duration_ms
         return self.raw.end_time_ms()
 
 
@@ -57,6 +73,8 @@ class NormalizedBeatmap:
 
 
 def _slider_duration(obj: HitObject, beat_length_ms: float, sv: float, slider_multiplier: float) -> Optional[float]:
+    """Historical one-span duration retained for Feature v0.1 replay."""
+
     if obj.slider_pixel_length is None or slider_multiplier <= 0 or sv <= 0:
         return None
     try:
@@ -126,8 +144,21 @@ def normalize(beatmap: Beatmap) -> NormalizedBeatmap:
                     velocity = None
         slider_duration = None
         slider_velocity = None
+        slider_repeat_count = None
+        slider_span_count = None
+        slider_total_duration = None
         if obj.object_type == "slider":
+            counts = canonical_slider_counts(obj.slider_slides)
+            slider_repeat_count = counts.repeat_count
+            slider_span_count = counts.span_count
             slider_duration = _slider_duration(obj, beat_length_ms, sv, slider_multiplier)
+            if slider_duration is not None:
+                try:
+                    candidate_total = slider_duration * slider_span_count
+                except OverflowError:
+                    candidate_total = None
+                if candidate_total is not None and math.isfinite(candidate_total):
+                    slider_total_duration = candidate_total
             if slider_duration and slider_duration > 0 and obj.slider_pixel_length is not None:
                 try:
                     slider_velocity = obj.slider_pixel_length / (slider_duration / 1000.0)
@@ -150,6 +181,10 @@ def normalize(beatmap: Beatmap) -> NormalizedBeatmap:
                 local_density_per_s=local_density(idx),
                 slider_duration_ms=slider_duration,
                 slider_velocity_px_per_s=slider_velocity,
+                slider_repeat_count=slider_repeat_count,
+                slider_span_count=slider_span_count,
+                slider_single_span_duration_ms=slider_duration,
+                slider_total_duration_ms=slider_total_duration,
             )
         )
 
@@ -169,5 +204,9 @@ def normalize(beatmap: Beatmap) -> NormalizedBeatmap:
                 local_density_per_s=normalized[idx].local_density_per_s,
                 slider_duration_ms=normalized[idx].slider_duration_ms,
                 slider_velocity_px_per_s=normalized[idx].slider_velocity_px_per_s,
+                slider_repeat_count=normalized[idx].slider_repeat_count,
+                slider_span_count=normalized[idx].slider_span_count,
+                slider_single_span_duration_ms=normalized[idx].slider_single_span_duration_ms,
+                slider_total_duration_ms=normalized[idx].slider_total_duration_ms,
             )
     return NormalizedBeatmap(beatmap=beatmap, objects=tuple(normalized))

@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional
 
 from ...parser.model import Beatmap
 from .contract import (
+    LEGACY_REFERENCE_VERSION,
     REFERENCE_NUMERIC_SIGNALS,
     REFERENCE_SCHEMA,
     REFERENCE_VERSION,
@@ -23,6 +24,7 @@ from .contract import (
     UPSTREAM_COMMIT,
     UPSTREAM_DIFFICULTY_VERSION,
     UPSTREAM_REPOSITORY,
+    reference_schema,
 )
 from . import evaluators as _evaluators
 from .preprocess import RefObject, build_ref_objects
@@ -61,8 +63,13 @@ def _scaled_mean(values: list[float]) -> float:
     return scale * (sum(v / scale for v in values) / len(values))
 
 
-def reference_rows(objects: list[RefObject]) -> list[dict]:
+def reference_rows(
+    objects: list[RefObject],
+    reference_version: str = REFERENCE_VERSION,
+) -> list[dict]:
     """Emit per-object reference rows aligned to the raw file order."""
+
+    reference_schema(reference_version)
 
     rows: list[dict[str, Any]] = []
     for obj in objects:
@@ -82,7 +89,14 @@ def reference_rows(objects: list[RefObject]) -> list[dict]:
             for signal, evaluator in _EVALUATORS.items():
                 value: Optional[float]
                 try:
-                    value = evaluator(objects, i)
+                    if signal == "ref.ppy.reading":
+                        value = _evaluators.reading(
+                            objects,
+                            i,
+                            reference_version=reference_version,
+                        )
+                    else:
+                        value = evaluator(objects, i)
                 except (ArithmeticError, ValueError):
                     value = None
                 if value is not None and not math.isfinite(value):
@@ -156,13 +170,17 @@ def segment_reference_signals(
 
 
 class ReferenceSignalExtractor:
-    """Extracts the v0.1 official reference signal table and segment summaries."""
+    """Extract a version-selected official reference signal table."""
 
     reference_version = REFERENCE_VERSION
 
+    def __init__(self, reference_version: str = REFERENCE_VERSION) -> None:
+        reference_schema(reference_version)
+        self.reference_version = reference_version
+
     def extract(self, beatmap: Beatmap) -> dict:
-        objects = build_ref_objects(beatmap)
-        rows = reference_rows(objects)
+        objects = build_ref_objects(beatmap, reference_version=self.reference_version)
+        rows = reference_rows(objects, reference_version=self.reference_version)
         segments = segment_reference_signals(rows)
         missing_counts: dict[str, int] = {}
         nonfinite_counts: dict[str, int] = {}
@@ -175,7 +193,7 @@ class ReferenceSignalExtractor:
                     nonfinite_counts[signal] = nonfinite_counts.get(signal, 0) + 1
         geometry_blocked = sum(1 for obj in objects if obj.geometry_blocked)
         return {
-            "reference_version": REFERENCE_VERSION,
+            "reference_version": self.reference_version,
             "upstream_repository": UPSTREAM_REPOSITORY,
             "upstream_commit": UPSTREAM_COMMIT,
             "upstream_difficulty_version": UPSTREAM_DIFFICULTY_VERSION,

@@ -23,9 +23,12 @@ is intentionally NOT implemented or exposed.
 """
 
 from .contract import (
+    LEGACY_REFERENCE_VERSION,
     REFERENCE_NUMERIC_SIGNALS,
     REFERENCE_SCHEMA,
     REFERENCE_VERSION,
+    REFERENCE_SCHEMA_V01,
+    REFERENCE_SCHEMA_V02,
     SEGMENT_SUMMARY_FIELDS,
     UPSTREAM_COMMIT,
     UPSTREAM_DIFFICULTY_VERSION,
@@ -35,8 +38,11 @@ from .extractor import ReferenceSignalExtractor, segment_reference_signals
 
 __all__ = [
     "REFERENCE_SCHEMA",
+    "REFERENCE_SCHEMA_V01",
+    "REFERENCE_SCHEMA_V02",
     "REFERENCE_NUMERIC_SIGNALS",
     "REFERENCE_VERSION",
+    "LEGACY_REFERENCE_VERSION",
     "SEGMENT_SUMMARY_FIELDS",
     "UPSTREAM_REPOSITORY",
     "UPSTREAM_COMMIT",

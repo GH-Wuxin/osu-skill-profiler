@@ -28,11 +28,10 @@ class FixedObjectCountStrategy:
             segments.append(
                 Segment(
                     start_ms=objects[start_idx].time_ms,
-                    end_ms=max(obj.end_time_ms() for obj in subset.objects),
+                    end_ms=max(extractor.object_end_time_ms(obj) for obj in subset.objects),
                     start_idx=start_idx,
                     end_idx=end_idx,
                     features=extractor.extract(subset),
                 )
             )
         return segments
-

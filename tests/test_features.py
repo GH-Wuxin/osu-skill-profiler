@@ -2,7 +2,10 @@ import unittest
 from pathlib import Path
 
 from osu_skill_profiler.features.extractor import FeatureExtractor
-from osu_skill_profiler.features.schema import FEATURE_SCHEMA
+from osu_skill_profiler.features.schema import (
+    FEATURE_SCHEMA,
+    LEGACY_FEATURE_VERSION,
+)
 from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import parse_osu, parse_osu_file
 
@@ -25,8 +28,15 @@ class FeatureTests(unittest.TestCase):
     def test_slider_features(self):
         features = self._features("sliders.osu")
         self.assertAlmostEqual(features["slider.slider_ratio"], 10.0 / 12.0)
-        self.assertGreater(features["slider.repeats_total"], 0.0)
+        self.assertGreater(features["slider.repeat_count_total"], 0.0)
+        self.assertGreater(features["slider.span_count_total"], 0.0)
         self.assertGreater(features["slider.duration_ms_mean"], 0.0)
+
+    def test_legacy_slider_fields_remain_replayable(self):
+        nmap = normalize(parse_osu_file(FIXTURES / "sliders.osu"))
+        features = FeatureExtractor(LEGACY_FEATURE_VERSION).extract(nmap)
+        self.assertGreater(features["slider.repeats_total"], 0.0)
+        self.assertNotIn("slider.repeat_count_total", features)
 
     def test_unusual_sv_rhythm_and_bursts(self):
         features = self._features("unusual_sv.osu")
