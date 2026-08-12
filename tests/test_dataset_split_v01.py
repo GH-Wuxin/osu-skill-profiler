@@ -384,6 +384,81 @@ class IntegrationRegenerationTests(unittest.TestCase):
                 outputs.append(digests)
             self.assertEqual(outputs[0], outputs[1])
 
+    def test_version_metadata_overrides_are_recorded(self):
+        records = [
+            _record(f"v{i}", beatmapset_id=20000 + i % 6, local_set_group=f"vg{i % 6}")
+            for i in range(12)
+        ]
+        with tempfile.TemporaryDirectory(prefix="split-ver-") as tmp:
+            root = Path(tmp)
+            manifest = root / "manifest.json"
+            self._write_manifest(manifest, records)
+            feature_qa = root / "feature_qa.jsonl"
+            ref_qa = root / "ref_qa.jsonl"
+            with feature_qa.open("w", encoding="utf-8", newline="\n") as handle:
+                for record in records:
+                    handle.write(
+                        json.dumps(
+                            {
+                                "checksum": record["map_checksum"],
+                                "flags": [],
+                                "short_lt100": False,
+                                "short_lt1000": False,
+                                "ok": True,
+                            },
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        )
+                        + "\n"
+                    )
+            ref_qa.write_bytes(feature_qa.read_bytes())
+            empty = root / "empty.jsonl"
+            empty.write_text("", encoding="utf-8")
+            out = root / "out"
+            cmd = [
+                sys.executable,
+                str(TOOL),
+                "generate",
+                "--manifest",
+                str(manifest),
+                "--feature-qa",
+                str(feature_qa),
+                "--ref-qa",
+                str(ref_qa),
+                "--disagreement",
+                str(empty),
+                "--out",
+                str(out),
+                "--seed",
+                DEFAULT_SEED,
+                "--feature-version",
+                "0.2.0",
+                "--local-version",
+                "0.3.0",
+                "--reference-version",
+                "0.2.0",
+                "--challenge-version",
+                "0.2.0",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["feature_version"], "0.2.0")
+            self.assertEqual(summary["local_signal_version"], "0.3.0")
+            self.assertEqual(summary["reference_signal_version"], "0.2.0")
+            self.assertEqual(
+                summary["challenge_subset_versions"],
+                {
+                    "legacy_format_ood": "0.2.0",
+                    "pathological_challenge": "0.2.0",
+                    "reference_disagreement_challenge": "0.2.0",
+                },
+            )
+            dataset_manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(dataset_manifest["feature_version"], "0.2.0")
+            self.assertEqual(dataset_manifest["local_signal_version"], "0.3.0")
+            self.assertEqual(dataset_manifest["reference_signal_version"], "0.2.0")
+
 
 if __name__ == "__main__":
     unittest.main()

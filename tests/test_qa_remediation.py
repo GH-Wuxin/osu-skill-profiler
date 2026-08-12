@@ -234,6 +234,147 @@ class FoundationDeltaQaInfrastructureTests(unittest.TestCase):
             self.assertEqual(summary["new_missing_count"], 1)
             json.dumps(summary, allow_nan=False)
 
+    def test_nonfinite_introduced_and_resolved_counted_independently(self):
+        delta = foundation_remediation_qa._field_delta(
+            [{"signal": float("nan"), "other": 1.0}],
+            [{"signal": 1.0, "other": float("nan")}],
+        )
+        resolved = delta["signal"]
+        self.assertEqual(resolved["nonfinite_old"], 1)
+        self.assertEqual(resolved["nonfinite_new"], 0)
+        self.assertEqual(resolved["nonfinite_resolved"], 1)
+        self.assertEqual(resolved["nonfinite_introduced"], 0)
+
+        introduced = delta["other"]
+        self.assertEqual(introduced["nonfinite_old"], 0)
+        self.assertEqual(introduced["nonfinite_new"], 1)
+        self.assertEqual(introduced["nonfinite_resolved"], 0)
+        self.assertEqual(introduced["nonfinite_introduced"], 1)
+
+    def test_merge_keeps_introduced_and_resolved_independent(self):
+        target: dict[str, dict] = {}
+        resolved = foundation_remediation_qa._field_delta(
+            [{"signal": float("nan")}],
+            [{"signal": 1.0}],
+        )
+        introduced = foundation_remediation_qa._field_delta(
+            [{"signal": 1.0}],
+            [{"signal": float("nan")}],
+        )
+        foundation_remediation_qa._merge_field_delta(target, resolved)
+        foundation_remediation_qa._merge_field_delta(target, introduced)
+        stats = target["signal"]
+        self.assertEqual(stats["nonfinite_resolved"], 1)
+        self.assertEqual(stats["nonfinite_introduced"], 1)
+        self.assertEqual(stats["nonfinite_old"], 1)
+        self.assertEqual(stats["nonfinite_new"], 1)
+
+    def test_summary_reports_resolved_and_introduced_nonfinite_separately(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            selection = Path(tmp) / "selection.jsonl"
+            selection.write_text('{}\n', encoding="utf-8")
+
+            resolved_row = self._complete_delta_record("resolved", "sha256:resolved")
+            resolved_stats = foundation_remediation_qa._field_delta(
+                [{"signal": float("nan")}],
+                [{"signal": 1.0}],
+            )
+            resolved_row["feature_delta"] = resolved_stats
+            resolved_row["feature_changed_field_count"] = len(resolved_stats)
+            resolved_summary = foundation_remediation_qa._summarize(
+                [resolved_row],
+                selection=selection,
+                workers=1,
+                wall_seconds=0.0,
+            )
+            self.assertEqual(resolved_summary["status"], "PASS")
+            self.assertEqual(resolved_summary["resolved_nonfinite_count"], 1)
+            self.assertEqual(resolved_summary["new_nonfinite_count"], 0)
+
+            introduced_row = self._complete_delta_record("introduced", "sha256:introduced")
+            introduced_stats = foundation_remediation_qa._field_delta(
+                [{"signal": 1.0}],
+                [{"signal": float("nan")}],
+            )
+            introduced_row["feature_delta"] = introduced_stats
+            introduced_row["feature_changed_field_count"] = len(introduced_stats)
+            introduced_summary = foundation_remediation_qa._summarize(
+                [introduced_row],
+                selection=selection,
+                workers=1,
+                wall_seconds=0.0,
+            )
+            self.assertEqual(introduced_summary["status"], "FAIL")
+            self.assertEqual(introduced_summary["resolved_nonfinite_count"], 0)
+            self.assertEqual(introduced_summary["new_nonfinite_count"], 1)
+
+    def test_resume_rejects_field_count_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "delta.jsonl"
+            row = self._complete_delta_record("mismatch", "sha256:mismatch")
+            row["feature_changed_field_count"] = 1
+            path.write_text(
+                json.dumps(row, sort_keys=True, allow_nan=False) + "\n",
+                encoding="utf-8",
+            )
+            records = [{"sample_id": "mismatch", "checksum": "sha256:mismatch"}]
+            done = foundation_remediation_qa._prepare_resume_rows(path, True, records)
+            self.assertEqual(done, {})
+            self.assertEqual(path.read_text(encoding="utf-8"), "")
+
+    def test_resume_rejects_internal_bounds_violations(self):
+        mutations = [
+            {"object_count": 0, "slider_count": 1},
+            {"repeat_slider_count": 1},
+            {"local_changed_object_count": 2},
+            {"reference_changed_object_count": 2},
+            {"reference_reading_only_object_count": 1},
+        ]
+        for index, mutation in enumerate(mutations):
+            with self.subTest(mutation=mutation):
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / "delta.jsonl"
+                    row = self._complete_delta_record(f"bad{index}", f"sha256:bad{index}")
+                    row.update(mutation)
+                    path.write_text(
+                        json.dumps(row, sort_keys=True, allow_nan=False) + "\n",
+                        encoding="utf-8",
+                    )
+                    records = [{"sample_id": f"bad{index}", "checksum": f"sha256:bad{index}"}]
+                    done = foundation_remediation_qa._prepare_resume_rows(path, True, records)
+                    self.assertEqual(done, {})
+                    self.assertEqual(path.read_text(encoding="utf-8"), "")
+
+    def test_resume_rejects_unknown_layer_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "delta.jsonl"
+            row = self._complete_delta_record("unknown", "sha256:unknown")
+            row["local_delta"] = {
+                "ls.not_a_real_signal": foundation_remediation_qa._empty_field_delta(),
+            }
+            path.write_text(
+                json.dumps(row, sort_keys=True, allow_nan=False) + "\n",
+                encoding="utf-8",
+            )
+            records = [{"sample_id": "unknown", "checksum": "sha256:unknown"}]
+            done = foundation_remediation_qa._prepare_resume_rows(path, True, records)
+            self.assertEqual(done, {})
+            self.assertEqual(path.read_text(encoding="utf-8"), "")
+
+    def test_resume_rejects_stale_qa_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "delta.jsonl"
+            row = self._complete_delta_record("stale", "sha256:stale")
+            row["qa_version"] = "0.2.0"
+            path.write_text(
+                json.dumps(row, sort_keys=True, allow_nan=False) + "\n",
+                encoding="utf-8",
+            )
+            records = [{"sample_id": "stale", "checksum": "sha256:stale"}]
+            done = foundation_remediation_qa._prepare_resume_rows(path, True, records)
+            self.assertEqual(done, {})
+            self.assertEqual(path.read_text(encoding="utf-8"), "")
+
 
 if __name__ == "__main__":
     unittest.main()

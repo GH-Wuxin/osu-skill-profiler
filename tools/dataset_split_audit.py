@@ -702,22 +702,26 @@ def generate(args: argparse.Namespace) -> int:
     written["distribution_audit.json"] = _sha256_file(distribution_path)
 
     elapsed = time.time() - started
+    feature_version = args.feature_version or header.get("feature_version") or "0.1.0"
+    local_signal_version = args.local_version or "0.2.0"
+    reference_signal_version = args.reference_version or "0.1.0"
+    challenge_version = args.challenge_version or "0.1.0"
     summary = {
         "dataset_version": "v0.1",
         "split_version": SPLIT_VERSION,
         "generator_version": GENERATOR_VERSION,
         "source_manifest_checksum": source_manifest_checksum(str(manifest)),
         "source_record_count": len(records),
-        "feature_version": header.get("feature_version"),
-        "local_signal_version": "0.2.0",
-        "reference_signal_version": "0.1.0",
+        "feature_version": feature_version,
+        "local_signal_version": local_signal_version,
+        "reference_signal_version": reference_signal_version,
         "seed": seed,
         "set_group_policy": "beatmapset_id if present else local_set_group",
         "mapper_identity_policy": "normalised exact creator name (NAME_ONLY); creator_id unavailable",
         "challenge_subset_versions": {
-            "legacy_format_ood": "0.1.0",
-            "pathological_challenge": "0.1.0",
-            "reference_disagreement_challenge": "0.1.0",
+            "legacy_format_ood": challenge_version,
+            "pathological_challenge": challenge_version,
+            "reference_disagreement_challenge": challenge_version,
         },
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "workers": workers,
@@ -767,9 +771,9 @@ def generate(args: argparse.Namespace) -> int:
         "seed": seed,
         "source_manifest_checksum": summary["source_manifest_checksum"],
         "source_record_count": len(records),
-        "feature_version": header.get("feature_version"),
-        "local_signal_version": "0.2.0",
-        "reference_signal_version": "0.1.0",
+        "feature_version": feature_version,
+        "local_signal_version": local_signal_version,
+        "reference_signal_version": reference_signal_version,
         "set_group_policy": summary["set_group_policy"],
         "mapper_identity_policy": summary["mapper_identity_policy"],
         "challenge_subset_versions": summary["challenge_subset_versions"],
@@ -790,6 +794,10 @@ def generate(args: argparse.Namespace) -> int:
             manifest=args.manifest,
             disagreement=args.disagreement,
             seed=seed,
+            feature_version=args.feature_version,
+            local_version=args.local_version,
+            reference_version=args.reference_version,
+            challenge_version=args.challenge_version,
         )
         errors = verify(verify_args)
         if errors:
@@ -828,6 +836,24 @@ def verify(args: argparse.Namespace) -> list[str]:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     if summary.get("seed") != args.seed:
         errors.append(f"seed mismatch: {summary.get('seed')!r} != {args.seed!r}")
+    if getattr(args, "feature_version", None) and summary.get("feature_version") != args.feature_version:
+        errors.append(
+            f"feature_version mismatch: {summary.get('feature_version')!r} != {args.feature_version!r}"
+        )
+    if getattr(args, "local_version", None) and summary.get("local_signal_version") != args.local_version:
+        errors.append(
+            f"local_signal_version mismatch: {summary.get('local_signal_version')!r} != {args.local_version!r}"
+        )
+    if getattr(args, "reference_version", None) and summary.get("reference_signal_version") != args.reference_version:
+        errors.append(
+            f"reference_signal_version mismatch: {summary.get('reference_signal_version')!r} != {args.reference_version!r}"
+        )
+    if getattr(args, "challenge_version", None):
+        for key, value in (summary.get("challenge_subset_versions") or {}).items():
+            if value != args.challenge_version:
+                errors.append(
+                    f"challenge_subset_version mismatch for {key}: {value!r} != {args.challenge_version!r}"
+                )
 
     set_rows = _load_jsonl(out_dir / "set_disjoint.jsonl")
     mapper_rows = _load_jsonl(out_dir / "mapper_disjoint.jsonl")
@@ -1002,6 +1028,10 @@ def regenerate_check(args: argparse.Namespace) -> int:
                 workers=args.workers,
                 shuffle_input=shuffle,
                 verify=False,
+                feature_version=getattr(args, "feature_version", None),
+                local_version=getattr(args, "local_version", None),
+                reference_version=getattr(args, "reference_version", None),
+                challenge_version=getattr(args, "challenge_version", None),
             )
             generate(gen_args)
             for name in content_files:
@@ -1035,6 +1065,10 @@ def main(argv: list[str] | None = None) -> int:
     common.add_argument("--out", required=True)
     common.add_argument("--seed", default=DEFAULT_SEED)
     common.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
+    common.add_argument("--feature-version", default=None)
+    common.add_argument("--local-version", default=None)
+    common.add_argument("--reference-version", default=None)
+    common.add_argument("--challenge-version", default=None)
 
     gen = sub.add_parser("generate", parents=[common])
     gen.add_argument("--verify", action="store_true", default=True)
