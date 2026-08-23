@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>osu! 谱面对比小测试</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, "Segoe UI", system-ui, sans-serif; background:#121116; color:#f4eef4; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 20% 0,#352332 0,transparent 35%),#121116; }
+    button, select, textarea { font:inherit; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 24px; border-bottom:1px solid #3c323d; background:#18151bcc; backdrop-filter:blur(12px); position:sticky; top:0; z-index:10; }
+    h1 { font-size:17px; margin:0; }
+    .muted { color:#b8acb8; font-size:13px; }
+    .progress { min-width:180px; text-align:right; }
+    .bar { height:5px; background:#332c34; border-radius:9px; overflow:hidden; margin-top:7px; }
+    .bar > i { display:block; height:100%; width:0; background:#ff66aa; }
+    main { max-width:1500px; margin:0 auto; padding:22px; }
+    .question { text-align:center; font-size:21px; font-weight:700; margin:2px 0 18px; }
+    .guidance { max-width:980px; margin:-8px auto 18px; padding:10px 14px; border:1px solid #443943; border-radius:10px; color:#d8cbd5; background:#1c181e; font-size:13px; line-height:1.55; }
+    .guidance strong { color:#ff9bc7; }
+    .scope { display:inline-block; padding:4px 9px; border:1px solid #5a4657; border-radius:99px; color:#e7cadb; font-size:12px; margin-left:8px; }
+    .compare { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .panel { border:1px solid #443943; border-radius:14px; overflow:hidden; background:#1c181e; box-shadow:0 10px 30px #0005; }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#272029; }
+    .side { font-size:22px; font-weight:800; color:#ff8dc0; }
+    .meta { color:#bcaeba; font-size:12px; text-align:right; }
+    canvas { width:100%; aspect-ratio:4/3; background:#100f13; display:block; }
+    .transport { display:flex; align-items:center; gap:10px; padding:10px 12px; }
+    .play { border:0; border-radius:8px; background:#ff66aa; color:#1a0b13; font-weight:800; padding:8px 14px; cursor:pointer; }
+    input[type=range] { flex:1; accent-color:#ff66aa; }
+    .time { font-variant-numeric:tabular-nums; font-size:12px; min-width:94px; text-align:right; color:#c9bdc8; }
+    .answers { margin-top:18px; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+    .answer { min-height:54px; border:1px solid #4e3f4c; border-radius:10px; color:#f5edf4; background:#251f26; cursor:pointer; padding:8px; }
+    .answer:hover, .answer.selected { border-color:#ff66aa; background:#4a293c; }
+    .answer small { display:block; color:#a999a6; margin-top:3px; }
+    .extras { margin-top:12px; display:grid; grid-template-columns:180px 1fr auto; gap:10px; }
+    select, textarea { border:1px solid #4b3e49; border-radius:8px; background:#201b21; color:#f4eef4; padding:9px; }
+    textarea { resize:vertical; min-height:42px; }
+    .submit { border:0; border-radius:9px; padding:0 22px; font-weight:800; background:#ff66aa; color:#170b11; cursor:pointer; }
+    .submit:disabled { opacity:.4; cursor:not-allowed; }
+    .notice { margin-top:12px; color:#ad9fab; font-size:12px; text-align:center; }
+    .error { color:#ff8c9b; min-height:20px; text-align:center; margin-top:8px; }
+    .complete { text-align:center; margin:12vh auto; max-width:580px; border:1px solid #4c3e49; border-radius:16px; background:#211b22; padding:36px; }
+    .session-gate { text-align:center; margin:10vh auto; max-width:620px; border:1px solid #4c3e49; border-radius:16px; background:#211b22; padding:32px; }
+    .session-actions { display:flex; justify-content:center; gap:10px; margin:22px 0; }
+    .session-actions input { min-width:280px; border:1px solid #4b3e49; border-radius:8px; background:#171319; color:#f4eef4; padding:9px; }
+    .session-code { max-width:980px; margin:-8px auto 18px; text-align:center; color:#b8acb8; font-size:12px; overflow-wrap:anywhere; }
+    .session-code summary { cursor:pointer; color:#cdbdca; }
+    .session-code code { color:#ffc0dc; user-select:all; }
+    .secondary { border:1px solid #5a4657; border-radius:9px; padding:9px 14px; color:#f4eef4; background:#2a222b; cursor:pointer; }
+    @media (max-width:850px) { .compare { grid-template-columns:1fr; } .answers { grid-template-columns:repeat(2,1fr); } .extras { grid-template-columns:1fr; } header { padding:12px; } main { padding:12px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>osu! 谱面对比小测试</h1><div class="muted">每批 5 题 · 没有标准答案 · 看不出来就直说</div></div>
+    <div class="progress"><span id="progressText">载入中…</span><div class="bar"><i id="progressBar"></i></div></div>
+  </header>
+  <main id="app"></main>
+  <script>
+    const app = document.querySelector('#app');
+    const progressText = document.querySelector('#progressText');
+    const progressBar = document.querySelector('#progressBar');
+    const agentQaMuted = new URLSearchParams(location.search).get('qa_muted') === '1';
+    let state, answer = null, taskShownAt = 0, players = [];
+
+    const fmt = ms => `${Math.floor(ms/60000)}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}`;
+    function sliderTravelProgress(now, startMs, endMs, spanCount) {
+      if (!(endMs > startMs)) return 0;
+      const spans = Math.max(1, Math.trunc(Number(spanCount)) || 1);
+      const full = Math.max(0, Math.min(1, (now-startMs)/(endMs-startMs)));
+      if (full >= 1) return spans % 2 === 0 ? 0 : 1;
+      const spanValue = full*spans;
+      const spanIndex = Math.floor(spanValue);
+      const local = spanValue-spanIndex;
+      return spanIndex%2===0 ? local : 1-local;
+    }
+    window.__annotationRenderer = Object.freeze({sliderTravelProgress});
+    function sessionGate(message = '') {
+      progressText.textContent = '尚未开始';
+      progressBar.style.width = '0%';
+      app.innerHTML = `<section class="session-gate">
+        <h2>领取 5 道题</h2>
+        <p>每题比较左右两张谱面。播放两边后，选出更符合题目的一边；实在看不出来就选“看不出来”，不用硬猜。</p>
+        <p class="muted">${message || '开始后会固定分配 5 道题，刷新页面不会换题。'}</p>
+        <div class="session-actions"><button class="submit" id="startSession" style="padding:10px 24px">开始答题</button></div>
+        <hr style="border:0;border-top:1px solid #443943;margin:26px 0">
+        <p class="muted">已有恢复码？换设备或进度丢失后，可以继续答原来的 5 道题。</p>
+        <div class="session-actions"><input id="recoveryCode" autocomplete="off" placeholder="粘贴恢复码"><button class="secondary" id="recoverSession">恢复进度</button></div>
+        <div class="error" id="sessionError"></div>
+      </section>`;
+      document.querySelector('#startSession').addEventListener('click', startSession);
+      document.querySelector('#recoverSession').addEventListener('click', recoverSession);
+    }
+    async function startSession() {
+      const button = document.querySelector('#startSession');
+      button.disabled = true;
+      try {
+        const response = await fetch('./api/session', {method:'POST'});
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.message || '无法分配题目');
+        await loadState(body);
+      } catch (error) {
+        document.querySelector('#sessionError').textContent = error.message || '无法分配题目，请稍后重试。';
+        button.disabled = false;
+      }
+    }
+    async function recoverSession() {
+      const code = document.querySelector('#recoveryCode').value.trim();
+      if (!code) return;
+      const button = document.querySelector('#recoverSession');
+      button.disabled = true;
+      try {
+        const response = await fetch('./api/recover', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({recovery_code:code})});
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || '恢复码无效');
+        await loadState(body);
+      } catch (error) {
+        document.querySelector('#sessionError').textContent = error.message || '恢复失败。';
+        button.disabled = false;
+      }
+    }
+    async function loadState(nextState) {
+      state = nextState || await fetch('./api/state', {cache:'no-store'}).then(r => r.json());
+      players.forEach(p => p.destroy()); players = [];
+      if (state.status === 'NEEDS_SESSION') {
+        sessionGate(state.message);
+        return;
+      }
+      progressText.textContent = `${state.completed} / ${state.total}`;
+      progressBar.style.width = `${100*state.completed/state.total}%`;
+      if (state.status === 'COMPLETE') {
+        app.innerHTML = `<section class="complete"><h2>完成啦</h2><p>${state.message}</p>
+          ${state.can_request_more ? '<button class="submit" id="moreTasks" style="padding:10px 24px">再来 5 题</button>' : ''}
+          <div class="error" id="moreError"></div></section>`;
+        document.querySelector('#moreTasks')?.addEventListener('click', requestMoreTasks);
+        return;
+      }
+      answer = null;
+      taskShownAt = performance.now();
+      const task = state.task;
+      app.innerHTML = `
+        <div class="question">${task.proposition.question}<span class="scope">${task.scope === 'MAP_PAIR' ? '整张图' : '这小段'}</span></div>
+        ${state.recovery_code ? `<details class="session-code"><summary>换设备时如何继续？</summary><p>保存恢复码：<code>${state.recovery_code}</code></p></details>` : ''}
+        ${task.proposition.attend_to ? `<div class="guidance"><strong>提示：</strong>${task.proposition.attend_to}</div>` : ''}
+        <div class="compare">${['A','B'].map(side => panel(side, task['entity_'+side.toLowerCase()], state.visualizations[side])).join('')}</div>
+        <div class="answers">${state.response_options.map(o => `<button class="answer" data-value="${o.value}">${o.label}<small>按 ${o.key}</small></button>`).join('')}</div>
+        <div class="extras">
+          <select id="confidence"><option value="">你有多确定（可选）</option><option value="LOW">不太确定</option><option value="MEDIUM">比较确定</option><option value="HIGH">很确定</option></select>
+          <textarea id="note" maxlength="1000" placeholder="可选：说说哪里看不懂或不好判断"></textarea>
+          <button class="submit" id="submit" disabled>提交并继续</button>
+        </div>
+        <div class="error" id="error"></div>
+        <div class="notice"><strong>“看不出来”也是有效回答。</strong> 播放有问题、两边太接近或你确实拿不准时，直接选它就行。</div>`;
+      document.querySelectorAll('.answer').forEach(button => button.addEventListener('click', () => choose(button.dataset.value)));
+      document.querySelector('#submit').addEventListener('click', submit);
+      players = ['A','B'].map(side => makePlayer(side, state.visualizations[side]));
+    }
+    async function requestMoreTasks() {
+      const button = document.querySelector('#moreTasks');
+      button.disabled = true;
+      document.querySelector('#moreError').textContent = '';
+      try {
+        const response = await fetch('./api/more', {method:'POST'});
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || '暂时无法领取更多题');
+        await loadState(body);
+      } catch (error) {
+        document.querySelector('#moreError').textContent = error.message || '暂时无法领取更多题，请稍后重试。';
+        button.disabled = false;
+      }
+    }
+    function panel(side, entity, visual) {
+      const meta = entity.neutral_metadata || {};
+      const bits = [`样本 ${entity.display_id.replace(/^entity-/, '')}`, 'NM'];
+      bits.push(visual.beatmap_id == null ? 'BID 未提供' : `BID ${visual.beatmap_id}`);
+      bits.push(visual.circle_size == null ? 'CS 未提供' : `CS ${visual.circle_size}`);
+      bits.push(visual.approach_rate == null ? 'AR 未提供' : `AR ${visual.approach_rate}`);
+      if (meta.object_count) bits.push(`${meta.object_count} 个物件`);
+      if (meta.bpm_max) bits.push(`最高 ${Math.round(meta.bpm_max)} BPM`);
+      return `<section class="panel"><div class="panel-head"><span class="side">${side}</span><span class="meta">${bits.join(' · ')}</span></div><canvas id="canvas${side}" width="768" height="576"></canvas><div class="transport"><button class="play" id="play${side}">播放</button><input id="seek${side}" type="range" min="0" max="1000" value="0"><span class="time" id="time${side}">0:00 / 0:00</span><audio id="audio${side}" preload="metadata" src="./api/audio/${encodeURIComponent(entity.display_id)}"></audio></div></section>`;
+    }
+    function choose(value) {
+      answer = value;
+      document.querySelectorAll('.answer').forEach(b => b.classList.toggle('selected', b.dataset.value === value));
+      document.querySelector('#submit').disabled = false;
+    }
+    async function submit() {
+      if (!answer) return;
+      const button = document.querySelector('#submit');
+      button.disabled = true;
+      document.querySelector('#error').textContent = '';
+      players.forEach(p => p.pause());
+      try {
+        const response = await fetch('./api/respond', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+          task_id: state.task.task_id,
+          answer,
+          response_time_ms: Math.max(0, Math.round(performance.now()-taskShownAt)),
+          confidence_band: document.querySelector('#confidence').value || null,
+          reason_codes: [],
+          note: document.querySelector('#note').value || null
+        })});
+        const body = await response.json();
+        if (!response.ok) throw new Error('提交失败，请检查本地服务后重试。');
+        await loadState(body.state);
+      } catch (error) {
+        document.querySelector('#error').textContent = '提交失败，请检查本地服务后重试。';
+        button.disabled = false;
+      }
+    }
+    function makePlayer(side, data) {
+      const canvas = document.querySelector('#canvas'+side), ctx = canvas.getContext('2d');
+      const audio = document.querySelector('#audio'+side), play = document.querySelector('#play'+side), seek = document.querySelector('#seek'+side), time = document.querySelector('#time'+side);
+      audio.muted = agentQaMuted;
+      const windowData = data.context_window || data.playable_window;
+      const start = typeof windowData === 'object' ? windowData.start_ms : data.timeline.start_ms;
+      const end = typeof windowData === 'object' ? windowData.end_ms : data.timeline.end_ms;
+      const preempt = Number.isFinite(Number(data.approach_preempt_ms)) ? Number(data.approach_preempt_ms) : 1200;
+      let raf = 0, initialized = false;
+      const relevant = data.objects.filter(o => o.end_ms >= start-preempt && o.start_ms <= end+preempt);
+      const scaleX=748/512, scaleY=556/384, radius=Math.max(8,data.circle_radius_px*((scaleX+scaleY)/2));
+      function pathPosition(path, progress){
+        if(!path.length) return null;
+        if(path.length===1) return path[0];
+        const lengths=[0]; let total=0;
+        for(let i=1;i<path.length;i++){ total+=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]); lengths.push(total); }
+        if(total<=0) return path[0];
+        const target=Math.max(0,Math.min(1,progress))*total;
+        let i=1; while(i<lengths.length && lengths[i]<target) i++;
+        if(i>=path.length) return path[path.length-1];
+        const segment=lengths[i]-lengths[i-1], t=segment>0?(target-lengths[i-1])/segment:0;
+        return [path[i-1][0]+(path[i][0]-path[i-1][0])*t,path[i-1][1]+(path[i][1]-path[i-1][1])*t];
+      }
+      function draw() {
+        const now = audio.currentTime*1000;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#100f13'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.strokeStyle='#3e3340'; ctx.lineWidth=2; ctx.strokeRect(10,10,748,556);
+        const visible = relevant.filter(o => {
+          const approaching = now >= o.start_ms-preempt && now < o.start_ms;
+          const sliderActive = o.type==='slider' && now >= o.start_ms && now <= o.end_ms;
+          return approaching || sliderActive;
+        });
+        visible.sort((a,b)=>b.start_ms-a.start_ms).forEach((o,index)=>{
+          const x=10+o.x/512*748, y=10+o.y/384*556;
+          const approaching=now>=o.start_ms-preempt && now<o.start_ms;
+          const active=o.type==='slider' && o.start_ms<=now && o.end_ms>=now;
+          if(o.type==='slider' && o.slider_path.length){
+            ctx.beginPath(); ctx.moveTo(10+o.slider_path[0][0]/512*748,10+o.slider_path[0][1]/384*556); o.slider_path.slice(1).forEach(p=>ctx.lineTo(10+p[0]/512*748,10+p[1]/384*556));
+            ctx.strokeStyle=active?'#ff8dc0':'#765168'; ctx.lineWidth=radius*1.9; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+            ctx.strokeStyle='#24151e'; ctx.lineWidth=radius*1.35; ctx.stroke();
+            if(active && o.end_ms>o.start_ms){
+              const travel=sliderTravelProgress(now,o.start_ms,o.end_ms,o.slider_spans);
+              const ball=pathPosition(o.slider_path,travel);
+              if(ball){ const bx=10+ball[0]/512*748, by=10+ball[1]/384*556; ctx.beginPath(); ctx.arc(bx,by,radius*.72,0,Math.PI*2); ctx.fillStyle='#fff2f8'; ctx.fill(); ctx.strokeStyle='#ff4f9c'; ctx.lineWidth=4; ctx.stroke(); ctx.beginPath(); ctx.arc(bx,by,radius*1.35,0,Math.PI*2); ctx.strokeStyle='#ff8dc077'; ctx.lineWidth=3; ctx.stroke(); }
+            }
+          }
+          if(approaching){
+            const dt=o.start_ms-now, approach=1+dt/preempt*1.8;
+            ctx.beginPath(); ctx.arc(x,y,radius*approach,0,Math.PI*2); ctx.strokeStyle='#ff8dc099'; ctx.lineWidth=2; ctx.stroke();
+            ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fillStyle='#d9c8d4'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+            ctx.fillStyle='#22131b'; ctx.font='bold 16px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(o.object_index+1),x,y);
+          }
+        });
+        const playable = data.playable_window;
+        if(typeof playable==='object' && (now<playable.start_ms || now>playable.end_ms)){
+          ctx.fillStyle='#ffb5d4'; ctx.font='14px Segoe UI'; ctx.textAlign='left'; ctx.fillText(now<playable.start_ms?'前置上下文':'后置上下文',22,34);
+        }
+        seek.value = String(Math.max(0,Math.min(1000,(now-start)/(end-start)*1000)));
+        time.textContent = `${fmt(Math.max(0,now-start))} / ${fmt(end-start)}`;
+        if(!audio.paused) raf=requestAnimationFrame(draw);
+      }
+      function ensureStart(){ if(!initialized){ audio.currentTime=Math.max(0,start/1000); initialized=true; draw(); } }
+      audio.addEventListener('loadedmetadata', ensureStart);
+      audio.addEventListener('seeked', draw);
+      audio.addEventListener('ended', ()=>{play.textContent='播放'; draw();});
+      play.addEventListener('click', async()=>{
+        players.forEach(p=>{ if(p.side!==side) p.pause(); });
+        ensureStart();
+        if(audio.paused){ if(audio.currentTime*1000>=end) audio.currentTime=start/1000; await audio.play(); play.textContent='暂停'; draw(); }
+        else { audio.pause(); play.textContent='播放'; draw(); }
+      });
+      seek.addEventListener('input',()=>{ initialized=true; audio.currentTime=(start+(end-start)*Number(seek.value)/1000)/1000; draw(); });
+      function watchdog(){ if(audio.currentTime*1000>=end){ audio.pause(); play.textContent='播放'; audio.currentTime=start/1000; } }
+      audio.addEventListener('timeupdate', watchdog);
+      if(audio.readyState>0) ensureStart(); else draw();
+      return {side, pause(){audio.pause();play.textContent='播放';cancelAnimationFrame(raf);draw();}, destroy(){this.pause();audio.src='';},};
+    }
+    document.addEventListener('keydown', event => {
+      if (event.target.matches('textarea,select,input')) return;
+      const option = state?.response_options?.find(o => o.key === event.key);
+      if (option) choose(option.value);
+      if (event.key === 'Enter' && answer) document.querySelector('#submit')?.click();
+    });
+    loadState().catch(() => { app.innerHTML='<div class="complete"><h2>载入失败</h2><p>页面暂时没连上，请稍后刷新重试。</p></div>'; });
+  </script>
+</body>
+</html>

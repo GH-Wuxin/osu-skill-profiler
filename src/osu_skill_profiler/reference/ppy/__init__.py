@@ -1,4 +1,4 @@
-"""Pinned ppy/osu reference evaluator namespace (Layer B, v0.1).
+"""Pinned ppy/osu reference evaluator namespace (Layer B, v0.2 current; v0.1 replayable).
 
 All semantics are pinned to ppy/osu commit
 ``b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e`` (difficulty version 20260706).

@@ -1,0 +1,191 @@
+{
+  "schema_version": "0.2.0",
+  "definitions_id": "human-question-definitions-v02",
+  "status": "DEFINITION_ONLY",
+  "generated_utc": "2026-08-14",
+  "repository": "osu-skill-profiler",
+  "supersedes": [
+    "ws01.provisional.movement_demand_high",
+    "ws01.provisional.slider_tracking_travel_high"
+  ],
+  "historical_artifacts_preserved": true,
+  "answer_space": [
+    "A_CLEARLY_HIGHER",
+    "A_SLIGHTLY_HIGHER",
+    "SAME",
+    "B_SLIGHTLY_HIGHER",
+    "B_CLEARLY_HIGHER",
+    "CANNOT_JUDGE"
+  ],
+  "cannot_judge_reasons": [
+    {
+      "reason_id": "multi_axis_tradeoff",
+      "label": "两边各有侧重"
+    },
+    {
+      "reason_id": "too_close",
+      "label": "差距太小，无法可靠判断"
+    },
+    {
+      "reason_id": "presentation_unclear",
+      "label": "播放/画面看不清"
+    },
+    {
+      "reason_id": "wording_unclear",
+      "label": "问题含义不明确"
+    }
+  ],
+  "same_is_not_cannot_judge": true,
+  "too_close_is_not_same": true,
+  "questions": [
+    {
+      "question_id": "Q-V02-SPAN",
+      "dimension": "cursor_movement_span",
+      "question_text": "哪一边需要完成更大的光标移动跨度？",
+      "axis": "spatial distance only",
+      "attend_to": "观察光标跳跃和移动的空间距离，不评估快慢。",
+      "not_asking": [
+        "不是比较移动速度",
+        "不是比较时间紧迫度",
+        "不是比较综合难度",
+        "不是只找全图最远的一跳"
+      ],
+      "scope": "MAP_PAIR",
+      "presentation_window": "FULL_MAP",
+      "provisional_analysis_mapping": {
+        "observable": "spatial.distance_norm_p95",
+        "note": "provisional mapping for alignment analysis only; not a new feature",
+        "expected_sign_null_allowed": true
+      }
+    },
+    {
+      "question_id": "Q-V02-URGENCY",
+      "dimension": "movement_temporal_urgency",
+      "question_text": "哪一边需要以更快的速度完成光标移动？",
+      "axis": "temporal urgency / velocity only",
+      "attend_to": "观察移动完成得快慢、时间上是否更赶；不考虑跳得多远。",
+      "not_asking": [
+        "不是比较跳跃距离大小",
+        "不是比较综合难度"
+      ],
+      "scope": "MAP_PAIR",
+      "presentation_window": "FULL_MAP",
+      "provisional_analysis_mapping": {
+        "observable": "spatial.velocity_norm_per_s_p95",
+        "note": "provisional mapping for alignment analysis only; not a new feature",
+        "expected_sign_null_allowed": true
+      }
+    },
+    {
+      "question_id": "Q-V02-SLIDER-PATH",
+      "dimension": "slider_follow_path_distance",
+      "question_text": "哪一边跟随路径较长的那批滑条，单根的跟随路径更长？",
+      "axis": "spatial path distance only",
+      "attend_to": "先看每一边片段里跟随路径较长的几根滑条，再比较两边这些滑条各自单根的路径长度；折返滑条按来回全程计算。",
+      "not_asking": [
+        "不是比较滑条数量",
+        "不是比较跟随时间长短",
+        "不是把所有滑条路径相加"
+      ],
+      "scope": "SEGMENT_PAIR",
+      "presentation_window": "canonical 5s segment + 2.0s before / 1.5s after",
+      "provisional_analysis_mapping": {
+        "observable": "ls.lazy_travel_distance_cs_normalised segment p90",
+        "note": "the current rule input, unchanged; no new feature",
+        "expected_sign_null_allowed": true
+      },
+      "human_construct": "upper tail of single-slider follow path length inside the segment (较长的那批滑条; repeats counted as full traversal)",
+      "computational_proxy_locked": {
+        "primary": "ls.lazy_travel_distance_cs_normalised segment p90 (zero-inclusive; unchanged rule input)",
+        "secondary_diagnostic": "segment_max"
+      },
+      "aggregation_locked_before_launch": true,
+      "players_do_not_estimate": [
+        "p90",
+        "max",
+        "median",
+        "total"
+      ],
+      "amendment": "P2B",
+      "construct_aligned_measure": "slider-only path upper-tail statistic: p90 of ls.lazy_travel_distance_cs_normalised over slider rows only (max as secondary); this is what the wording anchors, not the rule's zero-inclusive population",
+      "current_rule_proxy": "segment p90 of ls.lazy_travel_distance_cs_normalised over the ZERO-INCLUSIVE row population (the unchanged current rule input); recorded separately — it is NOT the human construct",
+      "old_wording": "哪一边较长的那批滑条，单根跟随路径更长？"
+    },
+    {
+      "question_id": "Q-V02-SLIDER-TIME",
+      "dimension": "slider_follow_duration",
+      "question_text": "哪一边持续跟随较久的那批滑条，单根需要保持跟随更久？",
+      "axis": "time only",
+      "attend_to": "先看每一边片段里各自持续跟随较久的几根滑条，再比较两边这些滑条单根的持续跟随时间长短。",
+      "not_asking": [
+        "不是比较路径长短",
+        "不是比较滑条数量",
+        "不是把整段跟随时间相加"
+      ],
+      "scope": "SEGMENT_PAIR",
+      "presentation_window": "canonical 5s segment + 2.0s before / 1.5s after",
+      "provisional_analysis_mapping": {
+        "observable": "per-slider slider_total_duration_ms (full traversal incl. spans) segment p90 over sliders starting inside the segment",
+        "note": "offline-computable with the unchanged parser; Local v0.3 already computes ls.slider_total_duration_ms and ls.lazy_travel_time_ms but no rule consumes them; not a new feature",
+        "expected_sign_null_allowed": true
+      },
+      "human_construct": "upper tail of single-slider follow duration inside the segment (持续跟随较久的那批滑条; full traversal incl. spans)",
+      "computational_proxy_locked": {
+        "primary": "p90 of per-slider slider_total_duration_ms over sliders starting inside the canonical 5s segment (Local v0.3 values; offline)",
+        "secondary_diagnostic": "per-slider duration max"
+      },
+      "aggregation_locked_before_launch": true,
+      "players_do_not_estimate": [
+        "p90",
+        "max",
+        "median",
+        "total"
+      ],
+      "amendment": "P2B",
+      "construct_aligned_measure": "p90 of per-slider slider_total_duration_ms over slider rows only (max as secondary; lazy_travel_time_ms recorded as a cross-check)",
+      "current_rule_proxy": "none — the current formal rule does not consume any duration value (recorded as such, not fabricated)",
+      "old_wording": "哪一边较长的那批滑条，单根需要保持跟随更久？"
+    },
+    {
+      "question_id": "Q-V02-DENSE",
+      "dimension": "dense_click_pressure",
+      "status": "UNDER_REVISION",
+      "question_text": "哪一边更常出现需要连续快速点击的密集段落？",
+      "phenomenon_only": "player judges whether one side more often contains dense sections requiring continuous rapid tapping; no algorithm bound",
+      "scope": "MAP_PAIR",
+      "presentation_window": "FULL_MAP",
+      "revision_reasons": [
+        "fixed <=125ms window falsified (P1.5)",
+        "every tested fixed <=300ms window cannot explain B2 (P1.5)",
+        "beat-relative sustained runs: PLAUSIBLE only",
+        "general object density: PLAUSIBLE only",
+        "single-tap vs sustained sequence: attested by participant note, not uniquely identified",
+        "slider reversal/repeat structure is structural only; reversal != clicks"
+      ],
+      "open_hypotheses": [
+        {
+          "id": "H1",
+          "name": "beat-relative sustained runs",
+          "status": "PLAUSIBLE"
+        },
+        {
+          "id": "H2",
+          "name": "general object density",
+          "status": "PLAUSIBLE"
+        },
+        {
+          "id": "H3",
+          "name": "single-tap vs sustained sequence morphology",
+          "status": "PLAUSIBLE"
+        }
+      ],
+      "excluded_from_alignment_analysis": true,
+      "provisional_analysis_mapping": null
+    }
+  ],
+  "amendments": [
+    "P2B: slider PATH/TIME wording and aggregation semantics frozen before any human viewing; construct/proxy split documented; anti post-hoc metric selection",
+    "P2B launch-blocker fix: three-layer construct/measure/proxy split for slider PATH and TIME",
+    "P2B launch-blocker fix: TIME wording made purely temporal (old wording preserved as amendment record)"
+  ]
+}

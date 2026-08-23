@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>osu! 谱面八维原子评分</title>
+  <style>
+    :root { color-scheme:dark; font-family:"Segoe UI",system-ui,sans-serif; background:#111016; color:#f5eff7; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 15% 0,#3a2337 0,transparent 34%),#111016; }
+    button,input,select,textarea { font:inherit; }
+    header { position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; gap:18px; padding:16px 22px; background:#17141bcc; backdrop-filter:blur(12px); border-bottom:1px solid #403542; }
+    h1 { margin:0 0 3px; font-size:18px; } .muted { color:#b9aebb; font-size:13px; }
+    .progress { min-width:190px; text-align:right; } .bar { height:5px; margin-top:7px; border-radius:9px; overflow:hidden; background:#342d36; } .bar i { display:block; width:0; height:100%; background:#ff6eb4; }
+    main { max-width:980px; margin:auto; padding:22px; }
+    .notice,.card { border:1px solid #463a48; border-radius:14px; background:#1d1920; box-shadow:0 14px 35px #0004; }
+    .notice { padding:12px 15px; margin-bottom:16px; color:#d6cad7; line-height:1.55; font-size:13px; }
+    .notice strong { color:#ff9dcc; }
+    .card { overflow:hidden; } .head { padding:18px 20px; background:#28212a; }
+    .head h2 { font-size:19px; margin:0 0 7px; overflow-wrap:anywhere; }
+    .task-id { color:#a899a9; font-size:12px; }
+    .meta { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; padding:14px 20px; border-bottom:1px solid #3d333f; }
+    .meta div { border-radius:9px; padding:9px; background:#241e26; text-align:center; } .meta b { display:block; color:#ff9dcc; font-size:15px; } .meta span { color:#a99daa; font-size:11px; }
+    .path { margin:0 20px 16px; padding:11px; border-radius:9px; background:#121015; color:#d7cbd6; font:12px Consolas,monospace; overflow-wrap:anywhere; }
+    .path-actions { display:flex; gap:8px; padding:0 20px 18px; }
+    .machine { margin:0 20px 12px; padding:13px 15px; border:1px solid #79536b; border-radius:10px; background:#332332; }
+    .machine strong { color:#ff9dcc; } .machine .summary { margin-top:5px; color:#ddcfdb; font-size:13px; }
+    button { border:1px solid #554657; border-radius:9px; background:#2a232c; color:#f7f0f6; padding:9px 14px; cursor:pointer; }
+    button:hover { border-color:#ff75b8; } button.primary { border:0; background:#ff6eb4; color:#240d19; font-weight:800; } button:disabled { opacity:.4; cursor:not-allowed; }
+    .ratings { padding:5px 20px 10px; }
+    .axis { display:grid; grid-template-columns:165px 1fr 74px 82px; gap:12px; align-items:center; padding:14px 0; border-bottom:1px solid #342c36; }
+    .axis-title b { display:block; } .axis-title small { display:block; color:#a99eaa; margin-top:4px; line-height:1.35; }
+    input[type=range] { width:100%; accent-color:#ff6eb4; } .value { text-align:center; border:1px solid #4b3d4c; border-radius:8px; padding:7px 5px; color:#ffadd4; font-weight:800; } .value.untouched { color:#9c919e; font-weight:500; }
+    .machine-score { text-align:center; color:#d9bdce; font-size:12px; padding:7px 3px; border-radius:8px; background:#2a2029; }
+    .scale { display:flex; justify-content:space-between; color:#8f8490; font-size:10px; margin-top:3px; }
+    .extras { padding:14px 20px; display:grid; grid-template-columns:190px 1fr; gap:10px; }
+    select,textarea { border:1px solid #4b3d4c; border-radius:8px; background:#171419; color:#f5eff5; padding:9px; } textarea { min-height:62px; resize:vertical; }
+    .cannot { margin:5px 20px 12px; padding:12px; border-radius:9px; background:#251f27; display:flex; gap:9px; align-items:center; }
+    .actions { display:flex; justify-content:space-between; gap:10px; padding:14px 20px 20px; } .right { display:flex; gap:9px; }
+    .error { min-height:22px; color:#ff8f9c; padding:0 20px 14px; text-align:center; }
+    @media(max-width:760px){ main{padding:12px}.meta{grid-template-columns:repeat(3,1fr)}.axis{grid-template-columns:105px 1fr 58px;gap:7px}.machine-score{grid-column:2/4}.extras{grid-template-columns:1fr}header{padding:12px}.progress{min-width:125px}.path-actions{flex-wrap:wrap} }
+  </style>
+</head>
+<body>
+  <header><div><h1>osu! 谱面八维原子评分</h1><div class="muted" id="reviewer">载入中…</div></div><div class="progress"><span id="progressText">0 / 0</span><div class="bar"><i id="progressBar"></i></div></div></header>
+  <main><div class="notice" id="notice"><strong>流程：</strong>复制 BID → 自己进 osu! 打这张图 → 回来对照程序结果并拖动八个滑块 → 保存。OD/判定窗口是客观上下文，不再冒充技能维度；综合 Aim、综合手法和总体难度不作为标签。</div><section class="card" id="app"></section></main>
+  <script>
+    const AXES = [
+      ['jump_aim','跳跃瞄准 / Jump Aim','离散大跳、移动距离与落点切换压力'],
+      ['flow_aim','流动瞄准 / Flow Aim','连续移动链、轨迹延续与稳定跟随压力'],
+      ['aim_control','瞄准控制 / Aim Control','角度、间距和移动速度变化带来的控制压力'],
+      ['spatial_precision','空间精度 / Spatial Precision','小圈、窄落点与空间定位容错'],
+      ['raw_speed','纯手速 / Raw Speed','短间隔点击与爆发速度'],
+      ['stamina','耐力 / Stamina','长时间持续输出和密集段维持'],
+      ['finger_control','指法控制 / Finger Control','变速、连打长度变化与非常规时间间隔'],
+      ['reading','读图 / Reading','视觉解析、物件辨认与高 AR 阅读']
+    ];
+    const TYPE_LABELS={JUMP_AIM_DOMINANT:'跳跃瞄准主导',FLOW_AIM_DOMINANT:'流动瞄准主导',AIM_CONTROL_DOMINANT:'瞄准控制主导',SPATIAL_PRECISION_DOMINANT:'空间精度主导',RAW_SPEED_DOMINANT:'纯手速主导',STAMINA_DOMINANT:'耐力主导',FINGER_CONTROL_DOMINANT:'指法控制主导',READING_DOMINANT:'读图主导',JUMP_PRECISION:'跳跃＋空间精度',FLOW_STAMINA:'流动瞄准＋耐力',SPEED_STAMINA:'纯手速＋耐力',SPEED_FINGER_CONTROL:'纯手速＋指法控制',FINGER_CONTROL_READING:'指法控制＋读图',AIM_CONTROL_READING:'瞄准控制＋读图',STAMINA_READING:'耐力＋读图',BALANCED:'均衡',HYBRID:'混合型'};
+    const TIER_LABELS={LOW:'低',MODERATE:'中',HIGH:'高',EXTREME:'极高'};
+    const CONF_LABELS={LOW:'低',MEDIUM:'中',HIGH:'高'};
+    const app=document.querySelector('#app'), progressText=document.querySelector('#progressText'), progressBar=document.querySelector('#progressBar'), reviewer=document.querySelector('#reviewer');
+    let state, index=0, touched=new Set(), ratings={}, existing=null;
+    const fmtDuration=ms=>ms==null?'—':`${Math.floor(ms/60000)}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}`;
+    const fmt=n=>n==null?'—':Number(n).toFixed(Number(n)%1?1:0);
+    async function load(){ state=await fetch('/api/state',{cache:'no-store'}).then(r=>r.json()); reviewer.textContent=`审核人：${state.reviewer_id} · NM 谱面${state.algorithm_visible?' · 算法辅助对照':''}`; const first=state.tasks.findIndex(t=>!state.responses[t.task_id]); index=first<0?0:first; render(); }
+    function render(){
+      const t=state.tasks[index]; existing=state.responses[t.task_id]||null; ratings=existing?.axis_ratings?{...existing.axis_ratings}:Object.fromEntries(AXES.map(([k])=>[k,5])); touched=new Set(existing?.axis_ratings?AXES.map(([k])=>k):[]);
+      progressText.textContent=`已保存 ${state.completed} / ${state.total} · 当前 ${index+1}`; progressBar.style.width=`${100*state.completed/state.total}%`;
+      app.innerHTML=`<div class="head"><h2>${esc(t.sample_id||t.path||t.checksum)}</h2><div class="task-id">${esc(t.task_id)} · ${state.responses[t.task_id]?'已保存，可修改':'尚未评分'}</div></div>
+        <div class="meta"><div><b>NM</b><span>模组</span></div><div><b>${t.beatmap_id??'—'}</b><span>BID</span></div><div><b>${fmt(t.bpm_max)}</b><span>BPM</span></div><div><b>${fmt(t.ar)}</b><span>AR</span></div><div><b>${fmt(t.od)}</b><span>OD</span></div><div><b>${fmt(t.cs)}</b><span>CS</span></div><div><b>${fmtDuration(t.duration_ms)}</b><span>长度</span></div><div><b>${fmt(t.object_count)}</b><span>物件数</span></div></div>
+        <div class="path" id="mapPath">${esc(t.path_abs||t.path||'没有可用路径')}</div><div class="path-actions"><button id="copyBid" ${t.beatmap_id==null?'disabled':''}>${t.beatmap_id==null?'该谱面没有可用 BID':'复制 BID'}</button></div>
+        ${machinePanel(t.algorithm)}
+        <div class="ratings">${AXES.map(axisRow).join('')}</div>
+        <label class="cannot"><input type="checkbox" id="cannot" ${existing?.cannot_judge?'checked':''}> 这张图无法判断（找不到、无法运行、或我确实评不了）</label>
+        <div class="extras"><select id="confidence"><option value="">确定程度（可选）</option><option value="LOW">不太确定</option><option value="MEDIUM">比较确定</option><option value="HIGH">很确定</option></select><textarea id="notes" maxlength="1000" placeholder="可选备注"></textarea></div>
+        <div class="actions"><button id="prev" ${index===0?'disabled':''}>上一张</button><div class="right"><button id="next" ${index===state.tasks.length-1?'disabled':''}>下一张</button><button class="primary" id="save">保存并前往下一张</button></div></div><div class="error" id="error"></div>`;
+      document.querySelector('#confidence').value=existing?.confidence||''; document.querySelector('#notes').value=existing?.notes||'';
+      AXES.forEach(([key])=>document.querySelector(`[data-axis="${key}"]`).addEventListener('input',e=>{ratings[key]=Number(e.target.value);touched.add(key);updateValue(key);updateSave();}));
+      document.querySelector('#cannot').addEventListener('change',()=>{updateDisabled();updateSave();}); if(t.beatmap_id!=null)document.querySelector('#copyBid').onclick=()=>copy(String(t.beatmap_id), 'BID');
+      document.querySelector('#prev').onclick=()=>{index--;render()}; document.querySelector('#next').onclick=()=>{index++;render()}; document.querySelector('#save').onclick=save; updateDisabled(); updateSave();
+    }
+    function machinePanel(algorithm){if(!algorithm)return '';const a=algorithm.archetype||{};return `<div class="machine"><strong>程序计算结果（你已选择辅助对照模式）</strong><div class="summary">类型：${TYPE_LABELS[a.primary_type]||a.primary_type||'无法分类'}　整体强度：${TIER_LABELS[a.demand_tier]||a.demand_tier||'—'}　分类置信度：${CONF_LABELS[a.confidence]||a.confidence||'—'}。八维数值使用 126k osu!standard NM 星数分布映射为星级等效需求，不再封顶于10★；特征分位仅保留为诊断。</div></div>`}
+    function axisRow([key,label,help]){const value=ratings[key];const ready=touched.has(key);const raw=state.tasks[index].algorithm?.axes?.[key];const machine=raw==null?'—':(Number(raw)*10).toFixed(1);const machineCell=state.algorithm_visible?`<div class="machine-score">程序 ${machine}</div>`:'';return `<div class="axis"><div class="axis-title"><b>${label}</b><small>${help}</small></div><div><input data-axis="${key}" type="range" min="0" max="20" step="0.1" value="${value}"><div class="scale"><span>0 几乎没有</span><span>10 极强</span><span>20 极端</span></div></div><div class="value ${ready?'':'untouched'}" id="value-${key}">${ready?value:'未评分'}</div>${machineCell}</div>`}
+    function updateValue(key){const el=document.querySelector(`#value-${key}`);el.textContent=ratings[key];el.classList.remove('untouched')}
+    function updateDisabled(){const disabled=document.querySelector('#cannot').checked;document.querySelectorAll('input[type=range]').forEach(el=>el.disabled=disabled)}
+    function updateSave(){document.querySelector('#save').disabled=!document.querySelector('#cannot').checked&&touched.size!==AXES.length}
+    async function save(){const button=document.querySelector('#save'), error=document.querySelector('#error');button.disabled=true;error.textContent='';const t=state.tasks[index], cannot=document.querySelector('#cannot').checked;const body={task_id:t.task_id,axis_schema_version:'atomic_v0.6.0',cannot_judge:cannot,confidence:document.querySelector('#confidence').value||null,notes:document.querySelector('#notes').value};if(!cannot)body.axis_ratings=ratings;try{const response=await fetch('/api/response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const next=await response.json();if(!response.ok)throw new Error(next.error||'保存失败');state=next;if(index<state.tasks.length-1)index++;render()}catch(e){error.textContent=e.message||'保存失败';button.disabled=false}}
+    async function copy(text,label){try{await navigator.clipboard.writeText(text);document.querySelector('#error').textContent=`已复制${label}`}catch{document.querySelector('#error').textContent=`复制失败，请手动复制`}}
+    function esc(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+    load().catch(e=>{app.innerHTML=`<div class="error" style="padding:30px">页面载入失败：${esc(e.message)}</div>`});
+  </script>
+</body>
+</html>

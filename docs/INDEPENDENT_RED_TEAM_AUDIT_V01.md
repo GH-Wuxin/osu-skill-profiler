@@ -233,7 +233,7 @@ block the foundation before weak supervision.
 #### H-04 — Frozen Feature `slider.repeats_*` fields count spans as repeats
 
 - **Claim:** `slider.repeats_total` and `slider.repeats_max` measure repeat
-  counts (`FEATURE_CONTRACT_REVIEW_V0.md:200-201`).
+  counts (`docs/archive/FEATURE_CONTRACT_REVIEW_V0.md:200-201`, archived).
 - **Evidence:** `.osu` hit-object `slides` is the number of spans. Production
   `features/extractor.py:197-199` sums/maxes raw `slider_slides`. For sliders
   with one and three spans, the independent expected repeat total/max are 2/2;
@@ -392,7 +392,7 @@ block the foundation before weak supervision.
 #### M-07 — “No O(n²) hotspot” is not generally valid
 
 - **Claim:** Reference extraction has no quadratic hotspot
-  (`PPY_REFERENCE_SIGNAL_V01_FINAL_REPORT.md:106-113`).
+  (`docs/archive/PPY_REFERENCE_SIGNAL_V01_FINAL_REPORT.md:106-113`, archived).
 - **Evidence:** Reading performs backward and forward time-window scans per
   object (`evaluators.py:616-656`). Those windows are time-bounded, not
   object-count-bounded. The final same-time-circle replay measured medians of

@@ -1,4 +1,4 @@
-"""Slider path geometry for Local Signal Layer v0.2.
+"""Slider path geometry for Local Signal Layer v0.3 (v0.2 replayable).
 
 Independent Python reimplementation of the audited ppy/osu slider path
 semantics (pinned upstream commit ``b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e``,

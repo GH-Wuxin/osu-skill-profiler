@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>osu! 定向复测（V02）</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, "Segoe UI", system-ui, sans-serif; background:#121116; color:#f4eef4; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 20% 0,#352332 0,transparent 35%),#121116; }
+    button, select, textarea { font:inherit; }
+    header { padding:18px 26px; border-bottom:1px solid #2a212c; background:#171419; }
+    header h1 { margin:0 0 6px; font-size:19px; }
+    .muted { color:#a99fa9; font-size:13px; }
+    .progress { margin-top:10px; display:flex; align-items:center; gap:10px; }
+    .bar { flex:1; height:6px; background:#2a212c; border-radius:3px; overflow:hidden; }
+    .bar i { display:block; height:100%; width:0; background:#ff6fae; transition:width .2s; }
+    main { max-width:1180px; margin:0 auto; padding:22px 18px 60px; }
+    .question { font-size:20px; font-weight:700; margin:6px 0 2px; }
+    .question .scope { font-size:13px; font-weight:600; color:#ff9cc7; margin-left:10px; background:#2a121e; padding:2px 8px; border-radius:6px; }
+    .question-index { font-size:14px; font-weight:700; color:#ffd166; margin:2px 0 4px; }
+    .repeat-hint { display:inline-block; margin:2px 0 8px; padding:6px 10px; background:#241a12; border:1px solid #5a4420; border-radius:6px; color:#e6c886; font-size:13px; }
+    .guidance { color:#d9c8d4; font-size:14px; margin:4px 0 14px; }
+    .notasking { color:#8a7f8a; font-size:12.5px; margin:2px 0 16px; }
+    .compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:900px){ .compare { grid-template-columns:1fr; } }
+    .panel { background:#17141a; border:1px solid #2a212c; border-radius:10px; padding:10px; }
+    .panel-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+    .side { font-weight:800; font-size:17px; color:#ff9cc7; }
+    .meta { font-size:12px; color:#a99fa9; text-align:right; }
+    canvas { width:100%; aspect-ratio:4/3; background:#100f13; display:block; border-radius:6px; }
+    .transport { display:flex; align-items:center; gap:10px; margin-top:8px; }
+    .transport button { background:#2a212c; color:#f4eef4; border:1px solid #443943; border-radius:6px; padding:4px 16px; cursor:pointer; }
+    .transport button:hover { border-color:#ff6fae; }
+    .transport input[type=range]{ flex:1; }
+    .time { font-size:12px; color:#a99fa9; min-width:92px; text-align:right; }
+    .answers { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin:18px 0 8px; }
+    @media (max-width:760px){ .answers { grid-template-columns:repeat(3,1fr); } }
+    .answer { background:#221c26; color:#f4eef4; border:1px solid #443943; border-radius:8px; padding:10px 6px; cursor:pointer; font-size:14px; }
+    .answer small { display:block; color:#8a7f8a; font-size:11px; }
+    .answer.selected { border-color:#ff6fae; background:#33182a; }
+    .reasonbox { display:none; margin:8px 0; padding:12px; background:#1c1620; border:1px dashed #443943; border-radius:8px; }
+    .reasonbox select { width:100%; background:#221c26; color:#f4eef4; border:1px solid #443943; border-radius:6px; padding:8px; }
+    .submit { background:#ff6fae; color:#1c0d14; border:none; border-radius:8px; padding:10px 26px; font-weight:700; cursor:pointer; }
+    .submit:disabled { background:#5a4150; color:#cbb3c4; cursor:not-allowed; }
+    .error { color:#ff9c9c; margin-top:8px; font-size:13px; }
+    .notice { margin-top:12px; color:#a99fa9; font-size:13px; }
+    .session-gate, .complete { max-width:560px; margin:40px auto; background:#17141a; border:1px solid #2a212c; border-radius:12px; padding:22px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>osu! 定向复测（V02）</h1><div class="muted">单轴判断 · 没有标准答案 · 看不出来就直说</div></div>
+    <div class="progress"><span id="progressText">载入中…</span><div class="bar"><i id="progressBar"></i></div></div>
+  </header>
+  <main id="app"></main>
+  <script>
+    const app = document.querySelector('#app');
+    const progressText = document.querySelector('#progressText');
+    const progressBar = document.querySelector('#progressBar');
+    const agentQaMuted = new URLSearchParams(location.search).get('qa_muted') === '1';
+    let state, answer = null, reason = null, taskShownAt = 0, players = [];
+
+    const fmt = ms => `${Math.floor(ms/60000)}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}`;
+    function sliderTravelProgress(now, startMs, endMs, spanCount) {
+      if (!(endMs > startMs)) return 0;
+      const spans = Math.max(1, Math.trunc(Number(spanCount)) || 1);
+      const full = Math.max(0, Math.min(1, (now-startMs)/(endMs-startMs)));
+      if (full >= 1) return spans % 2 === 0 ? 0 : 1;
+      const spanValue = full*spans;
+      const spanIndex = Math.floor(spanValue);
+      const local = spanValue-spanIndex;
+      return spanIndex%2===0 ? local : 1-local;
+    }
+    window.__annotationRenderer = Object.freeze({sliderTravelProgress});
+
+    const directParticipant = new URLSearchParams(location.search).get('participant');
+    let myParticipant = directParticipant || null;
+    function sessionGate(message = '') {
+      progressText.textContent = '尚未开始';
+      progressBar.style.width = '0%';
+      app.innerHTML = `<section class="session-gate">
+        <h2>开始复测</h2>
+        <p>每页只有一个判断。播放两边后，选出更符合题目的一边；实在看不出就选“无法直接比较”，并选一个原因。</p>
+        <p class="muted">${message || '点击开始后会自动分配题目，本组共 6 题；刷新页面不会换题。'}</p>
+        <p class="repeat-hint">同一个题面会出现多次，但每次两侧的片段都不同。请只看当前画面独立判断，不要受上一题影响。</p>
+        <div class="session-actions"><button class="submit" id="startSession">开始答题</button></div>
+        <div class="error" id="sessionError"></div>
+      </section>`;
+      document.querySelector('#startSession').addEventListener('click', startSession);
+    }
+    async function startSession() {
+      const button = document.querySelector('#startSession');
+      button.disabled = true;
+      try {
+        if (myParticipant) {
+          const response = await fetch('./api/state', {cache:'no-store'});
+          const body = await response.json();
+          if (!response.ok) throw new Error(body.error || '无法载入');
+          await loadState(body);
+          return;
+        }
+        const response = await fetch('./api/session', {method:'POST'});
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || '无法领取题目');
+        myParticipant = body.participant_id;
+        sessionGate(`已领取题目。你的参与编号：${myParticipant}（换设备时在链接后加 ?participant=${myParticipant} 可继续）。`);
+        await loadState(body.state);
+      } catch (error) {
+        document.querySelector('#sessionError').textContent = error.message || '无法载入，请检查链接。';
+        button.disabled = false;
+      }
+    }
+    async function loadState(nextState) {
+      state = nextState || await fetch('./api/state', {cache:'no-store'}).then(r => r.json());
+      players.forEach(p => p.destroy()); players = [];
+      if (state.status === 'COMPLETE') {
+        app.innerHTML = `<section class="complete"><h2>完成啦</h2><p>${state.message}</p></section>`;
+        return;
+      }
+      answer = null; reason = null;
+      taskShownAt = performance.now();
+      const task = state.task;
+      app.innerHTML = `
+        <div class="question-index">第 ${state.completed + 1} / ${state.total} 题</div>
+        <div class="repeat-hint">同一个题面会出现多次，但每次两侧的片段都不同。请只看当前画面独立判断。</div>
+        <div class="question">${task.question}<span class="scope">${task.scope_tag || ''}</span></div>
+        ${task.attend_to ? `<div class="guidance"><strong>提示：</strong>${task.attend_to}</div>` : ''}
+        ${(task.not_asking && task.not_asking.length) ? `<div class="notasking">${task.not_asking.map(n => '· ' + n).join('　')}</div>` : ''}
+        <div class="compare">${['A','B'].map(side => panel(side, task['entity_'+side.toLowerCase()], state.visualizations[side])).join('')}</div>
+        <div class="answers">${state.answer_values.map(v => `<button class="answer" data-value="${v}">${state.answer_labels[v]}<small>${v}</small></button>`).join('')}</div>
+        <div class="reasonbox" id="reasonbox">
+          <strong>为什么无法直接比较？（必选）</strong>
+          <select id="reason"><option value="">选择原因…</option>${state.reason_values.map(r => `<option value="${r}">${state.reason_labels[r]}</option>`).join('')}</select>
+        </div>
+        <div style="margin-top:8px"><button class="submit" id="submit" disabled>提交并继续</button></div>
+        <div class="error" id="error"></div>
+        <div class="notice"><strong>“差不多”和“无法直接比较”不一样。</strong> 差不多 = 你判断两边接近；无法直接比较 = 各有侧重 / 差距太小 / 画面问题 / 问题不清。</div>`;
+      document.querySelectorAll('.answer').forEach(button => button.addEventListener('click', () => choose(button.dataset.value)));
+      document.querySelector('#submit').addEventListener('click', submit);
+      document.querySelector('#reason').addEventListener('change', e => { reason = e.target.value || null; refreshSubmit(); });
+      players = ['A','B'].map(side => makePlayer(side, state.visualizations[side]));
+    }
+    function refreshSubmit() {
+      const ok = answer && (answer !== 'CANNOT_JUDGE' || reason);
+      document.querySelector('#submit').disabled = !ok;
+    }
+    function panel(side, entity, visual) {
+      const meta = entity.neutral_metadata || {};
+      const bits = [`样本 ${entity.display_id}`, 'NM'];
+      bits.push(visual.beatmap_id == null ? 'BID 未提供' : `BID ${visual.beatmap_id}`);
+      bits.push(visual.circle_size == null ? 'CS 未提供' : `CS ${visual.circle_size}`);
+      bits.push(visual.approach_rate == null ? 'AR 未提供' : `AR ${visual.approach_rate}`);
+      if (meta.object_count) bits.push(`${meta.object_count} 个物件`);
+      if (meta.bpm_max) bits.push(`最高 ${Math.round(meta.bpm_max)} BPM`);
+      return `<section class="panel"><div class="panel-head"><span class="side">${side}</span><span class="meta">${bits.join(' · ')}</span></div><canvas id="canvas${side}" width="768" height="576"></canvas><div class="transport"><button class="play" id="play${side}">播放</button><input id="seek${side}" type="range" min="0" max="1000" value="0"><span class="time" id="time${side}">0:00 / 0:00</span><audio id="audio${side}" preload="metadata" src="./api/audio/${encodeURIComponent(visual.display_id)}"></audio></div></section>`;
+    }
+    function choose(value) {
+      answer = value;
+      document.querySelectorAll('.answer').forEach(b => b.classList.toggle('selected', b.dataset.value === value));
+      document.querySelector('#reasonbox').style.display = value === 'CANNOT_JUDGE' ? 'block' : 'none';
+      if (value !== 'CANNOT_JUDGE') reason = null;
+      refreshSubmit();
+    }
+    async function submit() {
+      if (!answer || (answer === 'CANNOT_JUDGE' && !reason)) return;
+      const button = document.querySelector('#submit');
+      button.disabled = true;
+      document.querySelector('#error').textContent = '';
+      players.forEach(p => p.pause());
+      try {
+        const suffix = myParticipant ? `?participant=${encodeURIComponent(myParticipant)}` : '';
+        const response = await fetch('./api/respond' + suffix, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+          answer,
+          cannot_judge_reason: reason,
+          latency_ms: Math.max(0, Math.round(performance.now()-taskShownAt)),
+        })});
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || '提交失败');
+        progressText.textContent = `${body.state.completed} / ${body.state.total}`;
+        progressBar.style.width = `${100*body.state.completed/body.state.total}%`;
+        await loadState(body.state);
+      } catch (error) {
+        document.querySelector('#error').textContent = '提交失败，请重试。';
+        button.disabled = false;
+      }
+    }
+    function makePlayer(side, data) {
+      const canvas = document.querySelector('#canvas'+side), ctx = canvas.getContext('2d');
+      const audio = document.querySelector('#audio'+side), play = document.querySelector('#play'+side), seek = document.querySelector('#seek'+side), time = document.querySelector('#time'+side);
+      audio.muted = agentQaMuted;
+      audio.volume = 0.5;  // half volume by explicit user request (2026-08-15)
+      const windowData = data.context_window || data.playable_window;
+      const start = typeof windowData === 'object' ? windowData.start_ms : data.timeline.start_ms;
+      const end = typeof windowData === 'object' ? windowData.end_ms : data.timeline.end_ms;
+      const preempt = Number.isFinite(Number(data.approach_preempt_ms)) ? Number(data.approach_preempt_ms) : 1200;
+      let raf = 0, initialized = false;
+      const relevant = data.objects.filter(o => o.end_ms >= start-preempt && o.start_ms <= end+preempt);
+      const scaleX=748/512, scaleY=556/384, radius=Math.max(8,data.circle_radius_px*((scaleX+scaleY)/2));
+      function pathPosition(path, progress){
+        if(!path.length) return null;
+        if(path.length===1) return path[0];
+        const lengths=[0]; let total=0;
+        for(let i=1;i<path.length;i++){ total+=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]); lengths.push(total); }
+        if(total<=0) return path[0];
+        const target=Math.max(0,Math.min(1,progress))*total;
+        let i=1; while(i<lengths.length && lengths[i]<target) i++;
+        if(i>=path.length) return path[path.length-1];
+        const segment=lengths[i]-lengths[i-1], t=segment>0?(target-lengths[i-1])/segment:0;
+        return [path[i-1][0]+(path[i][0]-path[i-1][0])*t,path[i-1][1]+(path[i][1]-path[i-1][1])*t];
+      }
+      function draw() {
+        const now = audio.currentTime*1000;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#100f13'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.strokeStyle='#3e3340'; ctx.lineWidth=2; ctx.strokeRect(10,10,748,556);
+        const visible = relevant.filter(o => {
+          const approaching = now >= o.start_ms-preempt && now < o.start_ms;
+          const sliderActive = o.type==='slider' && now >= o.start_ms && now <= o.end_ms;
+          return approaching || sliderActive;
+        });
+        visible.sort((a,b)=>b.start_ms-a.start_ms).forEach((o,index)=>{
+          const x=10+o.x/512*748, y=10+o.y/384*556;
+          const approaching=now>=o.start_ms-preempt && now<o.start_ms;
+          const active=o.type==='slider' && o.start_ms<=now && o.end_ms>=now;
+          if(o.type==='slider' && o.slider_path.length){
+            ctx.beginPath(); ctx.moveTo(10+o.slider_path[0][0]/512*748,10+o.slider_path[0][1]/384*556); o.slider_path.slice(1).forEach(p=>ctx.lineTo(10+p[0]/512*748,10+p[1]/384*556));
+            ctx.strokeStyle=active?'#ff8dc0':'#765168'; ctx.lineWidth=radius*1.9; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+            ctx.strokeStyle='#24151e'; ctx.lineWidth=radius*1.35; ctx.stroke();
+            if(active && o.end_ms>o.start_ms){
+              const travel=sliderTravelProgress(now,o.start_ms,o.end_ms,o.slider_spans);
+              const ball=pathPosition(o.slider_path,travel);
+              if(ball){ const bx=10+ball[0]/512*748, by=10+ball[1]/384*556; ctx.beginPath(); ctx.arc(bx,by,radius*.72,0,Math.PI*2); ctx.fillStyle='#fff2f8'; ctx.fill(); ctx.strokeStyle='#ff4f9c'; ctx.lineWidth=4; ctx.stroke(); ctx.beginPath(); ctx.arc(bx,by,radius*1.35,0,Math.PI*2); ctx.strokeStyle='#ff8dc077'; ctx.lineWidth=3; ctx.stroke(); }
+            }
+          }
+          if(approaching){
+            const dt=o.start_ms-now, approach=1+dt/preempt*1.8;
+            ctx.beginPath(); ctx.arc(x,y,radius*approach,0,Math.PI*2); ctx.strokeStyle='#ff8dc099'; ctx.lineWidth=2; ctx.stroke();
+            ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fillStyle='#d9c8d4'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+            ctx.fillStyle='#22131b'; ctx.font='bold 16px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(o.object_index+1),x,y);
+          }
+        });
+        const playable = data.playable_window;
+        if(typeof playable==='object' && (now<playable.start_ms || now>playable.end_ms)){
+          ctx.fillStyle='#ffb5d4'; ctx.font='14px Segoe UI'; ctx.textAlign='left'; ctx.fillText(now<playable.start_ms?'前置上下文':'后置上下文',22,34);
+        }
+        seek.value = String(Math.max(0,Math.min(1000,(now-start)/(end-start)*1000)));
+        time.textContent = `${fmt(Math.max(0,now-start))} / ${fmt(end-start)}`;
+        if(!audio.paused) raf=requestAnimationFrame(draw);
+      }
+      function ensureStart(){ if(!initialized){ audio.currentTime=Math.max(0,start/1000); initialized=true; draw(); } }
+      audio.addEventListener('loadedmetadata', ensureStart);
+      audio.addEventListener('seeked', draw);
+      audio.addEventListener('ended', ()=>{play.textContent='播放'; draw();});
+      play.addEventListener('click', async ()=>{
+        players.forEach(p=>{ if(p.side!==side) p.pause(); });
+        ensureStart();
+        if(audio.paused){ if(audio.currentTime*1000>=end) audio.currentTime=start/1000; await audio.play(); play.textContent='暂停'; draw(); }
+        else { audio.pause(); play.textContent='播放'; draw(); }
+      });
+      seek.addEventListener('input',()=>{ initialized=true; audio.currentTime=(start+(end-start)*Number(seek.value)/1000)/1000; draw(); });
+      function watchdog(){ if(audio.currentTime*1000>=end){ audio.pause(); play.textContent='播放'; audio.currentTime=start/1000; } }
+      audio.addEventListener('timeupdate', watchdog);
+      if(audio.readyState>0) ensureStart(); else draw();
+      return {side, pause(){audio.pause();play.textContent='播放';cancelAnimationFrame(raf);draw();}, destroy(){this.pause();audio.src='';},};
+    }
+    if (state && state.status === 'COMPLETE') { /* handled in loadState */ }
+    sessionGate();
+  </script>
+</body>
+</html>

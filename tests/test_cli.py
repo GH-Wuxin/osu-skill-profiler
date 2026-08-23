@@ -5,7 +5,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from osu_skill_profiler.cli.main import main
+from osu_skill_profiler.cli.main import _emit, main
 from osu_skill_profiler.dataset.manifest import checksum_file
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -101,6 +101,12 @@ class CliTests(unittest.TestCase):
             self._quiet(["profile-map", str(FIXTURES / "unusual_sv.osu"), "--out", str(first)])
             self._quiet(["profile-map", str(FIXTURES / "unusual_sv.osu"), "--out", str(second)])
             self.assertEqual(first.read_bytes(), second.read_bytes())
+
+    def test_emit_rejects_nonfinite(self):
+        with self.assertRaises(ValueError):
+            _emit({"value": float("nan")}, None)
+        with self.assertRaises(ValueError):
+            _emit({"value": float("inf")}, None)
 
     def test_missing_file_returns_error(self):
         code, _ = self._quiet(["profile-map", str(FIXTURES / "nope.osu")])

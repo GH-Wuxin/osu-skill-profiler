@@ -1,11 +1,15 @@
 """Minimal CLI.
 
 Commands:
-  profile-map MAP.OSU          -> versioned skill-profile JSON
-  extract-features MAP.OSU     -> full-map deterministic features
-  inspect-segments MAP.OSU     -> segment representation
-  validate-dataset MANIFEST    -> manifest validation report
-  validate-profile PROFILE     -> output schema validation
+  profile-map MAP.OSU                 -> versioned skill-profile JSON
+  extract-features MAP.OSU            -> full-map deterministic features
+  extract-local-signals MAP.OSU       -> per-object Local Signal layer (v0.3)
+  extract-reference-signals MAP.OSU   -> per-object Official Reference layer
+                                         (v0.2, REFERENCE_ONLY)
+  inspect-segments MAP.OSU            -> segment representation
+  validate-dataset MANIFEST           -> manifest validation report
+  validate-profile PROFILE            -> output schema validation
+  taxonomy                            -> print the provisional taxonomy
 """
 
 from __future__ import annotations
@@ -29,7 +33,7 @@ from ..taxonomy import taxonomy_version
 
 
 def _emit(payload: dict, out: str | None) -> None:
-    text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n"
     if out:
         Path(out).write_text(text, encoding="utf-8")
         print(f"written: {out}")

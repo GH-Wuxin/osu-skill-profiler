@@ -15,7 +15,7 @@ from .base import WEAK_LABEL_DISCLAIMER, WeakLabelEvidence, WeakLabelResult, Wea
 
 
 def canonical_json(value) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str, allow_nan=False)
 
 
 def checksum_normalized(nmap: NormalizedBeatmap) -> str:

@@ -7,7 +7,12 @@ from osu_skill_profiler.features.extractor import FeatureExtractor
 from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import parse_osu
 from osu_skill_profiler.segments.fixed_time import FixedTimeWindowStrategy
-from osu_skill_profiler.weak_supervision.engine import apply_weak_rules, checksum_normalized, save_weak_labels
+from osu_skill_profiler.weak_supervision.engine import (
+    apply_weak_rules,
+    canonical_json,
+    checksum_normalized,
+    save_weak_labels,
+)
 from osu_skill_profiler.weak_supervision.rules import CONSERVATIVE_RULES
 
 
@@ -68,6 +73,11 @@ class WeakSupervisionTests(unittest.TestCase):
         first = self._run(_stream_map())
         second = self._run(_stream_map())
         self.assertEqual([record.as_dict() for record in first], [record.as_dict() for record in second])
+
+    def test_canonical_json_rejects_nonfinite(self):
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.assertRaises(ValueError):
+                canonical_json({"value": value})
 
     def test_save_load_roundtrip(self):
         records = self._run(_stream_map())

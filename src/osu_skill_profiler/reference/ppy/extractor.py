@@ -1,4 +1,4 @@
-"""Reference Signal extraction (Layer B, v0.1).
+"""Reference Signal extraction (Layer B, v0.2 current; v0.1 replayable).
 
 ``ReferenceSignalExtractor.extract`` runs the pinned ppy/osu per-object
 evaluators over the file-order timeline and aligns them with stable object

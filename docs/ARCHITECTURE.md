@@ -7,10 +7,12 @@
   -> parser/            Beatmap (deterministic, validated)
   -> parser/normalized  NormalizedBeatmap (object-level numeric view)
   -> features/          FeatureExtractor (map-level and segment-level measurements)
-  -> signals/           LocalSignalExtractor (per-object v0.2 observable signals)
+  -> signals/           LocalSignalExtractor (per-object v0.3 observable `ls.*` signals)
+  -> reference/         Official Reference layer v0.2 (`ref.ppy.*`, REFERENCE_ONLY)
   -> segments/          fixed-time or fixed-count segmentation
   -> dataset/           manifest + leakage-safe splits (data science layer)
-  -> weak_supervision/  conservative candidate rules with provenance
+  -> weak_supervision/  weak-label prototype + Weak Evidence Infrastructure v0.1
+  -> active_learning/   pairwise annotation / HUMAN evidence contracts v0.1
   -> models/            SkillProfiler interface + deterministic baseline
   -> schema/            public output + annotation contracts
   -> cli/               user-facing commands
@@ -51,9 +53,10 @@ needs the training stack installed.
 
 ### signals
 
-- `contract.py`: machine-readable v0.2 `ls.*` schema (35 entries, 28 numeric
-  model-input signals), pinned upstream revision, and the v0.1 -> v0.2
-  migration table (`migration_table()`).
+- `contract.py`: machine-readable current v0.3 `ls.*` schema (38 entries, 31
+  numeric model-input signals), the frozen v0.2 schema (35 entries, 28 numeric
+  model-input signals) for explicit replay, pinned upstream revision, and the
+  v0.1 -> v0.2 migration table (`migration_table()`).
 - `extractor.py`: per-object observable signal extraction in `.osu` file order
   with `time_sorted_index` preserved, plus fixed-time 5s segment summaries
   (mean/p90/max per numeric signal). Never emits official difficulty finals or
@@ -64,6 +67,16 @@ needs the training stack installed.
 - `slider.py`: slider velocity/duration, nested tick/repeat/tail events, and
   the follow-circle lazy cursor simulation (lazy end position, lazy travel
   distance/time), with span/tick guards for pathological sliders.
+
+### reference
+
+- `ppy/contract.py`: machine-readable Official Reference contract v0.2
+  (`ref.ppy.*`; v0.1 replayable). Every value is `OFFICIAL_REFERENCE`,
+  `reference_only`, `never_ground_truth`, `model_input_safe=false`.
+- `ppy/preprocess.py` / `ppy/evaluators.py` / `ppy/diff_utils.py`:
+  independent reimplementation of the pinned ppy/osu per-object evaluators
+  (commit `b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e`, difficulty version
+  `20260706`). No final difficulty, strain, star rating or PP is computed.
 
 ### segments
 
@@ -84,18 +97,40 @@ needs the training stack installed.
 
 - `manifest.py`: manifest validation and optional SHA-256 checksum
   verification without embedding beatmap files in git.
-- `split.py`: beatmapset-disjoint (default) and mapper-disjoint (reserved)
-  splits; ungrouped samples are their own group so they can never leak across
-  folds.
+- `split_v01.py`: canonical v0.1 split implementation — SHA-256-ranked
+  components, train/val/test (80/10/10), set/mapper/strict disjoint variants,
+  duplicate checksums always unioned. `split.py` is the legacy compatibility
+  module and is not used to generate the audited v01/v02 artifacts.
 
 ### weak_supervision
 
 - `base.py`: `WeakLabelRule` protocol, `WeakLabelResult`,
-  `WeakLabelEvidence` with full provenance.
+  `WeakLabelEvidence` with full provenance (legacy prototype surface).
 - `rules.py`: three deliberately conservative demo rules (extreme spacing,
   long dense section, rhythm irregularity), confidence <= 0.35.
 - `engine.py`: applies rules, computes an input checksum, and persists
   versioned weak-label JSON.
+- `contracts_v01.py` / `registry_v01.py` / `pilot_v01.py` /
+  `runtime_v01.py` / `audit_v01.py` / `leakage_v01.py` / `v01.py`: Weak
+  Evidence Infrastructure v0.1 — versioned propositions/sources/rules,
+  lineage DAG, first-class abstention, strict finite serialization, and the
+  leakage-gate bridge. Weak evidence is never a label or ground truth.
+
+### active_learning
+
+- `contracts_v01.py`: versioned `AnnotationTask` / `AnnotationResponse` /
+  `HumanEvidenceRecord` contracts, first-class `CANNOT_JUDGE`, orientation
+  canonicalization and a fail-closed response ledger.
+- `selection_v01.py` / `batch_v01.py`: deterministic acquisition scoring and
+  pairwise batch construction with explicit controls.
+- `presentation_v01.py` / `human_presentation_v02.py`: blind presentation
+  contracts/eligibility (weak evidence, split/challenge and control metadata
+  are never shown).
+- `human_pilot_v01.py` / `human_pilot_v02.py` /
+  `collection_analysis_v01.py`: pilot preparation, response storage and
+  content-addressed collection snapshots. `human_training_guard_v01.py`
+  fails closed unless an exact response artifact is explicitly training
+  eligible. HUMAN evidence is never ground truth.
 
 ### schema
 
@@ -132,6 +167,7 @@ All phases are pure functions of their inputs:
 - No trained model, no fabricated accuracy, no human labels, no annotation
   backend, no cloud service, no crawler, no WuxinBot integration, no final
   taxonomy decision.
-- No official difficulty final, no star-rating / PP clone: v0.2 emits only
-  observable `ls.*` local signals; reference-only official concepts stay
-  documented in the audit, never in the feature contract.
+- No official difficulty final, no star-rating / PP clone: Local v0.3 emits
+  only observable `ls.*` signals, and Reference v0.2 emits only
+  `OFFICIAL_REFERENCE` `ref.ppy.*` values; reference-only official concepts
+  never enter the observable feature contract.

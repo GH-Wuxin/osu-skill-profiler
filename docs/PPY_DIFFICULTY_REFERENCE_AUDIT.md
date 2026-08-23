@@ -147,7 +147,7 @@ Classification legend:
 
 The full per-feature review (all 104 features, 18 high-correlation pairs, 8 proxy
 relationships, extreme-value and missingness findings) is in
-[`FEATURE_CONTRACT_REVIEW_V0.md`](FEATURE_CONTRACT_REVIEW_V0.md).
+[`docs/archive/FEATURE_CONTRACT_REVIEW_V0.md`](archive/FEATURE_CONTRACT_REVIEW_V0.md).
 
 Key conclusions:
 

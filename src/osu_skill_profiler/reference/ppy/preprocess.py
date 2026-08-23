@@ -1,9 +1,10 @@
-"""Reference preprocessing boundary (Layer B, v0.1).
+"""Reference preprocessing boundary (Layer B, v0.2 current; v0.1 replayable).
 
 Builds per-object ``RefObject`` records aligned to the .osu file order used
 by the pinned ppy/osu difficulty pipeline.  Observable Layer A primitives
 (distances, timing, angles, lazy slider geometry) are reused from the audited
-Local Signal v0.2 extractor; this module adds only the small reference-only
+Local Signal extractor (v0.3 for Reference v0.2; v0.2 only for Reference v0.1
+replay); this module adds only the small reference-only
 derivations that official evaluators need (small-circle bonus, repeat-slider
 travel distance, raw positions, geometry-blocked flags).
 

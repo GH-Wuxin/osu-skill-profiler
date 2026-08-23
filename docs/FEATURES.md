@@ -1,5 +1,11 @@
 # Feature Catalog
 
+> Current catalog: **Feature v0.2.0** (106 fields).
+> Feature v0.1.0 (104 fields) is frozen and replayable by explicitly
+> constructing `FeatureExtractor(feature_version="0.1.0")`. The differences
+> are documented in
+> [FEATURE_MIGRATION_V01_TO_V02.md](FEATURE_MIGRATION_V01_TO_V02.md).
+
 All features are **deterministic measurements**, not skill judgements. They
 describe what is objectively measurable in a beatmap. Naming a feature
 `temporal.burst_count_125ms` is a measurement; naming something
@@ -56,12 +62,19 @@ Extractor: `src/osu_skill_profiler/features/extractor.py`.
 | feature | unit | meaning |
 | --- | --- | --- |
 | `slider.slider_ratio` | ratio | sliders / all objects |
-| `slider.duration_ms_*` | ms | estimated slider duration from pixel length, SV, BPM |
-| `slider.velocity_px_per_s_*` | px/s | pixel length / duration |
+| `slider.duration_ms_*` | ms | total slider duration across all spans |
+| `slider.velocity_px_per_s_*` | px/s | pixel length / single-span duration |
 | `slider.length_px_*` | px | slider pixel length |
-| `slider.repeats_total` | count | sum of repeat counts |
-| `slider.repeats_max` | count | maximum repeat count |
+| `slider.repeat_count_total` | count | sum of true repeat counts (span count − 1) |
+| `slider.repeat_count_max` | count | maximum true repeat count |
+| `slider.span_count_total` | count | sum of slider span counts from the `.osu` slides field |
+| `slider.span_count_max` | count | maximum slider span count |
 | `slider.to_circle_transition_count` | count | circles immediately following sliders |
+
+> Historical v0.1 fields `slider.repeats_total` / `slider.repeats_max` were
+> raw span counts under misleading repeat names. They remain replayable only
+> under `feature_version="0.1.0"` and are marked
+> `DEPRECATED_FOR_NEW_MODELS` in the leakage registry.
 
 ## Section
 

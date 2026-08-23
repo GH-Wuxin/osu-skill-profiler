@@ -1,0 +1,207 @@
+{
+  "schema_version": "0.1.0",
+  "design_id": "SKILL_PROFILER_MVP_TAXONOMY_V01",
+  "status": "EXPERIMENTAL_DESIGN_NOT_PRODUCTION",
+  "generated_utc": "2026-08-16",
+  "evidence_scale": "All scores are heuristic map-demand estimates. Weights are PRIOR_ART_PRIOR or HEURISTIC unless explicitly HUMAN_CALIBRATED.",
+  "taxonomy_axes": [
+    {
+      "id": "aim",
+      "user_facing_zh": "瞄准 / 位移",
+      "construct_definition": "Cursor movement demand from discrete jumps and continuous angular motion, measured in CS-normalised geometry under timing pressure.",
+      "excluded_meaning": "Not tap rate; not slider duration; not visual reading difficulty.",
+      "prior_art_support": ["ppy/osu SnapAimEvaluator", "ppy/osu FlowAimEvaluator", "oppai-ng DIFF_AIM strain", "rosu-pp AimEvaluator", "osuSkills agility"],
+      "existing_project_signals": [
+        "ls.jump_distance_cs_normalised",
+        "ls.lazy_jump_distance_cs_normalised",
+        "ls.minimum_jump_distance_cs_normalised",
+        "ls.minimum_jump_time_ms",
+        "ls.slider_aware_angle_rad",
+        "spatial.distance_norm_p90",
+        "spatial.distance_norm_p95",
+        "spatial.velocity_norm_per_s_p90",
+        "spatial.angle_deg_p90",
+        "section.velocity_norm_per_s_p90"
+      ],
+      "reference_signals_diagnostic_only": ["ref.ppy.snap_include_sliders", "ref.ppy.snap_exclude_sliders", "ref.ppy.flow_include_sliders", "ref.ppy.flow_exclude_sliders"],
+      "confounds": ["BPM", "AR", "CS", "slider travel", "map length", "displayed metadata"],
+      "confidence": "MEDIUM",
+      "layer": "MAP_DEMAND",
+      "dependency": ["BEATMAP_ONLY"],
+      "future_split_candidates": ["aim_snap", "aim_flow"]
+    },
+    {
+      "id": "precision",
+      "user_facing_zh": "精细控制 / 小目标",
+      "construct_definition": "Fine CS-normalised movement where the human time required to move accurately approaches or exceeds the available inter-object time.",
+      "excluded_meaning": "Not overall accuracy percentage; not raw CS alone.",
+      "prior_art_support": ["osuSkills precision.cpp and GetPrecisionDecayFunc", "ppy/osu NORMALISED_RADIUS scaling and small-circle bonuses"],
+      "existing_project_signals": [
+        "ls.radius_px",
+        "ls.cs_scale",
+        "ls.jump_distance_cs_normalised",
+        "ls.minimum_jump_distance_cs_normalised",
+        "ls.adjusted_delta_time_ms",
+        "difficulty.CS",
+        "spatial.acceleration_norm_per_s2_mean",
+        "spatial.sharp_angle_ratio_lt_60"
+      ],
+      "reference_signals_diagnostic_only": [],
+      "confounds": ["CS", "OD", "short spacing vs speed", "slider density"],
+      "confidence": "MEDIUM",
+      "layer": "MAP_DEMAND",
+      "dependency": ["BEATMAP_ONLY"],
+      "future_split_candidates": []
+    },
+    {
+      "id": "speed",
+      "user_facing_zh": "手速 / 连打",
+      "construct_definition": "Tap-rate demand from short inter-object intervals, OD hit-window caps, and double-tap feasibility penalties.",
+      "excluded_meaning": "Not BPM label alone; not stamina over long maps.",
+      "prior_art_support": ["ppy/osu SpeedEvaluator", "oppai-ng DIFF_SPEED strain", "rosu-pp SpeedEvaluator", "osuSkills stamina tap strains"],
+      "existing_project_signals": [
+        "ls.delta_time_ms",
+        "ls.adjusted_delta_time_ms",
+        "ls.double_tap_feasibility",
+        "ls.hit_window_great_ms",
+        "temporal.bpm_mean",
+        "temporal.bpm_p90",
+        "temporal.delta_time_ms_p50",
+        "temporal.delta_time_ms_p90",
+        "temporal.burst_count_125ms",
+        "temporal.burst_count_250ms",
+        "temporal.object_rate_max_1s"
+      ],
+      "reference_signals_diagnostic_only": ["ref.ppy.speed", "ref.ppy.speed_with_rhythm"],
+      "confounds": ["BPM", "OD", "single-tap vs alternating", "burst threshold"],
+      "confidence": "MEDIUM",
+      "layer": "MAP_DEMAND",
+      "dependency": ["BEATMAP_ONLY"],
+      "future_split_candidates": ["speed_burst", "speed_sustained"]
+    },
+    {
+      "id": "stamina",
+      "user_facing_zh": "耐力 / 持续",
+      "construct_definition": "Sustained tap demand over long continuous dense sections; duration-normalised.",
+      "excluded_meaning": "Not short burst speed; not map duration alone.",
+      "prior_art_support": ["osuSkills stamina.cpp", "osuSkills tenacity.cpp", "ppy/osu Speed skill harmonic strain", "community stamina discussions"],
+      "existing_project_signals": [
+        "temporal.longest_dense_section_ms",
+        "temporal.burst_longest_duration_ms_125ms",
+        "temporal.burst_longest_duration_ms_250ms",
+        "temporal.object_rate_max_1s",
+        "temporal.map_duration_ms",
+        "section.density_per_s_p95",
+        "section.duration_weighted_density_per_s",
+        "ls.adjusted_delta_time_ms"
+      ],
+      "reference_signals_diagnostic_only": ["ref.ppy.speed"],
+      "confounds": ["map length", "density proxy", "breaks", "mapping style"],
+      "confidence": "MEDIUM",
+      "layer": "MAP_DEMAND",
+      "dependency": ["BEATMAP_ONLY"],
+      "future_split_candidates": ["stamina_finger", "stamina_aim"]
+    },
+    {
+      "id": "rhythm",
+      "user_facing_zh": "节奏 / 变化",
+      "construct_definition": "Rhythmic complexity demand: interval diversity, ratio variance, island structure, and double-tap/alternation pressure observable from timing.",
+      "excluded_meaning": "Not finger alternation skill; not BPM alone.",
+      "prior_art_support": ["ppy/osu RhythmEvaluator", "osuSkills tenacity interval scaling", "oppai speed angle/interval heuristics"],
+      "existing_project_signals": [
+        "temporal.rhythm_entropy_bits",
+        "temporal.interval_diversity",
+        "temporal.interval_ratio_mean",
+        "temporal.delta_time_ms_std",
+        "temporal.delta_time_ms_p90",
+        "ls.double_tap_feasibility"
+      ],
+      "reference_signals_diagnostic_only": ["ref.ppy.rhythm"],
+      "confounds": ["BPM", "breaks", "single-tap vs alternating", "slider ticks"],
+      "confidence": "MEDIUM",
+      "layer": "MAP_DEMAND",
+      "dependency": ["BEATMAP_ONLY"],
+      "future_split_candidates": ["finger_control"]
+    },
+    {
+      "id": "reading",
+      "user_facing_zh": "读图 / 反应",
+      "construct_definition": "Visual/reaction demand from AR preempt time, visible-object density, angle repetition and CS-scaled movement under time pressure.",
+      "excluded_meaning": "Not player's perceptual skill; not Hidden/Flashlight mod reading.",
+      "prior_art_support": ["ppy/osu ReadingEvaluator", "osuSkills reaction.cpp Pattern2Reaction/react2Skill", "abraker95/osu-Replay-Analyzer Reading.cpp moving-average cursor model"],
+      "existing_project_signals": [
+        "ls.preempt_ms",
+        "ls.fade_in_ms",
+        "ls.radius_px",
+        "ls.adjusted_delta_time_ms",
+        "ls.jump_distance_cs_normalised",
+        "ls.normalised_vector_angle_rad",
+        "difficulty.AR",
+        "section.density_per_s_p95",
+        "section.peak_density_window_start_ms"
+      ],
+      "reference_signals_diagnostic_only": ["ref.ppy.reading"],
+      "confounds": ["AR", "density", "BPM", "visual repetition", "CS"],
+      "confidence": "MEDIUM",
+      "layer": "MAP_DEMAND",
+      "dependency": ["BEATMAP_ONLY"],
+      "future_split_candidates": ["reading_high_ar", "reading_low_ar", "reading_density"]
+    }
+  ],
+  "path_time_placement": {
+    "decision": "PATH and TIME are validated sub-constructs, not a first-level MVP axis.",
+    "PATH": "belongs to aim as slider-aware flow/snap diagnostic (ls.lazy_travel_distance_cs_normalised p90/max)",
+    "TIME": "UNRESOLVED between stamina (sustained tracking) and a deferred slider_control axis; keep as diagnostic evidence and do not promote to standalone axis until more human data",
+    "rationale": "official ppy/osu has no standalone slider skill; slider travel feeds Aim/Speed evaluators. The current human experiment must not make the whole taxonomy slider-dominated."
+  },
+  "deferred_constructs": [
+    {
+      "id": "finger_control",
+      "layer": "PLAYER_PERFORMANCE",
+      "dependency": ["REPLAY_REQUIRED"],
+      "reason": "requires keypress/replay alternation data; beatmap timing is only a rhythm proxy",
+      "classification": "REPLAY_REQUIRED"
+    },
+    {
+      "id": "accuracy",
+      "layer": "PLAYER_PERFORMANCE",
+      "dependency": ["SCORE_REQUIRED"],
+      "reason": "official pp accuracy consumes score judgement counts, not replay frames",
+      "classification": "SCORE_REQUIRED"
+    },
+    {
+      "id": "consistency",
+      "layer": "PLAYER_SKILL",
+      "dependency": ["MULTI_SCORE_REQUIRED"],
+      "reason": "requires several scores from one player; replay-based consistency would be a future extension",
+      "classification": "MULTI_SCORE_REQUIRED"
+    },
+    {
+      "id": "memory_flashlight",
+      "layer": "MAP_DEMAND (mod-specific)",
+      "dependency": ["MOD_SIGNAL_REQUIRED", "LOCAL_SIGNAL_UNSUPPORTED"],
+      "reason": "official Flashlight difficulty is beatmap+mod state; the current project lacks FL mod signals",
+      "classification": "MOD_SIGNAL_REQUIRED+LOCAL_SIGNAL_UNSUPPORTED"
+    },
+    {
+      "id": "slider_control",
+      "layer": "MAP_DEMAND (sub-construct)",
+      "dependency": ["AMBIGUOUS"],
+      "reason": "only PATH/TIME human evidence; no broad prior-art standalone formula",
+      "classification": "AMBIGUOUS"
+    },
+    {
+      "id": "tech_control",
+      "layer": "UNSPECIFIED",
+      "dependency": ["DEFER"],
+      "reason": "composite convenience label without stable atomic definition",
+      "classification": "DEFER"
+    }
+  ],
+  "rejected_from_mvp": [
+    "deep learning embeddings",
+    "global player percentile",
+    "community tags as labels",
+    "mod-skill mapping without evidence"
+  ]
+}

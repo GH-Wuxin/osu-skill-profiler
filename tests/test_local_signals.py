@@ -1,4 +1,4 @@
-"""Gate A - unit/synthetic tests for Local Signal Layer v0.2.
+"""Gate A - unit/synthetic tests for Local Signal Layer v0.3 (v0.2 replay covered).
 
 Covers the 25ms timing clamps, CS scaling, circle jumps, sliders, repeat
 sliders, lazy end, slider-aware angles, preempt, double-tap feasibility,

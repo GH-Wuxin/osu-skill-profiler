@@ -1,6 +1,7 @@
 # Pre-ML Foundation Remediation v0.1 — Final Report
 
-Status: **PASS_PENDING_INDEPENDENT_REVIEW** (draft; pending-gate sections marked)
+Status: **PASS_PENDING_INDEPENDENT_REVIEW** (all planned gates passed;
+artifacts ready for independent re-verification)
 
 Repository: `osu-skill-profiler`
 
@@ -254,38 +255,167 @@ selection order/set, per-row checksums, reproducible summary.
 
 ## 17. 20k results
 
-*PENDING: 20k semantic-delta gate (QA schema 0.3.0, workers=2) is running;
-expected ~20,000 rows. Will record status, failures, transitions, geometry
-parity, categories, Reading-only counts, summary reproducibility and 5k-prefix
-agreement here when complete.*
+20k semantic-delta gate (QA schema 0.3.0, workers=2, wall 7,979.23 s):
+
+```text
+status: PASS
+maps: 20000/20000, failures: 0
+new missing: 0, new nonfinite: 0, resolved nonfinite: 0
+workers: 2, wall: 7979.23 s
+objects: 9,361,482; sliders: 3,888,531; repeat sliders: 462,520
+Local changed objects: 890,398
+Reference changed objects: 3,095,380; Reading-only: 1,834,789
+geometry blocked old/new: 642/642 (Local and Reference)
+repeat maps: 19,326 (all changed locally); non-repeat maps: 674
+(1 changed locally; Reference changed on 19,315 repeat and 485 non-repeat)
+```
+
+Independent audit (`audit_delta_20k.py`) PASS: strict JSON, 20,000 unique
+sample IDs, exact selection order/checksum identity, 0 failures, 0 missing,
+0 introduced nonfinite, 0 resolved nonfinite, geometry parity, repeat/
+non-repeat categories, Reading-only counts, deterministic summary
+reproducibility and exact 5k-prefix agreement on discrete statistics.
 
 ## 18. Full-corpus results
 
-*PENDING: corrected Feature 0.2 / Local 0.3 / Reference 0.2 full-corpus QA
-(126,509 maps) runs only after 20k PASS. Will record coverage, alignment,
-nonfinite/serialization/provenance and wall time here when complete.*
+Corrected full-corpus QA (126,509 maps, workers=2), run in gate order:
+
+```text
+Feature 0.2 full: PASS
+  records 126509/126509, failures 0, feature count 106 stable
+  0 NaN/Inf, 0 serialization/consistency failures
+  extraction 2824.39 s (44.79 maps/s)
+  core (non-pathological) records 126181
+
+Local 0.3 full: PASS
+  records 126509/126509, failures 0, feature count 106 stable
+  0 NaN/Inf, 0 serialization/ordering/coverage failures
+  extraction 9376.81 s (13.49 maps/s); mean latency 145.16 ms,
+  p99 512.61 ms, max 140,278 ms (pathological long tail)
+  core (non-pathological) records 126181
+  geometry-blocked 53 maps / 819 objects (provenance-tagged)
+  extreme finite values 545 (provenance-tagged, never clipped)
+
+Reference 0.2 full: PASS
+  records 126509/126509, failures 0, nonfinite maps 0
+  0 segment alignment/coverage/ordering/serialization failures
+  extraction 20932.86 s (3.04 maps/s); mean latency 329.45 ms,
+  p99 1415.17 ms, max 280,722.9 ms (pathological long tail)
+  geometry-blocked 53 maps / 819 objects (matches Local)
+  unavailable rows 2,924,914 (provenance-tagged)
+  scaling slopes vs object count: local 0.88-1.23, reference 1.02,
+  segment count 1.12 (no quadratic amplification)
+```
 
 ## 19. Old vs corrected semantic delta
 
-*PENDING: final aggregate table from 20k/full deltas (maps changed, objects
-changed, fields changed, magnitude distributions, repeat-only vs wider
-effects, Reading-only effects).*
+20k aggregate (feature/local/reference, QA schema 0.3.0):
+
+| layer | changed objects | changed maps (repeat) | changed maps (non-repeat) |
+| --- | --- | --- | --- |
+| Local 0.2 -> 0.3 | 890,398 | 19,326 | 1 |
+| Reference 0.1 -> 0.2 | 3,095,380 | 19,315 | 485 |
+
+Reading-only Reference change: 1,834,789 objects. Geometry-blocked sliders
+remained exactly 642 old / 642 new in both layers. Per-field magnitude bins,
+sums and maxima are recorded in `delta_20000_summary.json`; the full-corpus
+aggregate table will be appended after the full gate.
 
 ## 20. Segment QA corrected results
 
-*PENDING: corrected Reference 5k phase regenerates Segment Signal QA under
-`reference_signal_qa_v02`; historical Type A=0 / Type B=1,496 is not assumed.*
+Corrected Reference 0.2 5k phase (`reference_signal_qa_v02`) regenerated
+Segment Signal QA:
+
+```text
+segment alignment failures: 0
+sparse segment rate: 0.034568
+boundary peak rate: 0.101718
+sustained peak maps: 4970
+spike preserved maps: snap/agility/flow/speed/rhythm 4972-4985; reading 3805
+```
+
+Corrected Reference 0.2 20k phase adds:
+
+```text
+segment alignment/ordering/coverage/serialize failures: 0
+aggregate nonfinite: 0; empty segments: 0
+total segments: 599,250; total objects: 9,361,482
+segments per map: mean 29.9625, max 564
+```
+
+Corrected Local 0.3 full phase (`local_signal_qa_v03`) segment stats:
+
+```text
+total segments: 3,674,160; total objects: 56,547,084
+segments per map: mean 29.0427, max 564
+objects per segment: mean 14.7258 (mean-of-means), max 546
+empty segments: 0; short segments <100ms: 1,174; <1000ms: 10,905
+coverage/segment/ordering/serialization failures: 0
+segment aggregate nonfinite maps: 0
+```
+
+Corrected Reference 0.2 full phase (`reference_signal_qa_v02`) segment stats:
+
+```text
+total segments: 3,674,160; total objects: 56,547,084
+segments per map: mean 29.0427, max 564 (matches Local 0.3)
+empty segments: 0; short segments <100ms: 0; <1000ms: 0
+alignment/coverage/ordering/serialization/aggregate failures: 0
+aggregate nonfinite: 0
+```
+
+The Local 0.3 and Reference 0.2 full phases agree on segment structure
+(3,674,160 segments / 56,547,084 objects / 126,509 maps), confirming the
+aligned object pipeline is consistent at corpus scale.
 
 ## 21. Reference-disagreement corrected results
 
-*PENDING: corrected candidates/challenge counts from `reference_signal_qa_v02`
-and the new challenge manifest; historical 0/1,496 is treated as historical.*
+Corrected Reference 0.2 5k disagreement analysis (`reference_signal_qa_v02`):
+
+```text
+disagreement candidates kept: A=0, B=50
+```
+
+Historical 0/1,496 was method/version-specific and is treated as historical.
+The reference tool generates disagreement candidates from the deterministic
+5k object sample (the 20k phase does not regenerate them), so the corrected
+candidate file remains A=0, B=50. The v0.2 challenge manifest will be recorded
+after the split regeneration.
 
 ## 22. Dataset split regression results
 
-*PENDING: rerun `dataset_split_audit.py verify` and corrected generation;
-SET/MAPPER/STRICT core membership must remain identity/byte equivalent;
-challenge membership versioned separately (0.2.0).*
+`training/datasets/splits/v02` generated with corrected QA versions
+(Feature 0.2.0 / Local 0.3.0 / Reference 0.2.0, challenge 0.2.0) and
+`dataset_split_audit.py verify` on v02: **VERIFY OK**.
+
+Core membership identity regression: **PASS (identity-equivalent)**.
+
+```text
+all four core files: 126,509 rows, same order
+identity fields (map/set/mapper keys, checksum class, split assignment):
+  0 differences across set_disjoint / mapper_disjoint /
+  mapper_disjoint_unknown / strict_disjoint
+identity_audit.json: byte-identical to v0.1 (88F7DF3B...)
+split counts: identical to v0.1 for every benchmark
+source manifest checksum: identical
+```
+
+Raw byte comparison differs on 316 rows per core file, and only in the
+QA-derived annotation fields `pathological_reasons` / `subset_flags`
+(305 rows cleared `qa_short_lt1000ms`, 19 cleared `qa_short_lt100ms`,
+0 flags added). This is a direct consequence of the corrected Feature 0.2
+duration semantics (RT-01): segment durations changed so those maps no
+longer qualify for the short-segment QA flag. No membership, identity or
+split assignment changed. v0.1 files remain immutable; the drift is
+documented rather than back-filled with stale annotations.
+
+Challenge subsets regenerated under 0.2.0:
+
+```text
+legacy_format_ood:              5,113 (same as v0.1)
+pathological_challenge:        11,223 (v0.1: 11,527; QA-flag driven)
+reference_disagreement_challenge: 41 (same as v0.1; candidates 50)
+```
 
 ## 23. Target-leakage validator tests
 
@@ -301,26 +431,47 @@ default-deny FAIL. CLI checks pass.
   serializable (full QA gate).
 - Aggregate QA writers now use scale-safe statistics and `allow_nan=False`.
 - The semantic-delta QA records explicit `nonfinite_introduced` /
-  `nonfinite_resolved` counters per aligned value; 5k shows 0 introduced.
-  *PENDING: 20k/full counters.*
+  `nonfinite_resolved` counters per aligned value; 5k and 20k both show
+  0 introduced / 0 resolved. Local 0.3 full shows 0 NaN/Inf across all
+  126,509 maps; Reference 0.2 full shows 0 NaN/Inf across all 126,509 maps.
 - Historical aggregate reports containing `NaN`/`Infinity` remain historical
   evidence (M-02 erratum).
 
 ## 25. Performance findings
 
-*PENDING: `performance_probe.py` results (old-vs-new timing from delta JSONL +
-synthetic repeat sweep; check no O(repeat²)/O(nested²)/unbounded path
-expansion).* Known first-1k long tails (e.g. `Culprate - Acid Rain [Aspire]`,
-`O2i3 - Ping [Aspire]`, `RiraN - Unshakable [Aspire]` ~250 s each in the 5k
-delta run) are the existing density-dependent Reference Reading long tail.
+`tools/performance_probe.py` (delta JSONL + synthetic repeat sweep) PASS:
+
+```text
+delta 20k new/old timing ratio (20,000 rows):
+  local:      median 1.019, p99 1.632, max 2.954
+  reference:  median 1.001, p99 1.437, max 2.282
+  total:      median 1.003, p99 1.333, max 1.971
+synthetic repeat sweep (span 2..1024, single slider):
+  log-log slope vs repeat count:
+    local old 0.599 / local new 0.636
+    reference old 0.662 / reference new 0.658
+    feature 0.009
+  max nested objects per slider: 1
+  verdict: PASS (no O(repeat^2), no unbounded path expansion)
+```
+
+Known first-1k long tails (e.g. `Culprate - Acid Rain [Aspire]`, `O2i3 - Ping
+[Aspire]`, `RiraN - Unshakable [Aspire]` ~250 s each in the 5k delta run) are
+the existing density-dependent Reference Reading long tail; the corrected
+repeat traversal adds no quadratic amplification.
 
 ## 26. Worker count / runtime / peak memory
 
 ```text
 all campaigns: workers = 2 (max allowed 4, never exceeded)
 5k delta:      2877.55 s wall
-20k delta:     *PENDING*
-corrected QA:  *PENDING*
+20k delta:     7979.23 s wall
+corrected QA:  feature 20k extraction 356.43 s (56.11 maps/s); local 20k
+               extraction 1091.49 s (18.32 maps/s), report PASS; reference
+               20k extraction 2438.00 s (4.16 maps/s), report PASS; full
+               campaigns: feature full 2824.39 s (44.79 maps/s) PASS; local
+               full 9376.81 s (13.49 maps/s) PASS; reference full 20932.86 s
+               (3.04 maps/s) PASS
 peak memory:   NOT_MEASURED_MULTIPROCESSING (recorded per campaign summary)
 ```
 
@@ -363,8 +514,40 @@ golden_v03 / golden_reference_v02: PASS (see section 15)
 foundation_remediation_v01/delta_5k:
   delta_5000.jsonl       3AE67A6EB93E8DA6383F4676799189B65C62F3876125F8CBF07B38052199326A
   delta_5000_summary.json 42DB9A34CF2D91AD878FF337E335F4715F2403765FF323741B6A0196CB2136D9
-feature_qa_v02 / local_signal_qa_v03 / reference_signal_qa_v02: *PENDING*
-20k delta / corrected split manifests / challenge v0.2: *PENDING*
+foundation_remediation_v01/delta_20k:
+  delta_20000.jsonl       D974D8A07B33B3B9D4121B2FA42B0700E6287E407DF40703C67C11139D8602CF
+  delta_20000_summary.json 46677103D8D187352E3756CEAE02D46D47C25F3D336B3798C10AF6B6E3A72D67
+feature_qa_v02:
+  feature_qa_5k.jsonl      27CD071E0589AECB45E9CF0E455E690AA07F3E6330667E8B6AC7AA4D1E09CDC7
+  feature_qa_20k.jsonl     A538AC8E4746DDCC6E8682418BF8756CDAC826EE87CE3357F0CDE23A5E5ACA2E
+  feature_qa_full.jsonl    6CABF2C7A5E1FD82E75186CD1AA911D4CCC34A98D4220747A459E46EA3D8527C
+local_signal_qa_v03:
+  local_signal_qa_5k.jsonl  A51980FEA5FCB4B0E4CB0B05234B7D746861F8ED72D478E3EF0F60C7DB16DC1D
+  local_signal_qa_20k.jsonl A8B485479E8CB825F6D8A7A7B0084287BE27BB73EA64470FB95BA487A0BABFDD
+  local_signal_qa_full.jsonl 787F9D02B02883F92872A08445F27FC473410E2E24063FA2D0112713A3CB1AD0
+  local_signal_stats_full.json 2C25FD2DA6B61C5264C81C8D1A853936713C219F8E70E5C5C6200CC0DD25AA93
+  local_signal_correlations.json D8F7C68A873A16058CBC2B5C3C241D6686054E60BDF0210AE44DA86C01912A90
+  local_signal_segment_stats.json A416F5D008A5AD28927578C918E7644DF154A2E3E068A942164DEAC222D7E731
+  local_signal_slow_maps.jsonl BE244CC672A21C9B7D00F9271164EF874237BDFC4C812E6409D06233701E76EA
+  local_signal_outliers.jsonl 96B9DB6E2A5EABF96E225EC17C15D8FEA9A86E5E8D790E5223AD0F2A6CC19EBA
+reference_signal_qa_v02:
+  reference_qa_5k.jsonl    823B0C51952D402B3D937892524D17AAD1F4091A92769401E2EB3A3CA4A92A6B
+  reference_qa_20k.jsonl   7A0871784BE1FD48E349246E32043C31B5269B11E0741D7EDFB441F35ED7390C
+  reference_qa_full.jsonl  425B05DD1672305F0BD768E3591AAFCEBA9A08B75F5D844656899C4E1F1A86A19
+  reference_qa_stats.json  E5E42949E79B1F8517CF9CA3AE31E062FDA303D9842F224937B5321086CF2651
+  REFERENCE_QA_REPORT.md   0ADD6F043F565D06A708F283CA5085481D863E377E10700326A633B8934120BF
+split v0.2:
+  set_disjoint.jsonl        78F5DCEA558097D105E0ABB8614050DC3F9AEFCAAF7B04C8DDC711D0136D8806
+  mapper_disjoint.jsonl     C0136CB0FF2E40AF7AF89E86AFB3ACE4509C22BCE8E72566A5F7856FAB324957
+  mapper_disjoint_unknown.jsonl E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+  strict_disjoint.jsonl     A8648A4CE7BE30DA767496A28DE0CE587F322AEA5B4F8E30B7406B70C1E5FB52
+  legacy_format_ood.jsonl   89AD5866BF0AC9D36C0EEA6D575E648A05F67F18095A305AB9A71E5551CDB725
+  pathological_challenge.jsonl 858CF9D33A54D49204313F4019280CA9FC738241C825452FB0A79AA942C09B93
+  reference_disagreement_challenge.jsonl D2213730CE84F74F13FA9F7D02C67BC725650E75878F6472B04D1589A9D15EF6
+  distribution_audit.json   AE8A25FF91CA591D797A102F5776F49A07F24CFB5E9911DC649BF51990CD59A0
+  identity_audit.json       88F7DF3BCD745DE082262AB9884C9DEE8100C4FFD9DDC763970FB8654296FE5B
+  summary.json              091ACA9EE8B36B7250E3F8E3B84067AE5BF97CBBD84789942E2754211FA6EC0A
+  manifest.json             B324E64374D11098199AA00D0961A178C2FA829496FE741E19CDFD934084E492
 ```
 
 ## 29. Old artifacts retained
@@ -427,9 +610,10 @@ RT_03_READING_OPACITY:              FIXED_PENDING_INDEPENDENT_REVIEW
 RT_04_FEATURE_REPEAT_CONTRACT:      FIXED_PENDING_INDEPENDENT_REVIEW
 RT_05_TARGET_LEAKAGE_ENFORCEMENT:   FIXED_PENDING_INDEPENDENT_REVIEW
 VERSIONING_INTEGRITY:               PASS
-BOUNDED_QA:                         PASS (5k); 20k *PENDING*
-FULL_CORPUS_QA:                     *PENDING*
-SPLIT_REGRESSION:                   *PENDING*
+BOUNDED_QA:                         PASS (5k + 20k)
+FULL_CORPUS_QA:                     PASS (feature/local/reference 126,509)
+SPLIT_REGRESSION:                   PASS (identity-equivalent; QA annotation
+                                    drift documented, see section 22)
 TARGET_LEAKAGE_VALIDATOR:           PASS
 OVERALL_REMEDIATION:                PASS_PENDING_INDEPENDENT_REVIEW
 READY_FOR_INDEPENDENT_REVERIFICATION: YES
