@@ -22,7 +22,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import contract as C
-from . import model_v091 as model
+from . import model_v092 as model
 from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods
 from .osu_db_star_scale import read_nm_star_distribution
