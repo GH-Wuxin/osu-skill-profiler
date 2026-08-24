@@ -1,4 +1,4 @@
-"""CLI for experimental Map Demand (V0.9 default; older versions replayable)."""
+"""CLI for experimental Map Demand (V0.91 default; older versions replayable)."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from map_demand_v01 import model as model_v06  # noqa: E402
 from map_demand_v01 import model_v07  # noqa: E402
 from map_demand_v01 import model_v08  # noqa: E402
 from map_demand_v01 import model_v09  # noqa: E402
+from map_demand_v01 import model_v091  # noqa: E402
 from map_demand_v01.calibration import (  # noqa: E402
     CALIBRATION_ARTIFACT_DIRNAME,
     build_calibration,
@@ -67,6 +68,7 @@ def cmd_build_calibration(args: argparse.Namespace) -> int:
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     model = {
+        "v091": model_v091,
         "v09": model_v09,
         "v06": model_v06,
         "v07": model_v07,
@@ -88,6 +90,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         clock_rate=metadata.get("mod_transform_context", {}).get("clock_rate", 1.0),
         effective_mods=metadata.get("mod_context", {}).get("effective_mods", []),
     )
+    if args.star_anchor is not None:
+        components["v091_nm_star_anchor"] = args.star_anchor
     output = model.analyze_components(
         checksum=checksum,
         requested_mods=args.mods,
@@ -271,9 +275,15 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--mods", nargs="*", default=[])
     analyze.add_argument(
         "--algorithm",
-        choices=("v09", "v08", "v07", "v06"),
-        default="v09",
-        help="V0.9 structural model (default), V0.8/V0.7, or frozen V0.6 replay",
+        choices=("v091", "v09", "v08", "v07", "v06"),
+        default="v091",
+        help="V0.91 de-duplicated soft-anchor model (default), or replay an older model",
+    )
+    analyze.add_argument(
+        "--star-anchor",
+        type=float,
+        default=None,
+        help="optional local NM star rating used only as V0.91's soft scale anchor",
     )
     analyze.add_argument("--out", default=None)
     analyze.set_defaults(func=cmd_analyze)

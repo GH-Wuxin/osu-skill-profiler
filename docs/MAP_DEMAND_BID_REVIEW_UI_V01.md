@@ -4,7 +4,7 @@ This local workbench shortens the human-review loop to:
 
 1. enter a beatmap ID (BID);
 2. resolve the matching `.osu` file from the frozen standard manifest;
-3. select NM or a supported Mod combination and run Map Demand V0.9;
+3. select NM or a supported Mod combination and run Map Demand V0.91;
 4. compare the nine machine scores with human ratings;
 5. append the review to an auditable JSONL file.
 
@@ -26,9 +26,9 @@ The default local inputs are:
 - star database: `G:/osu! 20210821/osu!.db`
 - calibration: `training/datasets/map_demand_calibration_v04_unbounded_star_scale_20k`
 
-The V0.9 result has its own deterministic `mdoverlay_v09:*` calibration
+The V0.91 result has its own deterministic `mdoverlay_v091:*` calibration
 identity and retains the `atomic_v0.8.0` nine-axis human-label schema. Saved
-responses bind the exact algorithm version, so V0.8 and V0.9 machine snapshots
+responses bind the exact algorithm version, so V0.9 and V0.91 machine snapshots
 remain distinguishable without fragmenting compatible human labels.
 
 Override them with `--manifest`, `--songs-root`, `--osu-db`, and

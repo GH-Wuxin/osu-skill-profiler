@@ -13,7 +13,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from map_demand_v01 import contract as C  # noqa: E402
-from map_demand_v01 import model_v09  # noqa: E402
+from map_demand_v01 import model_v091  # noqa: E402
 from map_demand_v01.bid_review_ui_v01 import (  # noqa: E402
     BidMapIndex,
     BidReviewError,
@@ -115,10 +115,20 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         analysis = workbench.analyze_bid(999999)
         self.assertEqual(analysis["beatmap"]["beatmap_id"], 999999)
         self.assertEqual(analysis["beatmap"]["title"], "Synthetic Minimal")
+        self.assertGreater(analysis["analysis_context"]["bpm_max"], 0)
+        self.assertGreater(analysis["analysis_context"]["duration_ms"], 0)
         restarted = self.workbench()
         restarted_analysis = restarted.analyze_bid(999999)
         self.assertEqual(restarted_analysis["beatmap"]["beatmap_id"], 999999)
         self.assertEqual(restarted_analysis["beatmap"]["title"], "Synthetic Minimal")
+        self.assertEqual(
+            restarted_analysis["analysis_context"]["bpm_max"],
+            analysis["analysis_context"]["bpm_max"],
+        )
+        self.assertEqual(
+            restarted_analysis["analysis_context"]["duration_ms"],
+            analysis["analysis_context"]["duration_ms"],
+        )
         with self.assertRaises(BidReviewError) as mismatch:
             workbench.import_osu(999998, imported)
         self.assertEqual(mismatch.exception.code, "BID_MISMATCH")
@@ -190,8 +200,8 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["beatmap"]["beatmap_id"], 123456)
         self.assertEqual(result["identity"]["effective_mods"], [])
         self.assertEqual(result["analysis_context"]["clock_rate"], 1.0)
-        self.assertEqual(set(result["axes"]), set(model_v09.AXIS_ORDER))
-        self.assertEqual(result["identity"]["map_demand_version"], "0.9.0")
+        self.assertEqual(set(result["axes"]), set(model_v091.AXIS_ORDER))
+        self.assertEqual(result["identity"]["map_demand_version"], "0.9.1")
         self.assertEqual(result["axes"]["stamina"]["unit"], "bounded_0_10")
         self.assertEqual(result["axes"]["endurance"]["unit"], "bounded_0_10")
         self.assertEqual(result["axes"]["reading"]["unit"], "star_equivalent")
@@ -216,15 +226,15 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(response["ratings"]["endurance"]["qualifier"], "SKIP")
         self.assertTrue(
             response["algorithm_identity"]["calibration_id"].startswith(
-                "mdoverlay_v09:"
+                "mdoverlay_v091:"
             )
         )
         self.assertEqual(
             response["algorithm_identity"]["algorithm_id"],
-                "MAP_DEMAND_ATOMIC_V07",
+            "MAP_DEMAND_ATOMIC_V091",
         )
         self.assertEqual(
-            response["algorithm_identity"]["map_demand_version"], "0.9.0"
+            response["algorithm_identity"]["map_demand_version"], "0.9.1"
         )
         self.assertEqual(response["mod_context"]["requested_mods"], [])
 

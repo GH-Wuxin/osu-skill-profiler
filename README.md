@@ -132,7 +132,8 @@ docs/                设计、算法与契约文档
 - [特征目录与单位](docs/FEATURES.md)
 - [数据清单与拆分契约](docs/DATASET.md)
 - [人工标注契约](docs/HUMAN_ANNOTATION_CONTRACT_V01.md)
-- [谱面需求原子维度 V0.9](docs/MAP_DEMAND_ATOMIC_V07.md)
+- [谱面需求原子维度 V0.91](docs/MAP_DEMAND_ATOMIC_V091.md)
+- [谱面需求原子维度 V0.9（冻结回放）](docs/MAP_DEMAND_ATOMIC_V07.md)
 - [本地 BID/Mod 评审工具](docs/MAP_DEMAND_BID_REVIEW_UI_V01.md)
 - [弱证据契约](docs/WEAK_EVIDENCE_CONTRACT_V01.md)
 
@@ -290,8 +291,9 @@ docs/                design and contract documentation
 - [docs/HUMAN_ANNOTATION_CONTRACT_V01.md](docs/HUMAN_ANNOTATION_CONTRACT_V01.md) - current human annotation contract
 - [docs/MAP_DEMAND_ATOMIC_V05.md](docs/MAP_DEMAND_ATOMIC_V05.md) - V0.7 relative-AR, HD interaction, Flow/Aim transfer, and sustained-clicking revision
 - [docs/MAP_DEMAND_ATOMIC_V06.md](docs/MAP_DEMAND_ATOMIC_V06.md) - V0.8 nine-axis Stamina / Endurance split
-- [docs/MAP_DEMAND_ATOMIC_V07.md](docs/MAP_DEMAND_ATOMIC_V07.md) - V0.9 local Finger Control and structural Reading/HD revision
-- [docs/MAP_DEMAND_BID_REVIEW_UI_V01.md](docs/MAP_DEMAND_BID_REVIEW_UI_V01.md) - local BID/mod review workbench (V0.9 default)
+- [docs/MAP_DEMAND_ATOMIC_V091.md](docs/MAP_DEMAND_ATOMIC_V091.md) - V0.91 de-duplicated mechanics, visible overlap, and soft SR anchor
+- [docs/MAP_DEMAND_ATOMIC_V07.md](docs/MAP_DEMAND_ATOMIC_V07.md) - V0.9 frozen replay
+- [docs/MAP_DEMAND_BID_REVIEW_UI_V01.md](docs/MAP_DEMAND_BID_REVIEW_UI_V01.md) - local BID/mod review workbench (V0.91 default)
 
 ## License
 

@@ -22,7 +22,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import contract as C
-from . import model_v09 as model
+from . import model_v091 as model
 from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods
 from .osu_db_star_scale import read_nm_star_distribution
@@ -426,6 +426,10 @@ class BidReviewWorkbench:
             )
         record = self.index.lookup(beatmap_id)
         map_path = Path(record["path_abs"])
+        relative = str(record.get("relative_path") or record.get("reference") or "")
+        local_stars = self._stars_by_relative_path.get(
+            relative.replace("\\", "/").casefold()
+        )
         local_rows, features, metadata = model.extract_from_path(
             str(map_path), requested_mods=mod_context["requested_mods"]
         )
@@ -439,6 +443,8 @@ class BidReviewWorkbench:
             clock_rate=applied_mod_context.get("clock_rate", 1.0),
             effective_mods=applied_mods.get("effective_mods", []),
         )
+        if local_stars is not None and float(local_stars) > 0.0:
+            components["v091_nm_star_anchor"] = float(local_stars)
         output = model.analyze_components(
             checksum=checksum,
             requested_mods=mod_context["requested_mods"],
@@ -448,14 +454,12 @@ class BidReviewWorkbench:
         )
         output["diagnostics"]["component_warnings"] = warnings
         analysis_id = C.identity_cache_key(output["identity"])
-        relative = str(record.get("relative_path") or record.get("reference") or "")
-        local_stars = self._stars_by_relative_path.get(
-            relative.replace("\\", "/").casefold()
-        )
         rate = float(applied_mod_context.get("clock_rate", 1.0))
         source_metadata = record.get("metadata", {})
         source_bpm = source_metadata.get("bpm_max")
         source_duration = source_metadata.get("duration_ms")
+        computed_bpm = features.get("temporal.bpm_max")
+        computed_duration = features.get("temporal.map_duration_ms")
         axes: dict[str, Any] = {}
         for axis in model.AXIS_ORDER:
             axis_obj = output["axes"].get(axis, {})
@@ -485,9 +489,17 @@ class BidReviewWorkbench:
             "analysis_context": {
                 "clock_rate": rate,
                 "difficulty": metadata.get("difficulty", {}),
-                "bpm_max": None if source_bpm is None else float(source_bpm) * rate,
+                "bpm_max": (
+                    float(computed_bpm)
+                    if source_bpm is None and computed_bpm is not None
+                    else None if source_bpm is None
+                    else float(source_bpm) * rate
+                ),
                 "duration_ms": (
-                    None if source_duration is None else float(source_duration) / rate
+                    float(computed_duration)
+                    if source_duration is None and computed_duration is not None
+                    else None if source_duration is None
+                    else float(source_duration) / rate
                 ),
             },
             "beatmap": {
