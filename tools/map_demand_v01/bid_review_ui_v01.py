@@ -30,6 +30,7 @@ from .osu_db_star_scale import read_nm_star_distribution
 REVIEW_SCHEMA_VERSION = "map_demand_bid_review_v0.1.0"
 STATE_SCHEMA_VERSION = "map_demand_bid_review_state_v0.1.0"
 HUMAN_DISPLAY_CEILING_STARS = 15.0
+MAX_IMPORTED_OSU_BYTES = 4 * 1024 * 1024
 QUALIFIERS = {"APPROXIMATE", "AT_LEAST", "SKIP"}
 REVIEW_AXIS_ORDER = (
     "aim_control",
@@ -51,13 +52,19 @@ class BidReviewError(ValueError):
 
 
 class BidMapIndex:
-    def __init__(self, *, manifest_path: Path, songs_root: Path) -> None:
+    def __init__(
+        self, *, manifest_path: Path, songs_root: Path, cache_root: Path | None = None
+    ) -> None:
         self.manifest_path = manifest_path.resolve()
         self.songs_root = songs_root.resolve()
+        self.cache_root = cache_root.resolve() if cache_root is not None else None
         if not self.manifest_path.is_file():
             raise FileNotFoundError(f"manifest not found: {self.manifest_path}")
         if not self.songs_root.is_dir():
             raise FileNotFoundError(f"Songs root not found: {self.songs_root}")
+        if self.cache_root is not None:
+            self.cache_root.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
         self._records: dict[int, list[dict[str, Any]]] = {}
         with self.manifest_path.open("r", encoding="utf-8") as fh:
             for line_number, line in enumerate(fh, start=1):
@@ -124,13 +131,15 @@ class BidMapIndex:
                 enriched = dict(record)
                 enriched["path_abs"] = str(candidate)
                 self._records.setdefault(beatmap_id, []).append(enriched)
+        self._load_cached_records()
 
     @property
     def beatmap_count(self) -> int:
         return len(self._records)
 
     def lookup(self, beatmap_id: int) -> dict[str, Any]:
-        records = self._records.get(beatmap_id, [])
+        with self._lock:
+            records = list(self._records.get(beatmap_id, []))
         existing = [record for record in records if Path(record["path_abs"]).is_file()]
         unique: dict[str, dict[str, Any]] = {
             str(Path(record["path_abs"]).resolve()).casefold(): record for record in existing
@@ -176,6 +185,112 @@ class BidMapIndex:
             )
         return candidates[0]
 
+    @staticmethod
+    def _parse_imported_metadata(text: str, expected_beatmap_id: int) -> dict[str, Any]:
+        if not text.startswith("osu file format v"):
+            raise BidReviewError("INVALID_OSU_FILE", "missing osu file format header")
+        section = ""
+        values: dict[str, str] = {}
+        difficulty: dict[str, float] = {}
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if line.startswith("[") and line.endswith("]"):
+                section = line[1:-1]
+                continue
+            if ":" not in line or line.startswith("//"):
+                continue
+            key, value = (part.strip() for part in line.split(":", 1))
+            if section == "Metadata":
+                values[key] = value
+            elif section == "Difficulty" and key in {
+                "HPDrainRate", "CircleSize", "OverallDifficulty", "ApproachRate"
+            }:
+                try:
+                    difficulty[key] = float(value)
+                except ValueError:
+                    pass
+        try:
+            embedded_bid = int(values.get("BeatmapID", "0"))
+        except ValueError as exc:
+            raise BidReviewError("INVALID_OSU_FILE", "BeatmapID is not an integer") from exc
+        if embedded_bid != expected_beatmap_id:
+            raise BidReviewError(
+                "BID_MISMATCH",
+                f"requested BID {expected_beatmap_id} but file declares {embedded_bid}",
+            )
+        try:
+            beatmapset_id = int(values.get("BeatmapSetID", "0")) or None
+        except ValueError:
+            beatmapset_id = None
+        return {
+            "beatmap_id": embedded_bid,
+            "beatmapset_id": beatmapset_id,
+            "artist": values.get("ArtistUnicode") or values.get("Artist"),
+            "title": values.get("TitleUnicode") or values.get("Title"),
+            "version": values.get("Version"),
+            "creator": values.get("Creator"),
+            "metadata": {"difficulty": difficulty},
+        }
+
+    def _imported_record(
+        self, beatmap_id: int, content: str, cache_path: Path
+    ) -> dict[str, Any]:
+        encoded = content.encode("utf-8")
+        return {
+            **self._parse_imported_metadata(content, beatmap_id),
+            "relative_path": f"cache/{beatmap_id}.osu",
+            "path_abs": str(cache_path),
+            "sha256": "sha256:" + hashlib.sha256(encoded).hexdigest(),
+            "source": "imported_cache",
+        }
+
+    def _load_cached_records(self) -> None:
+        if self.cache_root is None:
+            return
+        for cache_path in self.cache_root.glob("*.osu"):
+            try:
+                beatmap_id = int(cache_path.stem)
+                encoded = cache_path.read_bytes()
+                if not encoded or len(encoded) > MAX_IMPORTED_OSU_BYTES:
+                    continue
+                content = encoded.decode("utf-8-sig")
+                enriched = self._imported_record(beatmap_id, content, cache_path.resolve())
+            except (ValueError, OSError, UnicodeDecodeError, BidReviewError):
+                # Invalid cache entries never make the service unavailable.
+                continue
+            self._records.setdefault(beatmap_id, []).append(enriched)
+
+    def import_osu(self, beatmap_id: int, content: str) -> dict[str, Any]:
+        if self.cache_root is None:
+            raise BidReviewError("IMPORT_DISABLED", "BID cache is not configured")
+        if isinstance(beatmap_id, bool) or not isinstance(beatmap_id, int) or beatmap_id <= 0:
+            raise BidReviewError("INVALID_BID", "BID must be a positive integer")
+        encoded = content.encode("utf-8")
+        if not encoded or len(encoded) > MAX_IMPORTED_OSU_BYTES:
+            raise BidReviewError("INVALID_OSU_FILE", "osu file is empty or too large")
+        self._parse_imported_metadata(content, beatmap_id)
+        cache_path = (self.cache_root / f"{beatmap_id}.osu").resolve()
+        if cache_path.parent != self.cache_root:
+            raise BidReviewError("INVALID_BID", "cache path escaped its root")
+        temp_path = self.cache_root / f".{beatmap_id}.{uuid.uuid4().hex}.tmp"
+        try:
+            temp_path.write_bytes(encoded)
+            os.replace(temp_path, cache_path)
+        finally:
+            temp_path.unlink(missing_ok=True)
+        enriched = self._imported_record(beatmap_id, content, cache_path)
+        with self._lock:
+            existing = [
+                item for item in self._records.get(beatmap_id, [])
+                if item.get("source") != "imported_cache"
+            ]
+            self._records[beatmap_id] = [*existing, enriched]
+        return {
+            "status": "IMPORTED",
+            "beatmap_id": beatmap_id,
+            "sha256": enriched["sha256"],
+        }
+
 
 class BidReviewWorkbench:
     def __init__(
@@ -187,11 +302,14 @@ class BidReviewWorkbench:
         responses_path: Path,
         reviewer_id: str,
         osu_db_path: Path | None = None,
+        cache_root: Path | None = None,
     ) -> None:
         self.reviewer_id = reviewer_id.strip()
         if not self.reviewer_id:
             raise ValueError("reviewer_id is required")
-        self.index = BidMapIndex(manifest_path=manifest_path, songs_root=songs_root)
+        self.index = BidMapIndex(
+            manifest_path=manifest_path, songs_root=songs_root, cache_root=cache_root
+        )
         self.calibration = load_calibration(calibration_path.resolve())
         self.responses_path = responses_path.resolve()
         self.responses_path.parent.mkdir(parents=True, exist_ok=True)
@@ -206,6 +324,9 @@ class BidReviewWorkbench:
         if osu_db_path is not None and osu_db_path.is_file():
             star_info = read_nm_star_distribution(osu_db_path)
             self._stars_by_relative_path = dict(star_info["relative_path_to_nm_stars"])
+
+    def import_osu(self, beatmap_id: int, content: str) -> dict[str, Any]:
+        return self.index.import_osu(beatmap_id, content)
 
     def _load_response_index(self) -> int:
         count = 0
@@ -504,9 +625,9 @@ def make_bid_review_handler(workbench: BidReviewWorkbench, html_path: Path):
             self.end_headers()
             self.wfile.write(body)
 
-        def _payload(self) -> dict[str, Any]:
+        def _payload(self, *, max_bytes: int = 128 * 1024) -> dict[str, Any]:
             length = int(self.headers.get("Content-Length", "0"))
-            if length <= 0 or length > 128 * 1024:
+            if length <= 0 or length > max_bytes:
                 raise BidReviewError("INVALID_REQUEST", "invalid request size")
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
@@ -532,7 +653,11 @@ def make_bid_review_handler(workbench: BidReviewWorkbench, html_path: Path):
         def do_POST(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
             try:
-                payload = self._payload()
+                payload = self._payload(
+                    max_bytes=MAX_IMPORTED_OSU_BYTES + 128 * 1024
+                    if path == "/api/import"
+                    else 128 * 1024
+                )
                 if path == "/api/analyze":
                     raw_bid = payload.get("beatmap_id")
                     if isinstance(raw_bid, bool):
@@ -549,6 +674,22 @@ def make_bid_review_handler(workbench: BidReviewWorkbench, html_path: Path):
                             "INVALID_MODS", "mods must be a string or an array"
                         )
                     result = workbench.analyze_bid(beatmap_id, requested_mods=mods)
+                elif path == "/api/import":
+                    raw_bid = payload.get("beatmap_id")
+                    if isinstance(raw_bid, bool):
+                        raise BidReviewError("INVALID_BID", "BID must be a positive integer")
+                    try:
+                        beatmap_id = int(raw_bid)
+                    except (TypeError, ValueError) as exc:
+                        raise BidReviewError(
+                            "INVALID_BID", "BID must be a positive integer"
+                        ) from exc
+                    content = payload.get("content")
+                    if not isinstance(content, str):
+                        raise BidReviewError(
+                            "INVALID_OSU_FILE", "content must be an osu file string"
+                        )
+                    result = workbench.import_osu(beatmap_id, content)
                 elif path == "/api/response":
                     result = workbench.save_response(payload)
                 else:
@@ -582,6 +723,7 @@ def serve_bid_review_ui(
     responses_path: Path,
     reviewer_id: str,
     osu_db_path: Path | None,
+    cache_root: Path | None,
     host: str,
     port: int,
     open_browser: bool,
@@ -593,6 +735,7 @@ def serve_bid_review_ui(
         responses_path=responses_path,
         reviewer_id=reviewer_id,
         osu_db_path=osu_db_path,
+        cache_root=cache_root,
     )
     html_path = Path(__file__).with_name("bid_review_ui_v01.html")
     server = ThreadingHTTPServer((host, port), make_bid_review_handler(workbench, html_path))

@@ -224,6 +224,7 @@ def cmd_bid_review_ui(args: argparse.Namespace) -> int:
     manifest_path = (root / args.manifest).resolve()
     calibration_path = (root / args.calibration_dir).resolve()
     responses_path = (root / args.responses).resolve()
+    cache_root = (root / args.cache_dir).resolve()
     osu_db_path = (
         Path(args.osu_db).resolve()
         if args.osu_db
@@ -240,6 +241,7 @@ def cmd_bid_review_ui(args: argparse.Namespace) -> int:
         responses_path=responses_path,
         reviewer_id=args.reviewer_id,
         osu_db_path=osu_db_path,
+        cache_root=cache_root,
         host=args.host,
         port=args.port,
         open_browser=not args.no_open,
@@ -339,6 +341,9 @@ def main(argv: list[str] | None = None) -> int:
     bid_ui.add_argument("--manifest", default="training/datasets/std_manifest.json")
     bid_ui.add_argument("--songs-root", default=None)
     bid_ui.add_argument("--osu-db", default=None)
+    bid_ui.add_argument(
+        "--cache-dir", default="training/datasets/map_demand_bid_cache"
+    )
     bid_ui.add_argument("--calibration-dir", default=str(DEFAULT_CALIBRATION_DIR))
     bid_ui.add_argument(
         "--responses",

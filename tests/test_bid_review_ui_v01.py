@@ -66,6 +66,7 @@ class BidReviewWorkbenchTests(unittest.TestCase):
             json.dumps(calibration_payload()), encoding="utf-8"
         )
         self.responses = self.root / "responses.jsonl"
+        self.cache = self.root / "cache"
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
@@ -77,6 +78,7 @@ class BidReviewWorkbenchTests(unittest.TestCase):
             calibration_path=self.calibration,
             responses_path=self.responses,
             reviewer_id="tester",
+            cache_root=self.cache,
         )
 
     def test_bid_index_resolves_only_manifest_paths(self):
@@ -101,6 +103,25 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         )
         index = BidMapIndex(manifest_path=self.manifest, songs_root=self.songs)
         self.assertEqual(index.lookup(123456)["path_abs"], str(self.map_path.resolve()))
+
+    def test_imported_osu_is_validated_cached_and_hot_indexed(self):
+        workbench = self.workbench()
+        imported = (ROOT / "tests" / "fixtures" / "minimal.osu").read_text(
+            encoding="utf-8"
+        ).replace("BeatmapID:1000001", "BeatmapID:999999")
+        result = workbench.import_osu(999999, imported)
+        self.assertEqual(result["status"], "IMPORTED")
+        self.assertTrue((self.cache / "999999.osu").is_file())
+        analysis = workbench.analyze_bid(999999)
+        self.assertEqual(analysis["beatmap"]["beatmap_id"], 999999)
+        self.assertEqual(analysis["beatmap"]["title"], "Synthetic Minimal")
+        restarted = self.workbench()
+        restarted_analysis = restarted.analyze_bid(999999)
+        self.assertEqual(restarted_analysis["beatmap"]["beatmap_id"], 999999)
+        self.assertEqual(restarted_analysis["beatmap"]["title"], "Synthetic Minimal")
+        with self.assertRaises(BidReviewError) as mismatch:
+            workbench.import_osu(999998, imported)
+        self.assertEqual(mismatch.exception.code, "BID_MISMATCH")
 
     def test_manifest_path_escape_is_rejected(self):
         self.manifest.write_text(
