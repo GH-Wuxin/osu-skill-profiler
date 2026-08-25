@@ -1,4 +1,4 @@
-"""CLI for experimental Map Demand (V0.92.2 default; older versions replayable)."""
+"""CLI for experimental Map Demand (V0.95 default; older versions replayable)."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from map_demand_v01 import model_v08  # noqa: E402
 from map_demand_v01 import model_v09  # noqa: E402
 from map_demand_v01 import model_v091  # noqa: E402
 from map_demand_v01 import model_v092  # noqa: E402
+from map_demand_v01 import model_v095  # noqa: E402
 from map_demand_v01.calibration import (  # noqa: E402
     CALIBRATION_ARTIFACT_DIRNAME,
     build_calibration,
@@ -69,6 +70,7 @@ def cmd_build_calibration(args: argparse.Namespace) -> int:
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     model = {
+        "v095": model_v095,
         "v092": model_v092,
         "v091": model_v091,
         "v09": model_v09,
@@ -277,15 +279,15 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--mods", nargs="*", default=[])
     analyze.add_argument(
         "--algorithm",
-        choices=("v092", "v091", "v09", "v08", "v07", "v06"),
-        default="v092",
-        help="V0.92.2 movement/sustain model (default), or replay an older model",
+        choices=("v095", "v092", "v091", "v09", "v08", "v07", "v06"),
+        default="v095",
+        help="V0.95 evidence-separated model (default), or replay an older model",
     )
     analyze.add_argument(
         "--star-anchor",
         type=float,
         default=None,
-        help="optional local NM star rating used as V0.91/V0.92's soft scale anchor",
+        help="optional local NM star rating used as V0.91+ soft scale anchor",
     )
     analyze.add_argument("--out", default=None)
     analyze.set_defaults(func=cmd_analyze)

@@ -13,7 +13,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from map_demand_v01 import contract as C  # noqa: E402
-from map_demand_v01 import model_v092  # noqa: E402
+from map_demand_v01 import model_v095  # noqa: E402
 from map_demand_v01.bid_review_ui_v01 import (  # noqa: E402
     BidMapIndex,
     BidReviewError,
@@ -200,8 +200,8 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["beatmap"]["beatmap_id"], 123456)
         self.assertEqual(result["identity"]["effective_mods"], [])
         self.assertEqual(result["analysis_context"]["clock_rate"], 1.0)
-        self.assertEqual(set(result["axes"]), set(model_v092.AXIS_ORDER))
-        self.assertEqual(result["identity"]["map_demand_version"], "0.9.2.2")
+        self.assertEqual(set(result["axes"]), set(model_v095.AXIS_ORDER))
+        self.assertEqual(result["identity"]["map_demand_version"], "0.9.5.0")
         self.assertEqual(result["axes"]["stamina"]["unit"], "bounded_0_10")
         self.assertEqual(result["axes"]["endurance"]["unit"], "bounded_0_10")
         self.assertEqual(result["axes"]["reading"]["unit"], "star_equivalent")
@@ -226,15 +226,15 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(response["ratings"]["endurance"]["qualifier"], "SKIP")
         self.assertTrue(
             response["algorithm_identity"]["calibration_id"].startswith(
-                "mdoverlay_v0922:"
+                "mdoverlay_v095:"
             )
         )
         self.assertEqual(
             response["algorithm_identity"]["algorithm_id"],
-            "MAP_DEMAND_ATOMIC_V0922",
+            "MAP_DEMAND_ATOMIC_V095",
         )
         self.assertEqual(
-            response["algorithm_identity"]["map_demand_version"], "0.9.2.2"
+            response["algorithm_identity"]["map_demand_version"], "0.9.5.0"
         )
         self.assertEqual(response["mod_context"]["requested_mods"], [])
 
