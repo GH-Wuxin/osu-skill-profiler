@@ -201,7 +201,14 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["identity"]["effective_mods"], [])
         self.assertEqual(result["analysis_context"]["clock_rate"], 1.0)
         self.assertEqual(set(result["axes"]), set(model_v095.AXIS_ORDER))
-        self.assertEqual(result["identity"]["map_demand_version"], "0.9.5.0")
+        self.assertEqual(result["identity"]["map_demand_version"], "0.9.5.2")
+        self.assertEqual(result["experimental_type"]["stage"], "EXPERIMENTAL")
+        self.assertIn(result["experimental_type"]["status"], {"PROPOSED", "ABSTAINED"})
+        self.assertEqual(
+            result["experimental_type"]["classifier_version"],
+            result["experimental_type"]["summary"]["classifier_version"],
+        )
+        self.assertGreaterEqual(len(result["experimental_type"]["sections"]), 1)
         self.assertEqual(result["axes"]["stamina"]["unit"], "bounded_0_10")
         self.assertEqual(result["axes"]["endurance"]["unit"], "bounded_0_10")
         self.assertEqual(result["axes"]["reading"]["unit"], "star_equivalent")
@@ -231,10 +238,10 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         )
         self.assertEqual(
             response["algorithm_identity"]["algorithm_id"],
-            "MAP_DEMAND_ATOMIC_V095",
+            "MAP_DEMAND_ATOMIC_V0952",
         )
         self.assertEqual(
-            response["algorithm_identity"]["map_demand_version"], "0.9.5.0"
+            response["algorithm_identity"]["map_demand_version"], "0.9.5.2"
         )
         self.assertEqual(response["mod_context"]["requested_mods"], [])
 

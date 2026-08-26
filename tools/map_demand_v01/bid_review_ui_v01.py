@@ -21,11 +21,20 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from osu_skill_profiler.parser.normalized import normalize
+from osu_skill_profiler.parser.osu_parser import parse_osu_file
+
 from . import contract as C
 from . import model_v095 as model
 from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods
+from .mod_transform_v01 import transform_beatmap
 from .osu_db_star_scale import read_nm_star_distribution
+from .type_classifier_v01 import (
+    CLASSIFIER_VERSION as TYPE_CLASSIFIER_VERSION,
+    propose_type_annotations,
+    suggest_sections,
+)
 
 REVIEW_SCHEMA_VERSION = "map_demand_bid_review_v0.1.0"
 STATE_SCHEMA_VERSION = "map_demand_bid_review_state_v0.1.0"
@@ -480,6 +489,48 @@ class BidReviewWorkbench:
                 if axis in {"stamina", "endurance"}
                 else "star_equivalent",
             }
+        try:
+            source_beatmap = parse_osu_file(map_path)
+            transformed_beatmap, type_transform = transform_beatmap(
+                source_beatmap, mod_context
+            )
+            if type_transform.get("analysis_ready") is not True:
+                raise ValueError("type transform is not analysis-ready")
+            type_objects = normalize(transformed_beatmap).objects
+            type_sections = suggest_sections(type_objects)
+            type_sections, type_summary = propose_type_annotations(
+                type_objects,
+                type_sections,
+                dict(transformed_beatmap.difficulty),
+                applied_mods.get("effective_mods", []),
+            )
+            experimental_type = {
+                "stage": "EXPERIMENTAL",
+                "status": type_summary.get("status", "ABSTAINED"),
+                "classifier_version": TYPE_CLASSIFIER_VERSION,
+                "summary": type_summary,
+                "sections": [
+                    {
+                        "section_id": section.get("section_id"),
+                        "start_ms": section.get("start_ms"),
+                        "end_ms": section.get("end_ms"),
+                        "stats": section.get("stats", {}),
+                        "machine_proposal": section.get("machine_proposal", {}),
+                    }
+                    for section in type_sections
+                ],
+            }
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            # Type classification is explicitly experimental. A classifier
+            # failure must not make the stable nine-axis analysis unavailable.
+            experimental_type = {
+                "stage": "EXPERIMENTAL",
+                "status": "UNAVAILABLE",
+                "classifier_version": TYPE_CLASSIFIER_VERSION,
+                "reason": type(exc).__name__,
+                "summary": None,
+                "sections": [],
+            }
         result = {
             "schema_version": "map_demand_bid_analysis_v0.1.0",
             "analysis_id": analysis_id,
@@ -519,6 +570,7 @@ class BidReviewWorkbench:
             "status": output["status"],
             "axes": axes,
             "archetype": output.get("archetype"),
+            "experimental_type": experimental_type,
             "context": output.get("context"),
             "warnings": output.get("warnings", []),
         }

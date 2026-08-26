@@ -257,6 +257,34 @@ def cmd_bid_review_ui(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_type_annotation_ui(args: argparse.Namespace) -> int:
+    root = _repo_root()
+    songs_root = _discover_songs_root(args.songs_root)
+    osu_db_path = (
+        Path(args.osu_db).resolve()
+        if args.osu_db
+        else (songs_root.parent / "osu!.db").resolve()
+    )
+    if not osu_db_path.is_file():
+        osu_db_path = None
+    from map_demand_v01.type_annotation_ui_v01 import serve_type_annotation_ui
+
+    serve_type_annotation_ui(
+        manifest_path=(root / args.manifest).resolve(),
+        songs_root=songs_root,
+        responses_path=(root / args.responses).resolve(),
+        reviewer_id=args.reviewer_id,
+        cache_root=(root / args.cache_dir).resolve(),
+        host=args.host,
+        port=args.port,
+        open_browser=not args.no_open,
+        allow_downloads=not args.no_download,
+        calibration_path=Path(args.calibration_dir).resolve(),
+        osu_db_path=osu_db_path,
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="skill-profiler-map-demand-v01")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -368,6 +396,28 @@ def main(argv: list[str] | None = None) -> int:
     bid_ui.add_argument("--port", type=int, default=8767)
     bid_ui.add_argument("--no-open", action="store_true")
     bid_ui.set_defaults(func=cmd_bid_review_ui)
+
+    type_ui = sub.add_parser(
+        "type-annotation-ui",
+        help="start the local audiovisual section and map-type annotation workbench",
+    )
+    type_ui.add_argument("--manifest", default="training/datasets/std_manifest.json")
+    type_ui.add_argument("--songs-root", default=None)
+    type_ui.add_argument("--osu-db", default=None)
+    type_ui.add_argument("--calibration-dir", default=str(DEFAULT_CALIBRATION_DIR))
+    type_ui.add_argument(
+        "--cache-dir", default="tmp/type_annotation_osz_cache"
+    )
+    type_ui.add_argument(
+        "--responses",
+        default="tmp/type_annotation_responses/human_responses.jsonl",
+    )
+    type_ui.add_argument("--reviewer-id", default="local-reviewer")
+    type_ui.add_argument("--host", default="127.0.0.1", choices=("127.0.0.1", "localhost"))
+    type_ui.add_argument("--port", type=int, default=8768)
+    type_ui.add_argument("--no-open", action="store_true")
+    type_ui.add_argument("--no-download", action="store_true")
+    type_ui.set_defaults(func=cmd_type_annotation_ui)
 
     args = parser.parse_args(argv)
     return args.func(args)
