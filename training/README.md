@@ -64,7 +64,8 @@ era proxy in the manifest is `format_version` (v3/v4 ≈ 2007-2008, v14 ≈ mode
 ## Feature QA (R1)
 
 `tools/feature_qa.py` runs the full chain
-(parse -> normalize -> 104 features -> fixed-5s segments -> aggregate) over
+(parse -> normalize -> 106 features (Feature 0.2.0) -> fixed-5s segments ->
+aggregate) over
 deterministic stratified samples, then expands to the full corpus. It never
 produces skill labels and never drops or clips anomalies.
 

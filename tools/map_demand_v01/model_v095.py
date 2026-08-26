@@ -23,17 +23,19 @@ from . import contract as C
 from . import model_v091 as v091
 from . import model_v092 as v092
 
-ALGORITHM_ID = "MAP_DEMAND_ATOMIC_V095"
-MAP_DEMAND_VERSION = "0.9.5.0"
-SCHEMA_VERSION = "map_demand_v0.9.5.0"
+ALGORITHM_ID = "MAP_DEMAND_ATOMIC_V0952"
+MAP_DEMAND_VERSION = "0.9.5.2"
+SCHEMA_VERSION = "map_demand_v0.9.5.2"
 AXIS_SCHEMA_VERSION = v092.AXIS_SCHEMA_VERSION
 AXIS_ORDER = v092.AXIS_ORDER
 MECHANISM_SPEC = (
-    "MAP_DEMAND_ATOMIC_V095:base=v0922_replay;"
-    "reading=visibility_evidence_relative_low_ar_hd_no_high_ar_bonus;"
+    "MAP_DEMAND_ATOMIC_V0952:base=v0922_replay;"
+    "reading=pair_supported_visibility_relative_low_ar_hd_no_high_ar_bonus;"
     "raw_speed=compact_repeated_fast_tapping_not_large_jump_cadence;"
     "aim_control=movement_state_change_with_stable_jump_separation;"
-    "spatial_precision=target_tolerance_settling_micro_correction;"
+    "spatial_precision=convex_small_target_tolerance_settling_micro_correction;"
+    "flow=small_persistent_stream_recovery;"
+    "stamina=repeated_compact_stream_recovery;"
     "sustain=recomputed_after_physical_axis_separation"
 )
 
@@ -329,7 +331,10 @@ def _precision_components(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if dt is None or distance is None or radius is None or dt <= 0.0 or radius <= 0.0:
             continue
         valid += 1
-        target_gate = _clamp((36.5 - radius) / 15.0, 0.0, 1.20)
+        linear_target_gate = _clamp((36.5 - radius) / 15.0, 0.0, 1.20)
+        # Target tolerance is convex: shrinking CS4 to CS5 is meaningful, but
+        # CS7 -> CS8 removes much more usable correction room than CS4 -> CS5.
+        target_gate = _clamp(linear_target_gate**1.70, 0.0, 1.35)
         velocity = distance / max(dt, C.MIN_TIME_MS)
         settling = target_gate * _clamp((velocity - 0.55) / 2.0, 0.0, 1.0)
         target_gates.append(target_gate)
@@ -484,7 +489,18 @@ def _apply_aim_control(
         * _clamp(jump_tail, 0.0, 1.0)
         * (1.0 - 0.70 * spacing_specialist)
     )
-    effective_control_gate = control_gate * (1.0 - 0.32 * jump_specialist)
+    target_tolerance = _finite(
+        components.get("v095_precision_target_tolerance_p75")
+    ) or 0.0
+    small_target_jump_transfer = (
+        _clamp(target_tolerance / 1.10, 0.0, 1.0)
+        * _clamp(large_jump_share / 0.45, 0.0, 1.0)
+    )
+    effective_control_gate = (
+        control_gate
+        * (1.0 - 0.32 * jump_specialist)
+        * (1.0 - 0.28 * small_target_jump_transfer)
+    )
     stable_jump_separation = jump_specialist * (1.0 - 0.35 * control_gate)
     target_multiplier = (
         0.48
@@ -498,13 +514,17 @@ def _apply_aim_control(
     # ordering. Pure jump specialisation gets a strong downward separation;
     # strong spacing/state-change tech gets a moderate recovery; ambiguous maps
     # stay close to the inherited value.
-    if jump_specialist >= 0.70 and spacing_specialist < 0.35:
+    if jump_specialist >= 0.65 and spacing_specialist < 0.35:
         inherited_weight = 0.72
     elif control_gate >= 0.80 and spacing_specialist >= 0.35:
         inherited_weight = 0.90
     else:
         inherited_weight = 1.0
     adjusted = inherited_weight * inherited + (1.0 - inherited_weight) * target
+    # On tiny-circle jump maps, part of the inherited control tail is target
+    # tolerance rather than state-change control. Transfer only a bounded 12%
+    # and keep genuine control evidence intact instead of zeroing the axis.
+    adjusted *= 1.0 - 0.12 * small_target_jump_transfer
     _set_axis(
         axes,
         "aim_control",
@@ -520,6 +540,7 @@ def _apply_aim_control(
             "jump_tail_activation": jump_tail,
             "jump_specialist_gate": jump_specialist,
             "stable_jump_separation_gate": stable_jump_separation,
+            "small_target_jump_transfer_gate": small_target_jump_transfer,
             "target_multiplier": target_multiplier,
             "target_stars": target,
             "inherited_clipped_stars": inherited,
@@ -547,14 +568,22 @@ def _apply_spatial_precision(
     settling_gate = _finite(components.get("v095_precision_settling_p90")) or 0.0
     micro_gate = _finite(components.get("v095_precision_micro_gate")) or 0.0
     evidence_gate = _clamp(max(target_gate, settling_gate, micro_gate), 0.0, 1.0)
-    # Precision already had useful human-checked ordering in V0.92.2. Apply a
-    # maximum 8% correction when target/micro evidence is weak, and preserve
-    # it almost entirely when either small targets or repeated corrections are
-    # visible. V0.95 never creates a new total-SR floor for Precision: the
-    # evidence gate may preserve an inherited value, not inflate it.
-    retention = 0.92 + 0.08 * evidence_gate
+    target_curve = _clamp(target_gate, 0.0, 1.20)
+    # V0.95.0 only allowed target evidence to preserve an inherited score. That
+    # made CS8 almost indistinguishable from CS4. Retain the useful inherited
+    # ordering for ordinary targets, while allowing genuinely small targets to
+    # establish a convex, total-SR-scaled precision floor.
+    retention = 0.84 + 0.08 * _clamp(micro_gate, 0.0, 1.0) + 0.08 * _clamp(target_curve, 0.0, 1.0)
     retained = incoming * retention
-    adjusted = retained
+    evidence_target_multiplier = (
+        0.62
+        + 0.34 * target_curve
+        + 0.08 * _clamp(settling_gate, 0.0, 1.0)
+        + 0.10 * _clamp(micro_gate, 0.0, 1.0)
+    )
+    evidence_target = anchor * evidence_target_multiplier
+    uplift_gate = 0.35 + 0.65 * _clamp(target_curve, 0.0, 1.0)
+    adjusted = retained + max(0.0, evidence_target - retained) * uplift_gate
     _set_axis(
         axes,
         "spatial_precision",
@@ -566,6 +595,10 @@ def _apply_spatial_precision(
             "precision_evidence_gate": evidence_gate,
             "retention_multiplier": retention,
             "retained_stars": retained,
+            "convex_small_target_gate": target_curve,
+            "evidence_target_multiplier": evidence_target_multiplier,
+            "evidence_target_stars": evidence_target,
+            "uplift_gate": uplift_gate,
             "target_tolerance_p75": components.get(
                 "v095_precision_target_tolerance_p75"
             ),
@@ -577,6 +610,88 @@ def _apply_spatial_precision(
                 "v095_precision_micro_correction_p90"
             ),
             "micro_repeat_gate": components.get("v095_precision_micro_repeat_gate"),
+        },
+    )
+
+
+def _apply_persistent_flow(
+    axes: dict[str, Any], components: dict[str, Any], anchor: float | None
+) -> None:
+    incoming = _axis_stars(axes, "flow_aim")
+    if incoming is None or anchor is None:
+        return
+    share = _finite(components.get("v091_flow_chain_share"))
+    length = _finite(components.get("v091_flow_chain_length_p90"))
+    velocity = _finite(components.get("v091_flow_chain_velocity_p90"))
+    smoothness = _finite(components.get("v091_flow_chain_smoothness_mean"))
+    tapping_gate = _finite(components.get("v095_tapping_evidence_gate"))
+    repeated_ms = _finite(components.get("v092_pressure_repeated_section_effective_ms"))
+    if None in (share, length, velocity, smoothness, tapping_gate, repeated_ms):
+        return
+    morphology = (
+        0.35 * _clamp(float(share) / 0.45, 0.0, 1.0)
+        + 0.30 * _clamp((float(length) - 1.0) / 8.0, 0.0, 1.0)
+        + 0.25 * _clamp((float(velocity) - 0.45) / 1.8, 0.0, 1.0)
+        + 0.10 * _clamp(float(smoothness), 0.0, 1.0)
+    )
+    repeated_load = float(repeated_ms) / (float(repeated_ms) + 30000.0)
+    persistent_flow_gate = (
+        _clamp(float(tapping_gate), 0.0, 1.0)
+        * math.sqrt(_clamp(morphology, 0.0, 1.0) * _clamp(repeated_load, 0.0, 1.0))
+    )
+    bonus = anchor * 0.08 * persistent_flow_gate
+    adjusted = min(incoming + bonus, anchor * 1.12)
+    _set_axis(
+        axes,
+        "flow_aim",
+        adjusted,
+        "PERSISTENT_COMPACT_STREAM_FLOW_RECOVERY_V0952",
+        {
+            "scale_anchor_stars": anchor,
+            "flow_morphology": morphology,
+            "compact_tapping_gate": tapping_gate,
+            "repeated_pressure_load": repeated_load,
+            "persistent_flow_gate": persistent_flow_gate,
+            "recovery_bonus_stars": bonus,
+        },
+    )
+
+
+def _apply_stream_stamina(axes: dict[str, Any], components: dict[str, Any]) -> None:
+    incoming = _axis_stars(axes, "stamina")
+    intensity = v092._physical_intensity(axes)
+    tapping_gate = _finite(components.get("v095_tapping_evidence_gate"))
+    repeated_ms = _finite(components.get("v092_pressure_repeated_section_effective_ms"))
+    coverage = _finite(components.get("v092_pressure_coverage"))
+    flow_share = _finite(components.get("v091_flow_chain_share"))
+    if None in (incoming, intensity, tapping_gate, repeated_ms, coverage, flow_share):
+        return
+    repeated_load = float(repeated_ms) / (float(repeated_ms) + 30000.0)
+    flow_gate = _clamp(float(flow_share) / 0.42, 0.0, 1.0)
+    stream_sustain_gate = math.sqrt(
+        _clamp(float(tapping_gate), 0.0, 1.0)
+        * max(_clamp(repeated_load, 0.0, 1.0), _clamp(float(coverage), 0.0, 1.0))
+        * flow_gate
+    )
+    target = min(
+        10.0,
+        float(intensity) * (0.84 + 0.24 * stream_sustain_gate)
+        + 0.20 * stream_sustain_gate,
+    )
+    adjusted = float(incoming) + max(0.0, target - float(incoming)) * stream_sustain_gate
+    _set_axis(
+        axes,
+        "stamina",
+        min(10.0, adjusted),
+        "REPEATED_COMPACT_STREAM_STAMINA_RECOVERY_V0952",
+        {
+            "physical_intensity_stars": intensity,
+            "compact_tapping_gate": tapping_gate,
+            "flow_chain_share": flow_share,
+            "repeated_pressure_load": repeated_load,
+            "pressure_coverage": coverage,
+            "stream_sustain_gate": stream_sustain_gate,
+            "evidence_target": target,
         },
     )
 
@@ -604,15 +719,44 @@ def _apply_reading(
     preempt = _finite(components.get("reading_preempt_median_ms"))
     overlap = _finite(components.get("v091_visible_overlap_load_p90"))
     cluster = _finite(components.get("v091_visible_cluster_load_p90"))
+    overlap_share = _finite(components.get("v091_visible_overlap_pair_share"))
     stack_share = _finite(components.get("v091_visible_stack_object_share"))
-    if len(physical) < 3 or None in (preempt, overlap, cluster, stack_share):
+    if len(physical) < 3 or None in (
+        preempt,
+        overlap,
+        cluster,
+        overlap_share,
+        stack_share,
+    ):
         return
     environment = sum(physical[:3]) / 3.0
-    spatial_load = (
+    # A high per-object overlap load is common in dense but perfectly regular
+    # maps.  It is Reading evidence only when a meaningful share of all
+    # simultaneously visible object pairs also overlap.  Pair support prevents
+    # one repeated stack or a regular stream from saturating the whole axis.
+    pair_support = _clamp((float(overlap_share) - 0.10) / 0.25, 0.0, 1.0)
+    overlap_gate = math.sqrt(
+        _clamp(float(overlap) / 2.0, 0.0, 1.0) * pair_support
+    )
+    cluster_gate = math.sqrt(
+        _clamp((float(cluster) - 1.0) / 5.0, 0.0, 1.0) * pair_support
+    )
+    stack_gate = _clamp((float(stack_share) - 0.08) / 0.52, 0.0, 1.0)
+    pair_supported_spatial_load = (
+        0.50 * overlap_gate + 0.30 * cluster_gate + 0.20 * stack_gate
+    )
+    legacy_spatial_load = (
         0.55 * _clamp(float(overlap) / 1.8, 0.0, 1.0)
         + 0.25 * _clamp((float(cluster) - 1.0) / 5.0, 0.0, 1.0)
         + 0.20 * _clamp(float(stack_share) / 0.18, 0.0, 1.0)
     )
+    # Keep the established V0.95 ordering and apply only a bounded correction
+    # to the part of the legacy load that pair evidence cannot support.  This
+    # avoids replacing old human targets with a new one-example scale.
+    unsupported_visibility = max(
+        0.0, legacy_spatial_load - pair_supported_spatial_load
+    )
+    spatial_load = legacy_spatial_load - 0.45 * unsupported_visibility
     required_preempt = _clamp(720.0 - 48.0 * (environment - 5.0), 320.0, 900.0)
     relative_low_ar = _clamp((float(preempt) / required_preempt - 1.0) / 0.65, 0.0, 1.0)
     high_ar_gate = _clamp((500.0 - float(preempt)) / 180.0, 0.0, 1.0)
@@ -647,6 +791,13 @@ def _apply_reading(
             "actual_preempt_ms": preempt,
             "required_preempt_ms": required_preempt,
             "high_ar_gate_diagnostic_only": high_ar_gate,
+            "visible_overlap_pair_share": overlap_share,
+            "pair_supported_overlap_gate": overlap_gate,
+            "pair_supported_cluster_gate": cluster_gate,
+            "visible_stack_gate": stack_gate,
+            "legacy_spatial_visibility_load": legacy_spatial_load,
+            "pair_supported_spatial_visibility_load": pair_supported_spatial_load,
+            "unsupported_visibility_correction": 0.45 * unsupported_visibility,
             "spatial_visibility_load": spatial_load,
             "relative_low_ar_gate": relative_low_ar,
             "visibility_evidence_gate": visibility_gate,
@@ -701,9 +852,11 @@ def analyze_components(
         _apply_raw_speed(output["axes"], components)
         _apply_aim_control(output["axes"], components, anchor)
         _apply_spatial_precision(output["axes"], components, anchor)
+        _apply_persistent_flow(output["axes"], components, anchor)
         # Stamina/Endurance depend on the physical axes. Recompute after Raw
         # Speed, Aim Control, and Precision have been separated.
         v092._apply_stamina_timeline(output["axes"], components)
+        _apply_stream_stamina(output["axes"], components)
         output["axes"]["endurance"] = v092._endurance_timeline_axis(
             output["axes"], components
         )

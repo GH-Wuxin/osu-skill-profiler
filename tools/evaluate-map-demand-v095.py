@@ -41,6 +41,11 @@ def main() -> int:
         default="training/datasets/map_demand_calibration_v04_unbounded_star_scale_20k",
     )
     parser.add_argument("--osu-db", default="G:/osu! 20210821/osu!.db")
+    parser.add_argument(
+        "--details",
+        action="store_true",
+        help="include per-review prediction errors for local regression audits",
+    )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
@@ -117,6 +122,7 @@ def main() -> int:
         "v095": defaultdict(list),
     }
     used_ratings = 0
+    detail_rows = []
     for response in responses:
         beatmap_id = int(response["beatmap"]["beatmap_id"])
         requested_mods = list(response.get("mod_context", {}).get("requested_mods", []))
@@ -136,6 +142,30 @@ def main() -> int:
                 signed_errors[version][axis].append(predicted - target)
             if axis in outputs["v0922"] and axis in outputs["v095"]:
                 shifts[axis].append(outputs["v095"][axis] - outputs["v0922"][axis])
+            if args.details:
+                detail_rows.append(
+                    {
+                        "beatmap_id": beatmap_id,
+                        "title": response.get("beatmap", {}).get("title"),
+                        "nm_star_anchor": response.get("beatmap", {}).get(
+                            "local_nm_stars"
+                        ),
+                        "approach_rate": response.get("beatmap", {})
+                        .get("metadata", {})
+                        .get("difficulty", {})
+                        .get("AR"),
+                        "mods": requested_mods,
+                        "axis": axis,
+                        "target": target,
+                        "v0922": outputs["v0922"].get(axis),
+                        "v095": outputs["v095"].get(axis),
+                        "v095_signed_error": (
+                            None
+                            if outputs["v095"].get(axis) is None
+                            else outputs["v095"][axis] - target
+                        ),
+                    }
+                )
 
     axes = sorted(set(errors["v0922"]) | set(errors["v095"]))
     report = {
@@ -160,6 +190,12 @@ def main() -> int:
             for version in ("v0922", "v095")
         },
     }
+    if args.details:
+        report["details"] = sorted(
+            detail_rows,
+            key=lambda item: abs(item["v095_signed_error"] or 0.0),
+            reverse=True,
+        )
     print(C.strict_json_dumps(report, indent=2))
     return 0
 

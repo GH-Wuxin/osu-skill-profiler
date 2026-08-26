@@ -81,9 +81,18 @@ def main() -> int:
                     or key
                     in {
                         "reading_preempt_median_ms",
+                        "reading_density",
+                        "reading_visual_change",
+                        "reading_hidden_pressure",
                         "v091_visible_overlap_load_p90",
                         "v091_visible_cluster_load_p90",
+                        "v091_visible_overlap_pair_share",
                         "v091_visible_stack_object_share",
+                        "v091_finger_nontrivial_change_share",
+                        "v091_finger_novelty_p90",
+                        "finger_control_interval_diversity",
+                        "finger_control_interval_entropy",
+                        "finger_control_interval_ratio",
                         "v091_precision_micro_correction_count",
                         "v091_precision_micro_correction_p90",
                         "v092_jump_tail_activation",
