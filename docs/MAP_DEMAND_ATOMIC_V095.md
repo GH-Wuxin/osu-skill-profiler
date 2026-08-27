@@ -5,9 +5,9 @@ correlated-mechanic failures without globally rescaling the nine-axis profile.
 
 ## Identity
 
-- algorithm: `MAP_DEMAND_ATOMIC_V0952`
-- map demand version: `0.9.5.2`
-- schema: `map_demand_v0.9.5.2`
+- algorithm: `MAP_DEMAND_ATOMIC_V0953`
+- map demand version: `0.9.5.3`
+- schema: `map_demand_v0.9.5.3`
 - calibration overlay: `mdoverlay_v095:*`
 - replay base: frozen V0.92.2
 
@@ -15,12 +15,15 @@ correlated-mechanic failures without globally rescaling the nine-axis profile.
 
 ### Reading
 
-High AR is diagnostic-only. It never adds Reading by itself. V0.95.2 preserves
+High AR is diagnostic-only. It never adds Reading by itself. V0.95.3 preserves
 the established physical baseline and attenuates only unexplained excess above
 it. A high per-object overlap load is no longer sufficient: visible overlap and
 cluster pressure must also be supported by the share of simultaneously visible
 pairs that actually overlap. This correction is bounded so existing ordering is
-preserved. Relative low AR and HD interaction still retain the inherited tail.
+preserved. Relative low AR and HD interaction retain the inherited tail only
+when density, physical environment, or actual visibility conflict establishes
+meaningful activity. Low-demand maps also abstain from inventing a dominant
+axis when the general demand anchor is below two stars.
 
 ### Raw Speed
 

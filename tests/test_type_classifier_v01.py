@@ -63,6 +63,53 @@ def section_for(objects: tuple[FakeObject, ...], section_id: str = "s1") -> dict
 
 
 class TypeProposalTests(unittest.TestCase):
+    def test_slow_low_ar_tutorial_does_not_become_reading_gimmick(self):
+        objects = tuple(
+            FakeObject(i, delta=923.0, distance=0.33, angle=90.0)
+            for i in range(14)
+        )
+        sections, _ = propose_type_annotations(
+            objects,
+            [section_for(objects)],
+            {"ApproachRate": 2.0, "OverallDifficulty": 0.0, "CircleSize": 2.0},
+        )
+        proposal = sections[0]["machine_proposal"]
+        self.assertLess(proposal["scores"]["GIMMICK"], 0.32)
+        self.assertNotEqual(proposal["gimmick_subtype"], "LOW_AR_READING")
+
+    def test_slow_tutorial_pauses_do_not_become_odd_rhythm_gimmick(self):
+        objects_list = []
+        timestamp = 0.0
+        for index, delta in enumerate([900.0, 1500.0, 900.0, 2400.0] * 5):
+            item = FakeObject(index, delta=delta, distance=0.33, angle=90.0)
+            item.time_ms = timestamp
+            item.delta_time_ms = None if index == 0 else delta
+            timestamp += delta
+            objects_list.append(item)
+        objects = tuple(objects_list)
+        sections, _ = propose_type_annotations(
+            objects,
+            [section_for(objects)],
+            {"ApproachRate": 2.0, "OverallDifficulty": 0.0, "CircleSize": 2.0},
+        )
+        proposal = sections[0]["machine_proposal"]
+        self.assertLess(proposal["scores"]["GIMMICK"], 0.32)
+        self.assertNotEqual(proposal["gimmick_subtype"], "ODD_RHYTHM")
+
+    def test_dense_low_ar_pattern_remains_reading_gimmick(self):
+        objects = tuple(
+            FakeObject(i, delta=110.0, distance=0.32, angle=80.0)
+            for i in range(40)
+        )
+        sections, _ = propose_type_annotations(
+            objects,
+            [section_for(objects)],
+            {"ApproachRate": 5.0, "OverallDifficulty": 8.0, "CircleSize": 4.0},
+        )
+        proposal = sections[0]["machine_proposal"]
+        self.assertIn("GIMMICK", [proposal["primary_type"], *proposal["secondary_types"]])
+        self.assertEqual(proposal["gimmick_subtype"], "LOW_AR_READING")
+
     def test_ar8_dt_uses_effective_ar_instead_of_low_ar8(self):
         objects = tuple(
             FakeObject(i, delta=110.0, distance=0.32, angle=80.0)

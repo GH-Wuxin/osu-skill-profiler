@@ -201,6 +201,30 @@ class MapDemandV095Tests(unittest.TestCase):
         self.assertLess(high, 7.0)
         self.assertGreater(low, high + 1.0)
 
+    def test_low_ar_tutorial_without_activity_does_not_retain_reading_tail(self):
+        axes = star_axes(1.3)
+        axes["reading"]["demand_star_equivalent"] = 2.7
+        axes["reading"]["score"] = 0.27
+        components = {
+            "reading_preempt_median_ms": 1560.0,
+            "reading_density": 0.87,
+            "v091_visible_overlap_load_p90": 0.0,
+            "v091_visible_cluster_load_p90": 0.58,
+            "v091_visible_overlap_pair_share": 0.059,
+            "v091_visible_stack_object_share": 0.063,
+        }
+        v095._apply_reading(axes, components, set())
+        self.assertLess(axes["reading"]["demand_star_equivalent"], 1.5)
+
+    def test_low_demand_profile_abstains_from_fake_dominant_axis(self):
+        axes = star_axes(1.3)
+        axes["finger_control"]["demand_star_equivalent"] = 2.7
+        axes["finger_control"]["score"] = 0.27
+        result = v095._classify_axes_with_low_demand_abstention(axes, 1.3)
+        self.assertEqual(result["status"], "INSUFFICIENT_EVIDENCE")
+        self.assertIsNone(result["primary_type"])
+        self.assertEqual(result["dominant_axes"], [])
+
     def test_overlap_load_requires_pair_support_to_raise_reading(self):
         regular_axes = star_axes()
         ambiguous_axes = star_axes()
@@ -326,9 +350,9 @@ class MapDemandV095Tests(unittest.TestCase):
             components=v07_components(),
             calibration=mini_calibration(),
         )
-        self.assertEqual(out["identity"]["map_demand_version"], "0.9.5.2")
-        self.assertEqual(out["schema_version"], "map_demand_v0.9.5.2")
-        self.assertEqual(out["identity"]["algorithm_id"], "MAP_DEMAND_ATOMIC_V0952")
+        self.assertEqual(out["identity"]["map_demand_version"], "0.9.5.3")
+        self.assertEqual(out["schema_version"], "map_demand_v0.9.5.3")
+        self.assertEqual(out["identity"]["algorithm_id"], "MAP_DEMAND_ATOMIC_V0953")
 
 
 if __name__ == "__main__":

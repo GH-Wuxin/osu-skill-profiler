@@ -23,20 +23,21 @@ from . import contract as C
 from . import model_v091 as v091
 from . import model_v092 as v092
 
-ALGORITHM_ID = "MAP_DEMAND_ATOMIC_V0952"
-MAP_DEMAND_VERSION = "0.9.5.2"
-SCHEMA_VERSION = "map_demand_v0.9.5.2"
+ALGORITHM_ID = "MAP_DEMAND_ATOMIC_V0953"
+MAP_DEMAND_VERSION = "0.9.5.3"
+SCHEMA_VERSION = "map_demand_v0.9.5.3"
 AXIS_SCHEMA_VERSION = v092.AXIS_SCHEMA_VERSION
 AXIS_ORDER = v092.AXIS_ORDER
 MECHANISM_SPEC = (
-    "MAP_DEMAND_ATOMIC_V0952:base=v0922_replay;"
-    "reading=pair_supported_visibility_relative_low_ar_hd_no_high_ar_bonus;"
+    "MAP_DEMAND_ATOMIC_V0953:base=v0922_replay;"
+    "reading=pair_supported_visibility_activity_gated_relative_low_ar_hd;"
     "raw_speed=compact_repeated_fast_tapping_not_large_jump_cadence;"
     "aim_control=movement_state_change_with_stable_jump_separation;"
     "spatial_precision=convex_small_target_tolerance_settling_micro_correction;"
     "flow=small_persistent_stream_recovery;"
     "stamina=repeated_compact_stream_recovery;"
-    "sustain=recomputed_after_physical_axis_separation"
+    "sustain=recomputed_after_physical_axis_separation;"
+    "archetype=low_demand_abstention"
 )
 
 extract_from_path = v092.extract_from_path
@@ -721,6 +722,7 @@ def _apply_reading(
     cluster = _finite(components.get("v091_visible_cluster_load_p90"))
     overlap_share = _finite(components.get("v091_visible_overlap_pair_share"))
     stack_share = _finite(components.get("v091_visible_stack_object_share"))
+    density = _finite(components.get("reading_density"))
     if len(physical) < 3 or None in (
         preempt,
         overlap,
@@ -760,15 +762,29 @@ def _apply_reading(
     required_preempt = _clamp(720.0 - 48.0 * (environment - 5.0), 320.0, 900.0)
     relative_low_ar = _clamp((float(preempt) / required_preempt - 1.0) / 0.65, 0.0, 1.0)
     high_ar_gate = _clamp((500.0 - float(preempt)) / 180.0, 0.0, 1.0)
-    low_ar_gain = 1.05 * relative_low_ar * (0.30 + 0.70 * spatial_load)
+    density_activity = (
+        0.0 if density is None else _clamp((density - 1.0) / 2.0, 0.0, 1.0)
+    )
+    environment_activity = _clamp((environment - 1.5) / 3.0, 0.0, 1.0)
+    low_ar_evidence_gate = max(
+        spatial_load, density_activity, environment_activity
+    )
+    effective_low_ar = relative_low_ar * low_ar_evidence_gate
+    low_ar_gain = 1.05 * effective_low_ar * (0.30 + 0.70 * spatial_load)
     hd_gain = 0.0
     if "HD" in mods:
         hd_gain = 1.55 * (0.22 + 0.78 * spatial_load) * (
-            0.30 + 0.70 * relative_low_ar
+            0.30 + 0.70 * effective_low_ar
+        ) * (
+            0.25 + 0.75 * low_ar_evidence_gate
         )
     target = environment * (0.46 + 0.28 * spatial_load) + low_ar_gain + hd_gain
     visibility_gate = _clamp(
-        max(spatial_load, relative_low_ar, 0.35 if "HD" in mods else 0.0),
+        max(
+            spatial_load,
+            effective_low_ar,
+            (0.20 + 0.80 * low_ar_evidence_gate) if "HD" in mods else 0.0,
+        ),
         0.0,
         1.0,
     )
@@ -779,7 +795,10 @@ def _apply_reading(
     # that excess progressively.
     evidence_baseline = max(target, 0.65 * environment)
     unexplained_excess = max(0.0, incoming - evidence_baseline)
-    excess_retention = 0.35 + 0.65 * visibility_gate
+    baseline_retention = 0.20 + 0.15 * _clamp(
+        (environment - 1.5) / 2.5, 0.0, 1.0
+    )
+    excess_retention = baseline_retention + (1.0 - baseline_retention) * visibility_gate
     adjusted = min(incoming, evidence_baseline + unexplained_excess * excess_retention)
     _set_axis(
         axes,
@@ -800,15 +819,46 @@ def _apply_reading(
             "unsupported_visibility_correction": 0.45 * unsupported_visibility,
             "spatial_visibility_load": spatial_load,
             "relative_low_ar_gate": relative_low_ar,
+            "reading_density_objects_per_s": density,
+            "density_activity_gate": density_activity,
+            "physical_environment_activity_gate": environment_activity,
+            "low_ar_evidence_gate": low_ar_evidence_gate,
+            "effective_low_ar_gate": effective_low_ar,
             "visibility_evidence_gate": visibility_gate,
             "evidence_baseline_stars": evidence_baseline,
             "unexplained_excess_stars": unexplained_excess,
+            "baseline_excess_retention_multiplier": baseline_retention,
             "excess_retention_multiplier": excess_retention,
             "low_ar_gain_stars": low_ar_gain,
             "hd_visibility_gain_stars": hd_gain,
             "evidence_target_stars": target,
         },
     )
+
+
+def _classify_axes_with_low_demand_abstention(
+    axes: dict[str, Any], anchor: float | None
+) -> dict[str, Any]:
+    result = v092.classify_axes(axes)
+    if (
+        result.get("status") == "CLASSIFIED"
+        and result.get("demand_tier") == "LOW"
+        and anchor is not None
+        and anchor < 2.0
+    ):
+        result["status"] = "INSUFFICIENT_EVIDENCE"
+        result["primary_type"] = None
+        result["secondary_types"] = []
+        result["dominant_axes"] = []
+        result["confidence"] = "NONE"
+        result["decision_evidence"].append(
+            {
+                "reason": "LOW_DEMAND_NO_MEANINGFUL_DOMINANT_AXIS",
+                "anchor_stars": anchor,
+                "threshold_stars": 2.0,
+            }
+        )
+    return result
 
 
 def analyze_components(
@@ -864,6 +914,8 @@ def analyze_components(
             output["axes"], components, set(mod_context.get("effective_mods", []))
         )
         output["summaries"] = v092.derive_summaries(output["axes"])
-        output["archetype"] = v092.classify_axes(output["axes"])
+        output["archetype"] = _classify_axes_with_low_demand_abstention(
+            output["axes"], anchor
+        )
     C.scan_finite(output, "model_v095.output")
     return output

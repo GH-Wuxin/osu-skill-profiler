@@ -421,16 +421,29 @@ def _section_features(rows: tuple[Any, ...], difficulty: dict[str, Any], effecti
     )
     ar = float(difficulty.get("ApproachRate", difficulty.get("OverallDifficulty", 5.0)))
     expected_ar = 7.6 + 2.7 * pressure
-    low_ar = _clamp((expected_ar - ar - 0.35) / 1.65)
-    odd_rhythm = _clamp((rhythm_novelty - 0.16) / 0.55) * _clamp((delta_cv - 0.14) / 0.70)
+    raw_low_ar = _clamp((expected_ar - ar - 0.35) / 1.65)
+    object_activity = _clamp((object_rate - 0.75) / 2.25)
+    movement_activity = _clamp((velocity_p90 - 0.75) / 2.75) * _clamp(
+        (object_rate - 0.35) / 1.25
+    )
+    low_ar_activity = max(object_activity, movement_activity)
+    low_ar = raw_low_ar * low_ar_activity
+    raw_odd_rhythm = _clamp((rhythm_novelty - 0.16) / 0.55) * _clamp(
+        (delta_cv - 0.14) / 0.70
+    )
+    odd_rhythm = raw_odd_rhythm * low_ar_activity
     # The first experimental overlap detector still confused regular stacked
     # triples and recurring pattern positions with reading gimmicks. Preserve
     # the diagnostic counts, but abstain from proposing OVERLAP until a
     # pattern-novelty/slider-path-aware detector exists. False negatives are
     # preferable to turning ordinary streams and jumps into Gimmick maps.
     overlap = 0.0
-    ez_reading = _clamp(0.38 + 0.62 * pressure) if "EZ" in effective_mods and pressure >= 0.20 else 0.0
-    slider_reading = low_ar * tech
+    ez_reading = (
+        _clamp(0.38 + 0.62 * pressure) * low_ar_activity
+        if "EZ" in effective_mods and pressure >= 0.20
+        else 0.0
+    )
+    slider_reading = raw_low_ar * tech * max(low_ar_activity, slider_action_gate)
     gimmick_components = {
         "LOW_AR_READING": low_ar,
         "ODD_RHYTHM": odd_rhythm,
@@ -501,6 +514,9 @@ def _section_features(rows: tuple[Any, ...], difficulty: dict[str, Any], effecti
             "separation_count": separation_count,
             "slider_action_gate": slider_action_gate,
             "rhythm_novelty": rhythm_novelty,
+            "raw_low_ar": raw_low_ar,
+            "low_ar_activity": low_ar_activity,
+            "raw_odd_rhythm": raw_odd_rhythm,
         },
     }
 
