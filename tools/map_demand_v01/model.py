@@ -767,6 +767,9 @@ def extract_from_path(
         "object_count": len(local_rows),
         "feature_count": len(features),
         "difficulty": dict(beatmap.difficulty),
+        "effective_difficulty": dict(
+            transform_context.get("effective_difficulty", beatmap.difficulty)
+        ),
         "source_difficulty": dict(source_beatmap.difficulty),
         "mod_context": mod_context,
         "mod_transform_context": transform_context,

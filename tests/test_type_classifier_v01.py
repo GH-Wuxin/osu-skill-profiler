@@ -11,6 +11,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from map_demand_v01.type_classifier_v01 import propose_type_annotations  # noqa: E402
+from map_demand_v01.mod_transform_v01 import effective_difficulty  # noqa: E402
 
 
 class FakeObject:
@@ -62,6 +63,27 @@ def section_for(objects: tuple[FakeObject, ...], section_id: str = "s1") -> dict
 
 
 class TypeProposalTests(unittest.TestCase):
+    def test_ar8_dt_uses_effective_ar_instead_of_low_ar8(self):
+        objects = tuple(
+            FakeObject(i, delta=110.0, distance=0.32, angle=80.0)
+            for i in range(40)
+        )
+        base = {"ApproachRate": 8.0, "OverallDifficulty": 8.0, "CircleSize": 4.0}
+        raw_sections, _ = propose_type_annotations(
+            objects, [section_for(objects)], base, ["DT"]
+        )
+        effective_sections, _ = propose_type_annotations(
+            objects,
+            [section_for(objects)],
+            effective_difficulty(base, 1.5),
+            ["DT"],
+        )
+        raw_gimmick = raw_sections[0]["machine_proposal"]["scores"]["GIMMICK"]
+        effective = effective_sections[0]["machine_proposal"]
+        self.assertGreater(raw_gimmick, 0.4)
+        self.assertEqual(effective["scores"]["GIMMICK"], 0.0)
+        self.assertNotEqual(effective["gimmick_subtype"], "LOW_AR_READING")
+
     def test_regular_large_spacing_is_proposed_as_jump(self):
         objects = tuple(
             FakeObject(i, delta=180.0, distance=0.58, angle=150.0)

@@ -252,6 +252,12 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["identity"]["effective_mods"], ["HD", "HR", "DT"])
         self.assertEqual(result["identity"]["clock_rate"], 1.5)
         self.assertEqual(result["analysis_context"]["clock_rate"], 1.5)
+        effective = result["analysis_context"]["effective_difficulty"]
+        raw = result["analysis_context"]["difficulty"]
+        self.assertGreater(effective["ApproachRate"], raw["ApproachRate"])
+        self.assertGreater(effective["OverallDifficulty"], raw["OverallDifficulty"])
+        self.assertEqual(effective["CircleSize"], raw["CircleSize"])
+        self.assertEqual(effective["HPDrainRate"], raw["HPDrainRate"])
         saved = workbench.save_response(
             {
                 "analysis_id": result["analysis_id"],

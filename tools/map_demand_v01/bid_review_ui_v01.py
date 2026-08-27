@@ -501,7 +501,11 @@ class BidReviewWorkbench:
             type_sections, type_summary = propose_type_annotations(
                 type_objects,
                 type_sections,
-                dict(transformed_beatmap.difficulty),
+                dict(
+                    type_transform.get(
+                        "effective_difficulty", transformed_beatmap.difficulty
+                    )
+                ),
                 applied_mods.get("effective_mods", []),
             )
             experimental_type = {
@@ -540,6 +544,9 @@ class BidReviewWorkbench:
             "analysis_context": {
                 "clock_rate": rate,
                 "difficulty": metadata.get("difficulty", {}),
+                "effective_difficulty": metadata.get(
+                    "effective_difficulty", metadata.get("difficulty", {})
+                ),
                 "bpm_max": (
                     float(computed_bpm)
                     if source_bpm is None and computed_bpm is not None

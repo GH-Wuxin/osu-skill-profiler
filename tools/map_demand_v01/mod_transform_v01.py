@@ -38,6 +38,53 @@ def _difficulty_changes(before: dict[str, Any], after: dict[str, Any]) -> dict[s
     return changes
 
 
+def _finite_difficulty_value(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _ar_to_preempt_ms(ar: float) -> float:
+    if ar > 5.0:
+        return 1200.0 - 150.0 * (ar - 5.0)
+    return 1800.0 - 120.0 * ar
+
+
+def _preempt_ms_to_ar(preempt_ms: float) -> float:
+    if preempt_ms < 1200.0:
+        return 5.0 + (1200.0 - preempt_ms) / 150.0
+    return (1800.0 - preempt_ms) / 120.0
+
+
+def effective_difficulty(
+    difficulty: dict[str, Any], clock_rate: float
+) -> dict[str, Any]:
+    """Return the gameplay-effective difficulty values for display/classification.
+
+    Clock-rate mods change the real-time AR and OD windows, but do not alter CS
+    or HP. Values intentionally remain unclamped so AR/OD above 10 under DT are
+    represented accurately.
+    """
+    rate = _finite_rate(clock_rate)
+    result = dict(difficulty)
+
+    ar = _finite_difficulty_value(result.get("ApproachRate"))
+    if ar is None:
+        ar = _finite_difficulty_value(result.get("OverallDifficulty"))
+        if ar is not None:
+            result["ApproachRate"] = ar
+    if ar is not None and rate != 1.0:
+        result["ApproachRate"] = _preempt_ms_to_ar(_ar_to_preempt_ms(ar) / rate)
+
+    od = _finite_difficulty_value(result.get("OverallDifficulty"))
+    if od is not None and rate != 1.0:
+        great_window_ms = (80.0 - 6.0 * od) / rate
+        result["OverallDifficulty"] = (80.0 - great_window_ms) / 6.0
+    return result
+
+
 def build_transform_context(mod_context: dict[str, Any]) -> dict[str, Any]:
     """Create a deterministic execution plan from a normalized mod context."""
     if mod_context.get("schema_version") != MOD_CONTEXT_SCHEMA_VERSION:
@@ -49,6 +96,7 @@ def build_transform_context(mod_context: dict[str, Any]) -> dict[str, Any]:
             "blocked_mods": [],
             "clock_rate": 1.0,
             "difficulty_changes": {},
+            "effective_difficulty": {},
             "legacy_ar_fallback_applied": False,
             "geometry_reflected": False,
             "errors": [{"code": "MOD_CONTEXT_VERSION_MISMATCH"}],
@@ -62,6 +110,7 @@ def build_transform_context(mod_context: dict[str, Any]) -> dict[str, Any]:
             "blocked_mods": [],
             "clock_rate": 1.0,
             "difficulty_changes": {},
+            "effective_difficulty": {},
             "legacy_ar_fallback_applied": False,
             "geometry_reflected": False,
             "errors": [{"code": "INVALID_MOD_CONTEXT"}],
@@ -80,6 +129,7 @@ def build_transform_context(mod_context: dict[str, Any]) -> dict[str, Any]:
         "blocked_mods": blocked,
         "clock_rate": _finite_rate(mod_context.get("clock_rate", 1.0)),
         "difficulty_changes": {},
+        "effective_difficulty": {},
         "legacy_ar_fallback_applied": False,
         "geometry_reflected": False,
         "errors": [],
@@ -177,6 +227,7 @@ def transform_beatmap(beatmap: Any, mod_context: dict[str, Any]) -> tuple[Any, d
     )
     context["status"] = "APPLIED" if context["analysis_ready"] else context["status"]
     context["difficulty_changes"] = _difficulty_changes(before, difficulty)
+    context["effective_difficulty"] = effective_difficulty(difficulty, rate)
     context["legacy_ar_fallback_applied"] = legacy_ar_fallback
     context["geometry_reflected"] = reflected
     return transformed, context

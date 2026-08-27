@@ -19,6 +19,7 @@ from map_demand_v01 import contract as C  # noqa: E402
 from map_demand_v01.hidden_v01 import hidden_pressure  # noqa: E402
 from map_demand_v01.mod_context_v01 import normalize_mods  # noqa: E402
 from map_demand_v01.mod_transform_v01 import (  # noqa: E402
+    effective_difficulty,
     scale_local_difficulty_windows,
     transform_beatmap,
     transform_context_matches,
@@ -55,6 +56,24 @@ def _calibration() -> dict:
 
 
 class PureTransformTests(unittest.TestCase):
+    def test_clock_mods_expose_effective_ar_od_without_changing_cs_hp(self):
+        base = {
+            "ApproachRate": 8.0,
+            "OverallDifficulty": 8.0,
+            "CircleSize": 4.2,
+            "HPDrainRate": 6.0,
+        }
+        dt = effective_difficulty(base, 1.5)
+        self.assertAlmostEqual(dt["ApproachRate"], 9.6666666667)
+        self.assertAlmostEqual(dt["OverallDifficulty"], 9.7777777778)
+        self.assertEqual(dt["CircleSize"], 4.2)
+        self.assertEqual(dt["HPDrainRate"], 6.0)
+        self.assertEqual(base["ApproachRate"], 8.0)
+
+        ht = effective_difficulty(base, 0.75)
+        self.assertAlmostEqual(ht["ApproachRate"], 6.3333333333)
+        self.assertAlmostEqual(ht["OverallDifficulty"], 6.2222222222)
+
     def test_dt_scales_timeline_red_timing_and_spinner(self):
         source = parse_osu(MAP_TEXT)
         transformed, context = transform_beatmap(source, normalize_mods("DT"))
@@ -173,6 +192,12 @@ class ExtractionIntegrationTests(unittest.TestCase):
             transform_context_matches(
                 metadata["mod_transform_context"], metadata["mod_context"]
             )
+        )
+        self.assertAlmostEqual(
+            metadata["effective_difficulty"]["ApproachRate"], 10.3333333333
+        )
+        self.assertAlmostEqual(
+            metadata["effective_difficulty"]["OverallDifficulty"], 9.7777777778
         )
 
     def test_hrdt_combination_can_reach_axis_analysis(self):

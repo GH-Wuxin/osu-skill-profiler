@@ -452,7 +452,14 @@ class TypeAnnotationWorkbench:
         normalized = normalize(beatmap)
         clock_rate = float(mod_context.get("clock_rate", 1.0))
         difficulty = dict(beatmap.difficulty)
-        ar = float(difficulty.get("ApproachRate", difficulty.get("OverallDifficulty", 5.0)))
+        effective_difficulty = dict(
+            transform.get("effective_difficulty", difficulty)
+        )
+        ar = float(
+            effective_difficulty.get(
+                "ApproachRate", effective_difficulty.get("OverallDifficulty", 5.0)
+            )
+        )
         cs = float(difficulty.get("CircleSize", 5.0))
         sample_assets, per_object_samples = _sample_assets(text, map_path, source_beatmap.hit_objects)
         objects: list[dict[str, Any]] = []
@@ -496,7 +503,7 @@ class TypeAnnotationWorkbench:
         sections, machine_summary = propose_type_annotations(
             normalized.objects,
             sections,
-            difficulty,
+            effective_difficulty,
             mod_context.get("effective_mods", []),
         )
         map_demand = self._analyze_axes(map_path, raw_bytes, mod_context)
@@ -517,14 +524,15 @@ class TypeAnnotationWorkbench:
                 "title": source_beatmap.metadata.get("TitleUnicode") or source_beatmap.metadata.get("Title"),
                 "version": source_beatmap.metadata.get("Version"),
                 "creator": source_beatmap.metadata.get("Creator"),
-                "difficulty": difficulty,
+                "difficulty": effective_difficulty,
+                "source_difficulty": difficulty,
                 "path_abs": str(map_path),
             },
             "mod_context": mod_context,
             "preview": {
                 "clock_rate": clock_rate,
                 "circle_radius_px": round(_circle_radius(cs), 3),
-                "approach_preempt_ms": round(_ar_preempt_ms(ar) / clock_rate, 3),
+                "approach_preempt_ms": round(_ar_preempt_ms(ar), 3),
                 "start_ms": min(item["start_ms"] for item in objects),
                 "end_ms": max(item["end_ms"] for item in objects),
                 "audio_available": audio is not None,
