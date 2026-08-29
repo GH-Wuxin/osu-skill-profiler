@@ -25,7 +25,7 @@ from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import parse_osu_file
 
 from . import contract as C
-from . import model_v095 as model
+from . import model_v096 as model
 from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods
 from .mod_transform_v01 import transform_beatmap
@@ -376,6 +376,8 @@ class BidReviewWorkbench:
     def state(self) -> dict[str, Any]:
         return {
             "schema_version": STATE_SCHEMA_VERSION,
+            "algorithm_id": model.ALGORITHM_ID,
+            "map_demand_version": model.MAP_DEMAND_VERSION,
             "axis_schema_version": model.AXIS_SCHEMA_VERSION,
             "reviewer_id": self.reviewer_id,
             "indexed_beatmaps": self.index.beatmap_count,

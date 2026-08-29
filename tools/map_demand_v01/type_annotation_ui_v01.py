@@ -32,7 +32,7 @@ from osu_skill_profiler.parser.osu_parser import parse_osu, parse_osu_file
 from osu_skill_profiler.signals.path import build_slider_path
 
 from . import contract as C
-from . import model_v095 as demand_model
+from . import model_v096 as demand_model
 from .bid_review_ui_v01 import BidMapIndex, BidReviewError, MAX_IMPORTED_OSU_BYTES
 from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods

@@ -1,4 +1,4 @@
-"""Compare frozen V0.92.2 with V0.95 on local BID samples."""
+"""Compare frozen V0.92.2, V0.95 and V0.96 on local BID samples."""
 
 from __future__ import annotations
 
@@ -9,9 +9,12 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+SRC = TOOLS.parent / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from map_demand_v01 import contract as C  # noqa: E402
-from map_demand_v01 import model_v092, model_v095  # noqa: E402
+from map_demand_v01 import model_v092, model_v095, model_v096  # noqa: E402
 from map_demand_v01.bid_review_ui_v01 import BidMapIndex  # noqa: E402
 from map_demand_v01.calibration import load_calibration  # noqa: E402
 from map_demand_v01.osu_db_star_scale import read_nm_star_distribution  # noqa: E402
@@ -47,7 +50,11 @@ def main() -> int:
         anchor = stars.get(relative.replace("\\", "/").casefold())
         versions = {}
         component_snapshot = {}
-        for name, model in (("v0922", model_v092), ("v095", model_v095)):
+        for name, model in (
+            ("v0922", model_v092),
+            ("v095", model_v095),
+            ("v096", model_v096),
+        ):
             rows, features, metadata = model.extract_from_path(
                 str(path), requested_mods=args.mods
             )
@@ -73,11 +80,12 @@ def main() -> int:
                 axis: output["axes"][axis].get("demand_star_equivalent")
                 for axis in model.AXIS_ORDER
             }
-            if name == "v095":
+            if name == "v096":
                 component_snapshot = {
                     key: value
                     for key, value in components.items()
                     if key.startswith("v095_")
+                    or key.startswith("v096_")
                     or key
                     in {
                         "reading_preempt_median_ms",
@@ -99,6 +107,9 @@ def main() -> int:
                     }
                 }
                 component_snapshot["warnings"] = warnings
+                component_snapshot["signed_axis_gates"] = output.get(
+                    "diagnostics", {}
+                ).get("v096_signed_axis_gates", {})
         results.append(
             {
                 "beatmap_id": beatmap_id,
@@ -107,7 +118,7 @@ def main() -> int:
                 "mods": args.mods,
                 "nm_star_anchor": anchor,
                 "axes": versions,
-                "v095_components": component_snapshot,
+                "v096_components": component_snapshot,
             }
         )
     print(C.strict_json_dumps(results, indent=2))

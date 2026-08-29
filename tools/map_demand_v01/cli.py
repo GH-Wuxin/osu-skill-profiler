@@ -1,4 +1,4 @@
-"""CLI for experimental Map Demand (V0.95 default; older versions replayable)."""
+"""CLI for experimental Map Demand (V0.96 default; older versions replayable)."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from map_demand_v01 import model_v09  # noqa: E402
 from map_demand_v01 import model_v091  # noqa: E402
 from map_demand_v01 import model_v092  # noqa: E402
 from map_demand_v01 import model_v095  # noqa: E402
+from map_demand_v01 import model_v096  # noqa: E402
 from map_demand_v01.calibration import (  # noqa: E402
     CALIBRATION_ARTIFACT_DIRNAME,
     build_calibration,
@@ -70,6 +71,7 @@ def cmd_build_calibration(args: argparse.Namespace) -> int:
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     model = {
+        "v096": model_v096,
         "v095": model_v095,
         "v092": model_v092,
         "v091": model_v091,
@@ -307,8 +309,8 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--mods", nargs="*", default=[])
     analyze.add_argument(
         "--algorithm",
-        choices=("v095", "v092", "v091", "v09", "v08", "v07", "v06"),
-        default="v095",
+        choices=("v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
+        default="v096",
         help="V0.95 evidence-separated model (default), or replay an older model",
     )
     analyze.add_argument(

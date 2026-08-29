@@ -13,7 +13,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from map_demand_v01 import contract as C  # noqa: E402
-from map_demand_v01 import model_v095  # noqa: E402
+from map_demand_v01 import model_v096  # noqa: E402
 from map_demand_v01.bid_review_ui_v01 import (  # noqa: E402
     BidMapIndex,
     BidReviewError,
@@ -200,8 +200,8 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["beatmap"]["beatmap_id"], 123456)
         self.assertEqual(result["identity"]["effective_mods"], [])
         self.assertEqual(result["analysis_context"]["clock_rate"], 1.0)
-        self.assertEqual(set(result["axes"]), set(model_v095.AXIS_ORDER))
-        self.assertEqual(result["identity"]["map_demand_version"], "0.9.5.3")
+        self.assertEqual(set(result["axes"]), set(model_v096.AXIS_ORDER))
+        self.assertEqual(result["identity"]["map_demand_version"], "0.9.6")
         self.assertEqual(result["experimental_type"]["stage"], "EXPERIMENTAL")
         self.assertIn(result["experimental_type"]["status"], {"PROPOSED", "ABSTAINED"})
         self.assertEqual(
@@ -233,15 +233,15 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         self.assertEqual(response["ratings"]["endurance"]["qualifier"], "SKIP")
         self.assertTrue(
             response["algorithm_identity"]["calibration_id"].startswith(
-                "mdoverlay_v095:"
+                "mdoverlay_v096:"
             )
         )
         self.assertEqual(
             response["algorithm_identity"]["algorithm_id"],
-            "MAP_DEMAND_ATOMIC_V0953",
+            "MAP_DEMAND_ATOMIC_V096",
         )
         self.assertEqual(
-            response["algorithm_identity"]["map_demand_version"], "0.9.5.3"
+            response["algorithm_identity"]["map_demand_version"], "0.9.6"
         )
         self.assertEqual(response["mod_context"]["requested_mods"], [])
 
@@ -314,6 +314,8 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         )
         self.assertEqual(corrected["active_responses"], 1)
         state = workbench.state()
+        self.assertEqual(state["algorithm_id"], "MAP_DEMAND_ATOMIC_V096")
+        self.assertEqual(state["map_demand_version"], "0.9.6")
         self.assertEqual(state["saved_responses"], 2)
         self.assertEqual(state["active_responses"], 1)
         self.assertEqual(state["superseded_responses"], 1)

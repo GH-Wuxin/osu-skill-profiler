@@ -1,7 +1,9 @@
-"""Evaluate frozen V0.92.2 and V0.95 against local approximate reviews.
+"""Evaluate frozen V0.92.2, V0.95 and V0.96 against local reviews.
 
 The review JSONL remains private and is only read at runtime. This script emits
 aggregate errors and score shifts; it never copies source records into output.
+Exact MAE is diagnostic only. V0.96 treats human values as wide-band and
+within-map ordering references, never exact optimisation targets.
 """
 
 from __future__ import annotations
@@ -16,9 +18,12 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+SRC = TOOLS.parent / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from map_demand_v01 import contract as C  # noqa: E402
-from map_demand_v01 import model_v092, model_v095  # noqa: E402
+from map_demand_v01 import model_v092, model_v095, model_v096  # noqa: E402
 from map_demand_v01.bid_review_ui_v01 import BidMapIndex  # noqa: E402
 from map_demand_v01.calibration import load_calibration  # noqa: E402
 from map_demand_v01.osu_db_star_scale import read_nm_star_distribution  # noqa: E402
@@ -82,7 +87,11 @@ def main() -> int:
         relative = str(record.get("relative_path") or record.get("reference") or "")
         anchor = stars.get(relative.replace("\\", "/").casefold())
         outputs = {}
-        for name, model in (("v0922", model_v092), ("v095", model_v095)):
+        for name, model in (
+            ("v0922", model_v092),
+            ("v095", model_v095),
+            ("v096", model_v096),
+        ):
             rows, features, metadata = model.extract_from_path(
                 str(path), requested_mods=requested_mods
             )
@@ -115,11 +124,19 @@ def main() -> int:
     errors: dict[str, dict[str, list[float]]] = {
         "v0922": defaultdict(list),
         "v095": defaultdict(list),
+        "v096": defaultdict(list),
     }
-    shifts: dict[str, list[float]] = defaultdict(list)
+    shifts_v096_v095: dict[str, list[float]] = defaultdict(list)
     signed_errors: dict[str, dict[str, list[float]]] = {
         "v0922": defaultdict(list),
         "v095": defaultdict(list),
+        "v096": defaultdict(list),
+    }
+    wide_band_hits: dict[str, list[bool]] = defaultdict(list)
+    ordinal_hits: dict[str, list[bool]] = {
+        "v0922": [],
+        "v095": [],
+        "v096": [],
     }
     used_ratings = 0
     detail_rows = []
@@ -134,14 +151,15 @@ def main() -> int:
             if not math.isfinite(target):
                 continue
             used_ratings += 1
-            for version in ("v0922", "v095"):
+            for version in ("v0922", "v095", "v096"):
                 predicted = outputs[version].get(axis)
                 if predicted is None:
                     continue
                 errors[version][axis].append(abs(predicted - target))
                 signed_errors[version][axis].append(predicted - target)
-            if axis in outputs["v0922"] and axis in outputs["v095"]:
-                shifts[axis].append(outputs["v095"][axis] - outputs["v0922"][axis])
+            if axis in outputs["v095"] and axis in outputs["v096"]:
+                shifts_v096_v095[axis].append(outputs["v096"][axis] - outputs["v095"][axis])
+                wide_band_hits[axis].append(abs(outputs["v096"][axis] - target) <= 1.0)
             if args.details:
                 detail_rows.append(
                     {
@@ -159,15 +177,47 @@ def main() -> int:
                         "target": target,
                         "v0922": outputs["v0922"].get(axis),
                         "v095": outputs["v095"].get(axis),
-                        "v095_signed_error": (
+                        "v096": outputs["v096"].get(axis),
+                        "v096_signed_error": (
                             None
-                            if outputs["v095"].get(axis) is None
-                            else outputs["v095"][axis] - target
+                            if outputs["v096"].get(axis) is None
+                            else outputs["v096"][axis] - target
                         ),
                     }
                 )
 
-    axes = sorted(set(errors["v0922"]) | set(errors["v095"]))
+        rated = [
+            (axis, float(rating["value"]))
+            for axis, rating in response.get("ratings", {}).items()
+            if rating.get("qualifier") == "APPROXIMATE"
+            and rating.get("value") is not None
+            and math.isfinite(float(rating["value"]))
+            and axis in outputs["v096"]
+        ]
+        for left in range(len(rated)):
+            for right in range(left + 1, len(rated)):
+                left_axis, left_human = rated[left]
+                right_axis, right_human = rated[right]
+                if abs(left_human - right_human) < 0.75:
+                    continue
+                for version in ("v0922", "v095", "v096"):
+                    if left_axis not in outputs[version] or right_axis not in outputs[version]:
+                        continue
+                    predicted_delta = outputs[version][left_axis] - outputs[version][right_axis]
+                    ordinal_hits[version].append(
+                        (left_human - right_human) * predicted_delta > 0.0
+                    )
+
+    axes = sorted(set(errors["v0922"]) | set(errors["v095"]) | set(errors["v096"]))
+    profile_ranges: dict[str, list[float]] = defaultdict(list)
+    top_second_gaps: dict[str, list[float]] = defaultdict(list)
+    for versions in cache.values():
+        for version, axis_values in versions.items():
+            values = sorted(axis_values.values(), reverse=True)
+            if len(values) < 2:
+                continue
+            profile_ranges[version].append(values[0] - values[-1])
+            top_second_gaps[version].append(values[0] - values[1])
     report = {
         "active_response_count": len(responses),
         "unique_analysis_count": len(cache),
@@ -177,9 +227,12 @@ def main() -> int:
                 "sample_count": len(errors["v095"].get(axis, [])),
                 "v0922_mae": mean(errors["v0922"].get(axis, [])),
                 "v095_mae": mean(errors["v095"].get(axis, [])),
+                "v096_mae_diagnostic_only": mean(errors["v096"].get(axis, [])),
                 "v0922_signed_bias": mean(signed_errors["v0922"].get(axis, [])),
                 "v095_signed_bias": mean(signed_errors["v095"].get(axis, [])),
-                "mean_v095_minus_v0922": mean(shifts.get(axis, [])),
+                "v096_signed_bias_diagnostic_only": mean(signed_errors["v096"].get(axis, [])),
+                "v096_wide_band_hit_rate_pm1": mean([1.0 if value else 0.0 for value in wide_band_hits.get(axis, [])]),
+                "mean_v096_minus_v095": mean(shifts_v096_v095.get(axis, [])),
             }
             for axis in axes
         },
@@ -187,13 +240,30 @@ def main() -> int:
             version: mean(
                 [value for values in errors[version].values() for value in values]
             )
-            for version in ("v0922", "v095")
+            for version in ("v0922", "v095", "v096")
+        },
+        "v096_human_reference_policy": {
+            "exact_mae_role": "DIAGNOSTIC_ONLY",
+            "wide_band_tolerance_stars": 1.0,
+            "ordinal_minimum_human_separation_stars": 0.75,
+            "ordinal_pair_count": len(ordinal_hits["v096"]),
+            "ordinal_agreement_rate_by_version": {
+                version: mean([1.0 if value else 0.0 for value in values])
+                for version, values in ordinal_hits.items()
+            },
+        },
+        "profile_contrast": {
+            version: {
+                "mean_max_minus_min_stars": mean(profile_ranges[version]),
+                "mean_top_minus_second_stars": mean(top_second_gaps[version]),
+            }
+            for version in ("v0922", "v095", "v096")
         },
     }
     if args.details:
         report["details"] = sorted(
             detail_rows,
-            key=lambda item: abs(item["v095_signed_error"] or 0.0),
+            key=lambda item: abs(item["v096_signed_error"] or 0.0),
             reverse=True,
         )
     print(C.strict_json_dumps(report, indent=2))
