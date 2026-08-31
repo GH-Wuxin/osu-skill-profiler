@@ -24,3 +24,6 @@ out/
 
 # Agent progress checkpoints (never commit)
 tmp/
+
+# Machine-specific private-chat operator helpers (QQ identities; not algorithm source)
+tools/pippi-owner-watch*

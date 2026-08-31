@@ -1,4 +1,4 @@
-"""Evaluate frozen V0.92.2, V0.95 and V0.96 against local reviews.
+"""Evaluate frozen releases and the opt-in decoupled experiment against reviews.
 
 The review JSONL remains private and is only read at runtime. This script emits
 aggregate errors and score shifts; it never copies source records into output.
@@ -23,7 +23,12 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from map_demand_v01 import contract as C  # noqa: E402
-from map_demand_v01 import model_v092, model_v095, model_v096  # noqa: E402
+from map_demand_v01 import (  # noqa: E402
+    model_decoupled_v01,
+    model_v092,
+    model_v095,
+    model_v096,
+)
 from map_demand_v01.bid_review_ui_v01 import BidMapIndex  # noqa: E402
 from map_demand_v01.calibration import load_calibration  # noqa: E402
 from map_demand_v01.osu_db_star_scale import read_nm_star_distribution  # noqa: E402
@@ -77,6 +82,9 @@ def main() -> int:
         "relative_path_to_nm_stars"
     ]
     cache: dict[tuple[int, tuple[str, ...]], dict[str, dict[str, float]]] = {}
+    evidence_cache: dict[
+        tuple[int, tuple[str, ...]], dict[str, dict[str, dict[str, object]]]
+    ] = {}
 
     def analyze(beatmap_id: int, requested_mods: list[str]) -> dict[str, dict[str, float]]:
         key = (beatmap_id, tuple(requested_mods))
@@ -87,10 +95,12 @@ def main() -> int:
         relative = str(record.get("relative_path") or record.get("reference") or "")
         anchor = stars.get(relative.replace("\\", "/").casefold())
         outputs = {}
+        evidence_outputs: dict[str, dict[str, dict[str, object]]] = {}
         for name, model in (
             ("v0922", model_v092),
             ("v095", model_v095),
             ("v096", model_v096),
+            ("decoupled_v01", model_decoupled_v01),
         ):
             rows, features, metadata = model.extract_from_path(
                 str(path), requested_mods=requested_mods
@@ -118,25 +128,34 @@ def main() -> int:
                 for axis in model.AXIS_ORDER
                 if output["axes"][axis].get("demand_star_equivalent") is not None
             }
+            evidence_outputs[name] = {
+                axis: dict(output["axes"][axis].get("evidence", [{}])[-1])
+                for axis in model.AXIS_ORDER
+                if output["axes"][axis].get("evidence")
+            }
         cache[key] = outputs
+        evidence_cache[key] = evidence_outputs
         return outputs
 
     errors: dict[str, dict[str, list[float]]] = {
         "v0922": defaultdict(list),
         "v095": defaultdict(list),
         "v096": defaultdict(list),
+        "decoupled_v01": defaultdict(list),
     }
     shifts_v096_v095: dict[str, list[float]] = defaultdict(list)
     signed_errors: dict[str, dict[str, list[float]]] = {
         "v0922": defaultdict(list),
         "v095": defaultdict(list),
         "v096": defaultdict(list),
+        "decoupled_v01": defaultdict(list),
     }
     wide_band_hits: dict[str, list[bool]] = defaultdict(list)
     ordinal_hits: dict[str, list[bool]] = {
         "v0922": [],
         "v095": [],
         "v096": [],
+        "decoupled_v01": [],
     }
     used_ratings = 0
     detail_rows = []
@@ -151,7 +170,7 @@ def main() -> int:
             if not math.isfinite(target):
                 continue
             used_ratings += 1
-            for version in ("v0922", "v095", "v096"):
+            for version in ("v0922", "v095", "v096", "decoupled_v01"):
                 predicted = outputs[version].get(axis)
                 if predicted is None:
                     continue
@@ -178,6 +197,17 @@ def main() -> int:
                         "v0922": outputs["v0922"].get(axis),
                         "v095": outputs["v095"].get(axis),
                         "v096": outputs["v096"].get(axis),
+                        "decoupled_v01": outputs["decoupled_v01"].get(axis),
+                        "decoupled_v01_signed_error": (
+                            None
+                            if outputs["decoupled_v01"].get(axis) is None
+                            else outputs["decoupled_v01"][axis] - target
+                        ),
+                        "decoupled_v01_evidence": evidence_cache[
+                            (beatmap_id, tuple(requested_mods))
+                        ]
+                        .get("decoupled_v01", {})
+                        .get(axis),
                         "v096_signed_error": (
                             None
                             if outputs["v096"].get(axis) is None
@@ -200,7 +230,7 @@ def main() -> int:
                 right_axis, right_human = rated[right]
                 if abs(left_human - right_human) < 0.75:
                     continue
-                for version in ("v0922", "v095", "v096"):
+                for version in ("v0922", "v095", "v096", "decoupled_v01"):
                     if left_axis not in outputs[version] or right_axis not in outputs[version]:
                         continue
                     predicted_delta = outputs[version][left_axis] - outputs[version][right_axis]
@@ -208,7 +238,12 @@ def main() -> int:
                         (left_human - right_human) * predicted_delta > 0.0
                     )
 
-    axes = sorted(set(errors["v0922"]) | set(errors["v095"]) | set(errors["v096"]))
+    axes = sorted(
+        set(errors["v0922"])
+        | set(errors["v095"])
+        | set(errors["v096"])
+        | set(errors["decoupled_v01"])
+    )
     profile_ranges: dict[str, list[float]] = defaultdict(list)
     top_second_gaps: dict[str, list[float]] = defaultdict(list)
     for versions in cache.values():
@@ -228,9 +263,15 @@ def main() -> int:
                 "v0922_mae": mean(errors["v0922"].get(axis, [])),
                 "v095_mae": mean(errors["v095"].get(axis, [])),
                 "v096_mae_diagnostic_only": mean(errors["v096"].get(axis, [])),
+                "decoupled_v01_mae_diagnostic_only": mean(
+                    errors["decoupled_v01"].get(axis, [])
+                ),
                 "v0922_signed_bias": mean(signed_errors["v0922"].get(axis, [])),
                 "v095_signed_bias": mean(signed_errors["v095"].get(axis, [])),
                 "v096_signed_bias_diagnostic_only": mean(signed_errors["v096"].get(axis, [])),
+                "decoupled_v01_signed_bias_diagnostic_only": mean(
+                    signed_errors["decoupled_v01"].get(axis, [])
+                ),
                 "v096_wide_band_hit_rate_pm1": mean([1.0 if value else 0.0 for value in wide_band_hits.get(axis, [])]),
                 "mean_v096_minus_v095": mean(shifts_v096_v095.get(axis, [])),
             }
@@ -240,7 +281,7 @@ def main() -> int:
             version: mean(
                 [value for values in errors[version].values() for value in values]
             )
-            for version in ("v0922", "v095", "v096")
+            for version in ("v0922", "v095", "v096", "decoupled_v01")
         },
         "v096_human_reference_policy": {
             "exact_mae_role": "DIAGNOSTIC_ONLY",
@@ -257,13 +298,13 @@ def main() -> int:
                 "mean_max_minus_min_stars": mean(profile_ranges[version]),
                 "mean_top_minus_second_stars": mean(top_second_gaps[version]),
             }
-            for version in ("v0922", "v095", "v096")
+            for version in ("v0922", "v095", "v096", "decoupled_v01")
         },
     }
     if args.details:
         report["details"] = sorted(
             detail_rows,
-            key=lambda item: abs(item["v096_signed_error"] or 0.0),
+            key=lambda item: abs(item["decoupled_v01_signed_error"] or 0.0),
             reverse=True,
         )
     print(C.strict_json_dumps(report, indent=2))

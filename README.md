@@ -7,19 +7,22 @@
 **为 osu!standard 谱面建立可解释、可回放的技能需求画像。**
 
 项目从 `.osu` 文件提取谱面结构与逐物件信号，并通过当前默认的
-**Map Demand V0.96**，把谱面描述为九个相互区分的需求维度。它既提供适合下游程序消费的
+**Map Demand 0.10.0-beta.3（Precision 平衡修正版）**，把谱面描述为九个相互区分的需求维度。它既提供适合下游程序消费的
 版本化 JSON，也包含本地 BID/Mod 评审台，用于让算法结果持续接受真人校验。
 
 > [!IMPORTANT]
-> V0.96 是确定性的**启发式模型**，不是 osu! 官方难度系统，也不是已经训练完成的真值分类器。
+> 0.10.0-beta.3 是确定性的**启发式试用模型**，不是 osu! 官方难度系统，也不是已经训练完成的真值分类器。
 > 分数用于表达“这张谱面在哪些方面难”，不能替代总星数、pp 或实际游玩体验。
+
+本次只修正 Micro Precision 的量表与 CS 曲线，其余八维保持 beta.2 原样；beta.2、beta.1 和 V0.96 仍可回放与回滚。
+参见 [试用版发布说明、已知限制与回滚命令](docs/MAP_DEMAND_V010_BETA3.md)。
 
 ### 现在能做什么
 
 - 解析 osu!standard `.osu`，生成规范化物件、整图特征、逐物件 Local Signal 与分段摘要；
-- 输出 V0.96 九维 Map Demand 画像，并保留算法、校准、Mod 与输入校验和身份；
+- 输出 0.10.0-beta.3 九维 Map Demand 画像，并保留算法、校准、Mod 与输入校验和身份；
 - 支持 NM、EZ、HD、HR、HT、DT 及其有效组合，NC/DC 分别折叠为 DT/HT；
-- 使用本地 `osu!.db` 的 NM 星数作为**软标尺**，允许偏科维度高于总星数，同时抑制无意义膨胀；
+- 三个修正维度不依赖总 SR，其余六维保留本地 `osu!.db` NM 星数作为上下文软标尺；
 - 通过本地网页按 BID 找到 `.osu`、切换 Mod、查看机器结果并追加真人评价；
 - 冻结回放 V0.95.3、V0.92.2、V0.91、V0.9、V0.8、V0.7、V0.6，避免算法升级后篡改旧结果；
 - 为机器人、网页或图片卡片提供结构化结果，但核心仓库不耦合任何具体 Bot。
@@ -225,7 +228,7 @@ training/                   本地数据目录骨架；实际语料与派生产�
 
 ### 版本说明
 
-Python 包版本（当前 `0.1.0`）、Map Demand 算法版本（当前 `V0.96`）和输出 Schema 版本是三个独立身份。
+Python 包版本（当前 `0.1.0`）、Map Demand 算法版本（当前 `0.10.0-beta.3`）和输出 Schema 版本是三个独立身份。
 算法升级不会伪装成旧算法结果，也不会要求同时修改稳定的基础包接口。
 
 ### 许可证
@@ -241,13 +244,13 @@ MIT。项目与 osu!、ppy Pty Ltd 或 osu! 开发团队没有隶属关系。
 The repository contains two deliberately separated layers:
 
 1. a dependency-free public foundation for parsing `.osu` files and extracting normalized maps, features, local signals, segments, and versioned JSON;
-2. the experimental **Map Demand V0.96** heuristic, which produces a nine-axis demand profile with auditable calibration and Mod identities.
+2. the public-trial **Map Demand 0.10.0-beta.3** heuristic, which repairs Micro Precision's scale and CS curve while preserving beta.2's other eight axes, with separate calibration and Mod identities. Beta.2, beta.1 and V0.96 remain available for rollback.
 
 The nine axes are Aim Control, Jump Aim, Micro Precision (`spatial_precision`), Flow Aim, Raw Speed,
 Finger Control, Stamina, Endurance, and Reading. Stamina and Endurance use bounded
 `0–10` scales; the other axes use osu!-familiar star-equivalent scales.
 
-V0.96 is deterministic but **not ground truth**, not an official osu! difficulty
+The beta is deterministic but **not ground truth**, not an official osu! difficulty
 calculator, and not a player-skill model. Human review remains part of the design.
 
 ### Quick start
@@ -260,7 +263,7 @@ python run_tests.py
 osu-skill-profiler profile-map "path\to\map.osu" --out profile.json
 ```
 
-Map Demand V0.96 additionally requires local calibration artifacts, which are not
+Map Demand additionally requires local calibration artifacts, which are not
 published with the repository:
 
 ```powershell

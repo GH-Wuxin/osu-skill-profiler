@@ -25,7 +25,7 @@ from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import parse_osu_file
 
 from . import contract as C
-from . import model_v096 as model
+from .release import runtime_model
 from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods
 from .mod_transform_v01 import transform_beatmap
@@ -312,7 +312,9 @@ class BidReviewWorkbench:
         reviewer_id: str,
         osu_db_path: Path | None = None,
         cache_root: Path | None = None,
+        algorithm: str | None = None,
     ) -> None:
+        self.model = runtime_model(algorithm)
         self.reviewer_id = reviewer_id.strip()
         if not self.reviewer_id:
             raise ValueError("reviewer_id is required")
@@ -374,7 +376,9 @@ class BidReviewWorkbench:
         return count
 
     def state(self) -> dict[str, Any]:
+        model = self.model
         return {
+            "release": getattr(model, "RELEASE", None),
             "schema_version": STATE_SCHEMA_VERSION,
             "algorithm_id": model.ALGORITHM_ID,
             "map_demand_version": model.MAP_DEMAND_VERSION,
@@ -418,6 +422,7 @@ class BidReviewWorkbench:
     def analyze_bid(
         self, beatmap_id: int, requested_mods: list[str] | str | None = None
     ) -> dict[str, Any]:
+        model = self.model
         if isinstance(beatmap_id, bool) or not isinstance(beatmap_id, int) or beatmap_id <= 0:
             raise BidReviewError("INVALID_BID", "BID must be a positive integer")
         mod_context = normalize_mods(requested_mods)
@@ -538,6 +543,7 @@ class BidReviewWorkbench:
                 "sections": [],
             }
         result = {
+            "release": output.get("release"),
             "schema_version": "map_demand_bid_analysis_v0.1.0",
             "analysis_id": analysis_id,
             "mod_context": output.get("diagnostics", {}).get(
@@ -587,6 +593,7 @@ class BidReviewWorkbench:
         return result
 
     def save_response(self, payload: dict[str, Any]) -> dict[str, Any]:
+        model = self.model
         analysis_id = payload.get("analysis_id")
         analysis = self._analyses.get(analysis_id)
         if analysis is None:
@@ -800,6 +807,7 @@ def serve_bid_review_ui(
     host: str,
     port: int,
     open_browser: bool,
+    algorithm: str | None = None,
 ) -> None:
     workbench = BidReviewWorkbench(
         manifest_path=manifest_path,
@@ -809,6 +817,7 @@ def serve_bid_review_ui(
         reviewer_id=reviewer_id,
         osu_db_path=osu_db_path,
         cache_root=cache_root,
+        algorithm=algorithm,
     )
     html_path = Path(__file__).with_name("bid_review_ui_v01.html")
     server = ThreadingHTTPServer((host, port), make_bid_review_handler(workbench, html_path))

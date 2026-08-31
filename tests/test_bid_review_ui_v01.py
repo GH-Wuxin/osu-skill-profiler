@@ -79,6 +79,7 @@ class BidReviewWorkbenchTests(unittest.TestCase):
             responses_path=self.responses,
             reviewer_id="tester",
             cache_root=self.cache,
+            algorithm="v096",
         )
 
     def test_bid_index_resolves_only_manifest_paths(self):
