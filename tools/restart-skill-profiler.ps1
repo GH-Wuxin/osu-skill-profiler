@@ -1,12 +1,12 @@
 param(
-    [ValidateSet('v010-beta4', 'v010-beta3', 'v010-beta2', 'v010-beta1', 'v096')][string]$Algorithm = 'v010-beta4',
+    [ValidateSet('v010-beta5', 'v010-beta4', 'v010-beta3', 'v010-beta2', 'v010-beta1', 'v096')][string]$Algorithm = 'v010-beta5',
     [string]$Python = (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313\python.exe')
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $runtimeDir = Join-Path $repoRoot 'tmp\runtime'
 $selectionFile = Join-Path $repoRoot 'tmp\runtime-release.json'
-$versionByAlgorithm = @{ 'v010-beta4' = '0.10.0-beta.4'; 'v010-beta3' = '0.10.0-beta.3'; 'v010-beta2' = '0.10.0-beta.2'; 'v010-beta1' = '0.10.0-beta.1'; 'v096' = '0.9.6' }
+$versionByAlgorithm = @{ 'v010-beta5' = '0.10.0-beta.5'; 'v010-beta4' = '0.10.0-beta.4'; 'v010-beta3' = '0.10.0-beta.3'; 'v010-beta2' = '0.10.0-beta.2'; 'v010-beta1' = '0.10.0-beta.1'; 'v096' = '0.9.6' }
 if (-not (Test-Path -LiteralPath $Python)) { throw "Python missing: $Python" }
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 $previousAlgorithm = 'v010-beta1'

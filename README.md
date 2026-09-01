@@ -7,22 +7,22 @@
 **为 osu!standard 谱面建立可解释、可回放的技能需求画像。**
 
 项目从 `.osu` 文件提取谱面结构与逐物件信号，并通过当前默认的
-**Map Demand 0.10.0-beta.4（Aim Control 执行时间试用版）**，把谱面描述为九个相互区分的需求维度。它既提供适合下游程序消费的
+**Map Demand 0.10.0-beta.5（Reading 顺序与遮挡试用版）**，把谱面描述为九个相互区分的需求维度。它既提供适合下游程序消费的
 版本化 JSON，也包含本地 BID/Mod 评审台，用于让算法结果持续接受真人校验。
 
 > [!IMPORTANT]
-> 0.10.0-beta.4 是确定性的**启发式试用模型**，不是 osu! 官方难度系统，也不是已经训练完成的真值分类器。
+> 0.10.0-beta.5 是确定性的**启发式试用模型**，不是 osu! 官方难度系统，也不是已经训练完成的真值分类器。
 > 分数用于表达“这张谱面在哪些方面难”，不能替代总星数、pp 或实际游玩体验。
 
-本次只修正 Aim Control：将动作变化与实际执行时间耦合，并使用连续局部事件汇总；包括 Reading 在内的其余八维保持 beta.3 原样。beta.3、beta.2、beta.1 和 V0.96 仍可回放与回滚。
-参见 [试用版发布说明、已知限制与回滚命令](docs/MAP_DEMAND_V010_BETA4.md)。
+本次在 beta.4 的 Aim Control 基础上只重构 Reading：以局部顺序冲突、可见信息率、低 AR 保留负担、快速解码与 HD 消失记忆为主体，避免把规则密集串或高 AR 本身直接算成高 Reading；其余八维保持 beta.4 原样。beta.4、beta.3、beta.2、beta.1 和 V0.96 仍可回放与回滚。
+参见 [试用版发布说明、已知限制与回滚命令](docs/MAP_DEMAND_V010_BETA5.md)。
 
 ### 现在能做什么
 
 - 解析 osu!standard `.osu`，生成规范化物件、整图特征、逐物件 Local Signal 与分段摘要；
-- 输出 0.10.0-beta.4 九维 Map Demand 画像，并保留算法、校准、Mod 与输入校验和身份；
+- 输出 0.10.0-beta.5 九维 Map Demand 画像，并保留算法、校准、Mod 与输入校验和身份；
 - 支持 NM、EZ、HD、HR、HT、DT 及其有效组合，NC/DC 分别折叠为 DT/HT；
-- 四个修正维度不依赖总 SR，其余五维保留本地 `osu!.db` NM 星数作为上下文软标尺；
+- 五个修正维度（含 beta.5 Reading）不依赖总 SR，其余四维保留本地 `osu!.db` NM 星数作为上下文软标尺；
 - 通过本地网页按 BID 找到 `.osu`、切换 Mod、查看机器结果并追加真人评价；
 - 冻结回放 V0.95.3、V0.92.2、V0.91、V0.9、V0.8、V0.7、V0.6，避免算法升级后篡改旧结果；
 - 为机器人、网页或图片卡片提供结构化结果，但核心仓库不耦合任何具体 Bot。
@@ -39,7 +39,7 @@
 | Tapping | **Finger Control** | 快速局部段中的非平凡节奏切换与手指协调 | 星级等价值 |
 | Tapping | **Stamina** | 在高强度段内维持执行质量 | `0–10` |
 | Global | **Endurance** | 在整张谱的时长、物量与密集覆盖下持续执行 | `0–10` |
-| Reading | **Reading** | 相对 AR、HD、可见物件重叠、近邻簇与堆叠带来的读图压力 | 星级等价值 |
+| Reading | **Reading** | 局部顺序冲突、信息率、低 AR 保留负担、快速解码与 HD 消失记忆带来的读图压力 | 星级等价值 |
 
 这里的“星级等价值”是便于 osu! 玩家理解的相对量尺，不表示某个单项能独立组成同星数谱面。
 Stamina 与 Endurance 是有界的人类需求量表，因此不显示为星数。
@@ -228,7 +228,7 @@ training/                   本地数据目录骨架；实际语料与派生产�
 
 ### 版本说明
 
-Python 包版本（当前 `0.1.0`）、Map Demand 算法版本（当前 `0.10.0-beta.4`）和输出 Schema 版本是三个独立身份。
+Python 包版本（当前 `0.1.0`）、Map Demand 算法版本（当前 `0.10.0-beta.5`）和输出 Schema 版本是三个独立身份。
 算法升级不会伪装成旧算法结果，也不会要求同时修改稳定的基础包接口。
 
 ### 许可证
@@ -244,7 +244,7 @@ MIT。项目与 osu!、ppy Pty Ltd 或 osu! 开发团队没有隶属关系。
 The repository contains two deliberately separated layers:
 
 1. a dependency-free public foundation for parsing `.osu` files and extracting normalized maps, features, local signals, segments, and versioned JSON;
-2. the public-trial **Map Demand 0.10.0-beta.4** heuristic, which couples Aim Control to actual execution time and consecutive local transitions while preserving beta.3's other eight axes, including Reading. Algorithm, calibration and Mod identities remain separate. Beta.3, beta.2, beta.1 and V0.96 remain available for rollback.
+2. the public-trial **Map Demand 0.10.0-beta.5** heuristic, which keeps beta.4 Aim Control and replaces only Reading with a local order, information-rate, retention, rapid-decoding, and approximate HD-memory model. Algorithm, calibration and Mod identities remain separate. Beta.4, beta.3, beta.2, beta.1 and V0.96 remain available for rollback.
 
 The nine axes are Aim Control, Jump Aim, Micro Precision (`spatial_precision`), Flow Aim, Raw Speed,
 Finger Control, Stamina, Endurance, and Reading. Stamina and Endurance use bounded
