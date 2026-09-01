@@ -36,7 +36,7 @@ class PublicBetaTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"SKILL_PROFILER_ALGORITHM": ""}):
             selected = Path(tmp) / "release.json"
             with patch.object(release, "RUNTIME_SELECTION_PATH", selected):
-                self.assertEqual(release.default_algorithm(), "v010-beta3")
+                self.assertEqual(release.default_algorithm(), "v010-beta4")
                 selected.write_text('{"algorithm":"v096"}', encoding="utf-8")
                 self.assertEqual(release.runtime_model().MAP_DEMAND_VERSION, "0.9.6")
                 self.assertEqual(release.runtime_model("v010-beta1").MAP_DEMAND_VERSION, "0.10.0-beta.1")

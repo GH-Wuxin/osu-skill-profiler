@@ -11,6 +11,9 @@ from typing import Any, Iterable
 
 from . import contract as C
 from . import model_v010_beta2 as previous
+from . import model_v092 as summaries
+from . import model_v095 as archetypes
+from .public_beta import promote
 
 ALGORITHM_ID = "MAP_DEMAND_PRECISION_BALANCE_V010_BETA3"
 MAP_DEMAND_VERSION = "0.10.0-beta.3"
@@ -19,7 +22,6 @@ AXIS_SCHEMA_VERSION = previous.AXIS_SCHEMA_VERSION
 AXIS_ORDER = previous.AXIS_ORDER
 extract_from_path = previous.extract_from_path
 sha256_file_bytes = previous.sha256_file_bytes
-CHANGED_AXES = ("spatial_precision",)
 RELEASE = {
     "version": MAP_DEMAND_VERSION, "stage": "PUBLIC_BETA",
     "label": "0.10.0-beta.3 · Precision 平衡修正版",
@@ -87,15 +89,15 @@ def calibration_id(base_calibration_id: str) -> str:
     return "md010beta3:additive_log_tolerance_1:" + previous.calibration_id(base_calibration_id)
 
 
-def analyze_components(**kwargs: Any) -> dict:
-    output = previous.analyze_components(**kwargs)
-    original_identity = dict(output["identity"])
-    output["identity"] = {**original_identity, "algorithm_id": ALGORITHM_ID,
-                          "map_demand_version": MAP_DEMAND_VERSION,
-                          "calibration_id": calibration_id(str(kwargs["calibration"].get("calibration_id", "")))}
-    output["schema_version"] = SCHEMA_VERSION
-    output["release"] = {**RELEASE, "known_limitations": list(RELEASE["known_limitations"])}
-    output["diagnostics"]["release_basis_identity"] = original_identity
+def _apply_release(output: dict, kwargs: dict[str, Any]) -> dict:
+    promote(
+        output,
+        algorithm_id=ALGORITHM_ID,
+        map_demand_version=MAP_DEMAND_VERSION,
+        calibration_id=calibration_id(str(kwargs["calibration"].get("calibration_id", ""))),
+        schema_version=SCHEMA_VERSION,
+        release=RELEASE,
+    )
     if output.get("status") == "OK":
         measure = kwargs["components"].get("beta3_precision")
         if not isinstance(measure, dict) or "value" not in measure:
@@ -109,9 +111,18 @@ def analyze_components(**kwargs: Any) -> dict:
                           "evidence_tag": "PUBLIC_BETA3"}],
         })
         output["diagnostics"]["beta3_precision"] = measure
-        base = previous.base
-        output["summaries"] = base.v092.derive_summaries(output["axes"])
+        output["summaries"] = summaries.derive_summaries(output["axes"])
         anchor = previous.finite(output["diagnostics"].get("v091_star_anchor", {}).get("stars"), 5.0)
-        output["archetype"] = base.v095._classify_axes_with_low_demand_abstention(output["axes"], anchor)
+        output["archetype"] = archetypes._classify_axes_with_low_demand_abstention(output["axes"], anchor)
     C.scan_finite(output, "model_v010_beta3.output")
     return output
+
+
+def analyze_components(**kwargs: Any) -> dict:
+    """Replayable beta.3 entry point, retaining historical provenance."""
+    return _apply_release(previous.analyze_components(**kwargs), kwargs)
+
+
+def analyze_current_basis(**kwargs: Any) -> dict:
+    """Current-release path with the superseded beta.1 wrapper omitted."""
+    return _apply_release(previous.analyze_current_basis(**kwargs), kwargs)

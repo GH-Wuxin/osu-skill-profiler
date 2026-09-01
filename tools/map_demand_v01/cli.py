@@ -1,4 +1,4 @@
-"""CLI for Map Demand (0.10.0-beta.3 trial; beta.2/beta.1/V0.96 replayable)."""
+"""CLI for Map Demand (0.10.0-beta.4 trial; beta.3/beta.2/beta.1/V0.96 replayable)."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ from map_demand_v01 import model_decoupled_v01  # noqa: E402
 from map_demand_v01 import model_v010_beta1  # noqa: E402
 from map_demand_v01 import model_v010_beta2  # noqa: E402
 from map_demand_v01 import model_v010_beta3  # noqa: E402
+from map_demand_v01 import model_v010_beta4  # noqa: E402
 from map_demand_v01.release import default_algorithm  # noqa: E402
 from map_demand_v01.calibration import (  # noqa: E402
     CALIBRATION_ARTIFACT_DIRNAME,
@@ -76,6 +77,7 @@ def cmd_build_calibration(args: argparse.Namespace) -> int:
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     model = {
+        "v010-beta4": model_v010_beta4,
         "v010-beta2": model_v010_beta2,
         "v010-beta3": model_v010_beta3,
         "v010-beta1": model_v010_beta1,
@@ -319,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--mods", nargs="*", default=[])
     analyze.add_argument(
         "--algorithm",
-        choices=("v010-beta3", "v010-beta2", "v010-beta1", "decoupled-v01", "v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
+        choices=("v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "decoupled-v01", "v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
         default=default_algorithm(),
         help="active runtime release by default; older releases remain replayable",
     )
@@ -407,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     bid_ui.add_argument("--host", default="127.0.0.1", choices=("127.0.0.1", "localhost"))
     bid_ui.add_argument("--port", type=int, default=8767)
     bid_ui.add_argument("--no-open", action="store_true")
-    bid_ui.add_argument("--algorithm", choices=("v010-beta3", "v010-beta2", "v010-beta1", "v096"), default=default_algorithm())
+    bid_ui.add_argument("--algorithm", choices=("v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "v096"), default=default_algorithm())
     bid_ui.set_defaults(func=cmd_bid_review_ui)
 
     type_ui = sub.add_parser(

@@ -12,6 +12,10 @@ from typing import Any, Iterable
 from . import contract as C
 from . import model_v010_beta1 as previous
 from . import model_decoupled_v01 as base
+from . import model_v092 as summaries
+from . import model_v095 as archetypes
+from . import local_pattern_geometry as geometry
+from .public_beta import promote
 
 ALGORITHM_ID = "MAP_DEMAND_TOLERANCE_RHYTHM_V010_BETA2"
 MAP_DEMAND_VERSION = "0.10.0-beta.2"
@@ -33,13 +37,8 @@ RELEASE = {
 REF_RADIUS = (54.4 - 4.48 * 4) * 1.00041
 
 
-def clamp(x: float, low: float = 0.0, high: float = 1.0) -> float:
-    return max(low, min(high, x))
-
-
-def finite(x: Any, fallback: float = 0.0) -> float:
-    value = base._finite(x)
-    return fallback if value is None else value
+clamp = geometry.clamp
+finite = geometry.finite
 
 
 def _events(rows: Iterable[dict]) -> list[dict]:
@@ -311,7 +310,7 @@ def finger_measure(events: list[dict]) -> dict:
 def extract_components(local_rows: Iterable[dict], features=None, difficulty=None,
                        clock_rate=1.0, effective_mods=()):
     rows = list(local_rows)
-    components, warnings = previous.extract_components(rows, features, difficulty, clock_rate, effective_mods)
+    components, warnings = base.extract_components(rows, features, difficulty, clock_rate, effective_mods)
     events = _events(rows)
     components["beta2_measures"] = {
         "stamina": stamina_measure(events), "spatial_precision": precision_measure(events),
@@ -324,15 +323,15 @@ def calibration_id(base_calibration_id: str) -> str:
     return "md010beta2:local_tolerance_cadence_1:" + previous.calibration_id(base_calibration_id)
 
 
-def analyze_components(**kwargs: Any) -> dict:
-    output = previous.analyze_components(**kwargs)
-    original_identity = dict(output["identity"])
-    output["identity"] = {**original_identity, "algorithm_id": ALGORITHM_ID,
-                          "map_demand_version": MAP_DEMAND_VERSION,
-                          "calibration_id": calibration_id(str(kwargs["calibration"].get("calibration_id", "")))}
-    output["schema_version"] = SCHEMA_VERSION
-    output["release"] = {**RELEASE, "known_limitations": list(RELEASE["known_limitations"])}
-    output["diagnostics"]["release_basis_identity"] = original_identity
+def _apply_release(output: dict, kwargs: dict[str, Any]) -> dict:
+    promote(
+        output,
+        algorithm_id=ALGORITHM_ID,
+        map_demand_version=MAP_DEMAND_VERSION,
+        calibration_id=calibration_id(str(kwargs["calibration"].get("calibration_id", ""))),
+        schema_version=SCHEMA_VERSION,
+        release=RELEASE,
+    )
     if output.get("status") == "OK":
         measurements = kwargs["components"].get("beta2_measures")
         if not isinstance(measurements, dict) or any(a not in measurements for a in CHANGED_AXES):
@@ -349,8 +348,24 @@ def analyze_components(**kwargs: Any) -> dict:
             })
             output["diagnostics"].get("decoupled_axis_gates", {}).pop(axis, None)
         output["diagnostics"]["beta2_measures"] = measurements
-        output["summaries"] = base.v092.derive_summaries(output["axes"])
+        output["summaries"] = summaries.derive_summaries(output["axes"])
         anchor = finite(output["diagnostics"].get("v091_star_anchor", {}).get("stars"), 5.0)
-        output["archetype"] = base.v095._classify_axes_with_low_demand_abstention(output["axes"], anchor)
+        output["archetype"] = archetypes._classify_axes_with_low_demand_abstention(output["axes"], anchor)
     C.scan_finite(output, "model_v010_beta2.output")
     return output
+
+
+def analyze_components(**kwargs: Any) -> dict:
+    """Replayable beta.2 entry point, including its beta.1 provenance."""
+    return _apply_release(previous.analyze_components(**kwargs), kwargs)
+
+
+def analyze_current_basis(**kwargs: Any) -> dict:
+    """Build beta.2 directly on the numerical basis used by beta.1.
+
+    Beta.1 only rewrites release identity. Current releases overwrite that
+    identity again, so executing the intermediate wrapper is unnecessary.
+    The public ``analyze_components`` entry point remains unchanged for exact
+    historical replay.
+    """
+    return _apply_release(base.analyze_components(**kwargs), kwargs)

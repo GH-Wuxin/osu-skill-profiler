@@ -3,6 +3,7 @@
 from typing import Any
 
 from . import model_decoupled_v01 as experiment
+from .public_beta import promote
 
 ALGORITHM_ID = "MAP_DEMAND_DECOUPLED_V010_BETA1"
 MAP_DEMAND_VERSION = "0.10.0-beta.1"
@@ -31,15 +32,11 @@ def calibration_id(base_calibration_id: str) -> str:
 
 def analyze_components(**kwargs: Any) -> dict[str, Any]:
     # Do not copy or retune the reviewed formulas while promoting the release.
-    output = experiment.analyze_components(**kwargs)
-    original_identity = dict(output["identity"])
-    output["identity"] = {
-        **original_identity,
-        "algorithm_id": ALGORITHM_ID,
-        "map_demand_version": MAP_DEMAND_VERSION,
-        "calibration_id": calibration_id(str(kwargs["calibration"].get("calibration_id", ""))),
-    }
-    output["schema_version"] = SCHEMA_VERSION
-    output["release"] = {**RELEASE, "known_limitations": list(RELEASE["known_limitations"])}
-    output["diagnostics"]["release_basis_identity"] = original_identity
-    return output
+    return promote(
+        experiment.analyze_components(**kwargs),
+        algorithm_id=ALGORITHM_ID,
+        map_demand_version=MAP_DEMAND_VERSION,
+        calibration_id=calibration_id(str(kwargs["calibration"].get("calibration_id", ""))),
+        schema_version=SCHEMA_VERSION,
+        release=RELEASE,
+    )
