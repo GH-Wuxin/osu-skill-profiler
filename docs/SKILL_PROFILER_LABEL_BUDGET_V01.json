@@ -1,0 +1,191 @@
+{
+  "audit_id": "SKILL_PROFILER_LABEL_EFFICIENCY_AUDIT_V01",
+  "budget_scenarios": [
+    {
+      "budget_labels": 100,
+      "minimal": {
+        "human_labeling_plan": "Label the TOP_100 audit queue first; one rater, one pass, 6-way answer space; no production training.",
+        "model_complexity": "L2 logistic regression on handcrafted pair-level covariates (bpm/cs/ar/od/duration/object_count/slider_ratio/n_slider_rows/segment_index/time).",
+        "notes": "Smallest budget. Use only frozen computational proxies for audit; do not fit high-variance models."
+      },
+      "realistic": {
+        "human_labeling_plan": "Label TOP_100 plus 10% random fill-in pairs; record CANNOT_JUDGE reasons verbatim.",
+        "model_complexity": "Calibrated logistic regression (sigmoid temperature scaling) with 5-fold cross-validation.",
+        "notes": "Calibration is more valuable than capacity at this label volume."
+      },
+      "recommended": {
+        "human_labeling_plan": "Label TOP_100 only; annotate each pair with a forced-choice plus a CANNOT_JUDGE reason. Reserve ~5% for blind duplicate QA.",
+        "model_complexity": "Same calibrated logistic regression; report learning curve and bootstrap CIs.",
+        "notes": "Do not expand beyond the audited construct yet."
+      },
+      "surrogate_auc_reference": {
+        "caveat": "surrogate logistic-regression AUC from the offline active-learning sim; NOT human accuracy",
+        "path_random_mean_test_auc": 0.716303,
+        "path_uncertainty_diversity_mean_test_auc": 0.671859,
+        "time_random_mean_test_auc": 0.847146,
+        "time_uncertainty_diversity_mean_test_auc": 0.809937
+      }
+    },
+    {
+      "budget_labels": 300,
+      "minimal": {
+        "human_labeling_plan": "Label TOP_300; include P1/P2/P4/P7 classes to cover separated, reversed and near-boundary pairs.",
+        "model_complexity": "Logistic regression with per-feature standardisation and weak-supervision status as an auxiliary feature.",
+        "notes": "Keep model small enough to inspect weights."
+      },
+      "realistic": {
+        "human_labeling_plan": "Label TOP_300 then add 20 random/diversity pairs for calibration coverage.",
+        "model_complexity": "Logistic regression or GBM with shallow depth (<=3) and 3-fold CV; evaluate on held-out split.",
+        "notes": "Shallow GBM can capture simple interactions without overfitting at this size."
+      },
+      "recommended": {
+        "human_labeling_plan": "Label TOP_300; one rater with second-rater spot-check on 10% of pairs; record per-pair difficulty confidence.",
+        "model_complexity": "Shallow gradient boosting (depth<=3, lr=0.05, early stopping on validation) plus temperature-scaled logistic regression.",
+        "notes": "Use the AL sim U+D curve as a relative efficiency reference only."
+      },
+      "surrogate_auc_reference": {
+        "caveat": "surrogate logistic-regression AUC from the offline active-learning sim; NOT human accuracy",
+        "path_random_mean_test_auc": 0.742525,
+        "path_uncertainty_diversity_mean_test_auc": 0.73596,
+        "time_random_mean_test_auc": 0.8595,
+        "time_uncertainty_diversity_mean_test_auc": 0.86475
+      }
+    },
+    {
+      "budget_labels": 500,
+      "minimal": {
+        "human_labeling_plan": "Label TOP_500; one rater full pass plus 10% duplicate QA.",
+        "model_complexity": "Shallow GBM (depth<=3) or logistic regression with interaction terms.",
+        "notes": "Minimum viable human sample for reliable calibration of decision boundary."
+      },
+      "realistic": {
+        "human_labeling_plan": "Label TOP_500 plus random sample from underrepresented splits (val/test) and sparse-slider regions.",
+        "model_complexity": "GBM with depth<=3 and 5-fold grouped CV (group by set_group_key).",
+        "notes": "Grouped CV prevents mapper/set leakage and gives honest CIs."
+      },
+      "recommended": {
+        "human_labeling_plan": "Two raters on TOP_500; adjudicate disagreements; hold out 10% for inter-rater reliability (Cohen's kappa).",
+        "model_complexity": "Same grouped GBM + calibrated logistic regression; report feature importances against the construct definitions.",
+        "notes": "Two raters become worthwhile at this budget."
+      },
+      "surrogate_auc_reference": {
+        "caveat": "surrogate logistic-regression AUC from the offline active-learning sim; NOT human accuracy",
+        "path_random_mean_test_auc": 0.757737,
+        "path_uncertainty_diversity_mean_test_auc": 0.754081,
+        "time_random_mean_test_auc": 0.861146,
+        "time_uncertainty_diversity_mean_test_auc": 0.868188
+      }
+    },
+    {
+      "budget_labels": 1000,
+      "minimal": {
+        "human_labeling_plan": "Label TOP_1000 (all high-information classes) with one rater and 15% duplicate QA.",
+        "model_complexity": "GBM depth<=4 with grouped CV; no deep models.",
+        "notes": "The AL sim PATH full-pool logistic AUC is about 0.759; do not extrapolate to human accuracy."
+      },
+      "realistic": {
+        "human_labeling_plan": "Label TOP_1000 then add 50 random pairs per split; two raters on 20%.",
+        "model_complexity": "GBM depth<=4 or Bayesian logistic regression; grouped CV; temperature calibration.",
+        "notes": "At this size, label noise from ambiguous pairs starts to matter; track CANNOT_JUDGE rate."
+      },
+      "recommended": {
+        "human_labeling_plan": "Two raters on TOP_1000, adjudicate; active-learning pass (uncertainty+diversity) for the next batch.",
+        "model_complexity": "Ensemble of shallow GBM + calibrated logistic regression; no deep learning yet.",
+        "notes": "Use simulated efficiency only as a weak prior; human labels may disagree with the surrogate oracle."
+      },
+      "surrogate_auc_reference": {
+        "caveat": "surrogate logistic-regression AUC from the offline active-learning sim; NOT human accuracy",
+        "path_random_mean_test_auc": 0.75899,
+        "path_uncertainty_diversity_mean_test_auc": 0.75899,
+        "time_random_mean_test_auc": 0.862438,
+        "time_uncertainty_diversity_mean_test_auc": 0.862438
+      }
+    },
+    {
+      "budget_labels": 2000,
+      "minimal": {
+        "human_labeling_plan": "Label TOP_1000 core set plus 1000 active-learning selected pairs; one rater with 20% duplicate QA.",
+        "model_complexity": "GBM/random forest with grouped CV and calibration.",
+        "notes": "Larger budgets are justified only if human disagreement rate is high."
+      },
+      "realistic": {
+        "human_labeling_plan": "Two-rater pipeline; label TOP_1000 plus 1000 uncertainty/diversity pairs; adjudicate disagreements.",
+        "model_complexity": "GBM + shallow MLP (1 hidden layer) or Bayesian models with grouped CV; model selection by held-out log-loss.",
+        "notes": "Human capacity, not model capacity, is the bottleneck."
+      },
+      "recommended": {
+        "human_labeling_plan": "Two raters, adjudication; label TOP_1000 plus 1000 active-learning pairs; report inter-rater kappa and CANNOT_JUDGE rate; still no final production model training.",
+        "model_complexity": "Stacked ensemble (shallow GBM, MLP, logistic regression) with grouped CV, temperature calibration, and bootstrap uncertainty.",
+        "notes": "Use this budget only if the audit discovers systematic human-proxy divergence; otherwise 1000 labels suffice for the audit."
+      },
+      "surrogate_auc_reference": {
+        "caveat": "surrogate logistic-regression AUC from the offline active-learning sim; NOT human accuracy",
+        "path_random_mean_test_auc": null,
+        "path_uncertainty_diversity_mean_test_auc": null,
+        "time_random_mean_test_auc": null,
+        "time_uncertainty_diversity_mean_test_auc": null
+      }
+    },
+    {
+      "budget_labels": 5000,
+      "minimal": {
+        "human_labeling_plan": "Label TOP_1000 core set plus 4000 active-learning selected pairs; one rater with 20% duplicate QA.",
+        "model_complexity": "GBM/random forest with grouped CV and calibration.",
+        "notes": "Larger budgets are justified only if human disagreement rate is high."
+      },
+      "realistic": {
+        "human_labeling_plan": "Two-rater pipeline; label TOP_1000 plus 4000 uncertainty/diversity pairs; adjudicate disagreements.",
+        "model_complexity": "GBM + shallow MLP (1 hidden layer) or Bayesian models with grouped CV; model selection by held-out log-loss.",
+        "notes": "Human capacity, not model capacity, is the bottleneck."
+      },
+      "recommended": {
+        "human_labeling_plan": "Two raters, adjudication; label TOP_1000 plus 4000 active-learning pairs; report inter-rater kappa and CANNOT_JUDGE rate; still no final production model training.",
+        "model_complexity": "Stacked ensemble (shallow GBM, MLP, logistic regression) with grouped CV, temperature calibration, and bootstrap uncertainty.",
+        "notes": "Use this budget only if the audit discovers systematic human-proxy divergence; otherwise 1000 labels suffice for the audit."
+      },
+      "surrogate_auc_reference": {
+        "caveat": "surrogate logistic-regression AUC from the offline active-learning sim; NOT human accuracy",
+        "path_random_mean_test_auc": null,
+        "path_uncertainty_diversity_mean_test_auc": null,
+        "time_random_mean_test_auc": null,
+        "time_uncertainty_diversity_mean_test_auc": null
+      }
+    }
+  ],
+  "cross_cutting_notes": {
+    "candidate_class_counts": {
+      "P10_STRUCTURAL_ANOMALY_STRESS": 20,
+      "P1_PATH_SEPARATED_TIME_MATCHED": 20,
+      "P2_TIME_SEPARATED_PATH_MATCHED": 20,
+      "P3_PATH_TIME_SAME_DIRECTION": 20,
+      "P4_PATH_TIME_OPPOSITE_DIRECTION": 20,
+      "P5_BOTH_CLOSE": 20,
+      "P6_LARGE_EFFECT_SANITY_CONTROL": 20,
+      "P7_NEAR_PERCEPTUAL_THRESHOLD": 20,
+      "P8_REPEAT_HEAVY": 20,
+      "P9_SLIDER_DENSITY_CONFOUND": 20
+    },
+    "label_safety": "Do not expose target-metric values to participants; do not train final production models during this audit.",
+    "simulated_efficiency_finding": "In the surrogate simulation, random acquisition was competitive with active strategies for the PATH task; uncertainty was no better than random for TIME. Intelligent sampling did not substantially reduce required labels in this already-curated candidate pool.",
+    "top_queue_lengths": {
+      "TOP_100": 100,
+      "TOP_200": 200,
+      "TOP_25": 25,
+      "TOP_50": 50
+    },
+    "why_reasons_only": [
+      "weak_supervision_disagreement",
+      "weak_supervision_abstention",
+      "path_time_reversal",
+      "near_decision_boundary",
+      "underrepresented_region",
+      "calibration_leverage"
+    ]
+  },
+  "generated_by": "tmp/label_audit/budget_v01.py",
+  "input_artifacts": [
+    "docs/SKILL_PROFILER_HIGH_INFORMATION_PAIRS_V01.json",
+    "docs/SKILL_PROFILER_ACTIVE_LEARNING_SIM_V01.json"
+  ],
+  "phase": "O"
+}

@@ -1,0 +1,140 @@
+{
+  "schema_version": "0.1.0",
+  "audit_id": "SKILL_PROFILER_WEAK_SUPERVISION_V01",
+  "generated_utc": "2026-08-15",
+  "repository": "osu-skill-profiler",
+  "weak_evidence_is_ground_truth": false,
+  "source_of_audit": "tmp/label_audit/phase_abc_v01.json (read-only asset and weak-source audit)",
+  "evidence_levels": {
+    "HUMAN_GROUND_TRUTH": "NONE_FOUND",
+    "HUMAN_SMALL_N": "136 raw pairwise responses; retest independent = P01 6 + P05 1 = 7; all human artifacts declare human_evidence_is_ground_truth=false",
+    "DETERMINISTIC_OBSERVABLE": "std_manifest / corpus_scan / feature_qa_v02 / local_signal_qa_v03 / reference_signal_qa_v02 / gap_audit construct stats",
+    "COMMUNITY_WEAK_LABEL": "NONE_FOUND",
+    "RULE_PSEUDO_LABEL": "weak_supervision_v01 pilot 35,854 records from 5 deterministic threshold rules; legacy CONSERVATIVE_RULES demo rules also exist",
+    "MODEL_PSEUDO_LABEL": "NONE_FOUND",
+    "UNLABELED": "126,509 manifest samples; 56,547,084 local-signal object rows; 23,964,086 slider rows with duration"
+  },
+  "weak_sources": [
+    {
+      "source_id": "ws01.source.local.slider_travel_segment",
+      "status": "EXISTS",
+      "family": "LOCAL_SIGNAL",
+      "coverage": "31,854 SEGMENT records; EMITTED 9,880 (31.0%), ABSTAINED 21,941 (68.9%), UNAVAILABLE 33",
+      "vocabulary": ["POSITIVE", "NEGATIVE", "ABSTAINED", "UNAVAILABLE"],
+      "construct_alignment": "PARTIAL; rule consumes zero-inclusive segment p90; current human PATH construct is slider-only p90",
+      "leakage_risk": "same feature feeds rule pseudo-label and human-construct proxy; weak-target lineage gate is mechanical only when invoked",
+      "suitability": "weak_supervision, stimulus_mining"
+    },
+    {
+      "source_id": "ws01.source.observable.dense_timing",
+      "status": "EXISTS",
+      "family": "OBSERVABLE",
+      "coverage": "1,000 MAP records; EMITTED 450 (45.0%), ABSTAINED 550 (55.0%)",
+      "vocabulary": ["POSITIVE", "NEGATIVE", "ABSTAINED"],
+      "construct_alignment": "WEAK; Q-V02-DENSE is UNDER_REVISION",
+      "leakage_risk": "lineage-gated for weak target; human target not covered",
+      "suitability": "exploratory acquisition only"
+    },
+    {
+      "source_id": "ws01.source.observable.movement_tail",
+      "status": "EXISTS",
+      "family": "OBSERVABLE",
+      "coverage": "1,000 MAP records; EMITTED 194 (19.4%), ABSTAINED 804 (80.4%), UNAVAILABLE 2",
+      "vocabulary": ["POSITIVE", "NEGATIVE", "ABSTAINED", "UNAVAILABLE"],
+      "construct_alignment": "SUPERSEDED_BY_Q_V02_SPAN_URGENCY",
+      "leakage_risk": "lineage-gated for weak target",
+      "suitability": "weak_supervision, stimulus_mining"
+    },
+    {
+      "source_id": "ws01.source.observable.slider_control",
+      "status": "EXISTS",
+      "family": "OBSERVABLE",
+      "coverage": "1,000 MAP records; EMITTED 99 (9.9%), ABSTAINED 900 (90.0%), UNAVAILABLE 1",
+      "vocabulary": ["POSITIVE", "NEGATIVE", "ABSTAINED", "UNAVAILABLE"],
+      "construct_alignment": "INDIRECT; excluded from Active Learning v0.1",
+      "leakage_risk": "lineage-gated for weak target",
+      "suitability": "weak_supervision only"
+    },
+    {
+      "source_id": "ws01.source.reference.ppy_snap_tail",
+      "status": "EXISTS",
+      "family": "REFERENCE_PPY",
+      "coverage": "1,000 MAP records; EMITTED 507 (50.7%), ABSTAINED 487 (48.7%), UNAVAILABLE 6",
+      "vocabulary": ["POSITIVE", "NEGATIVE", "ABSTAINED", "UNAVAILABLE"],
+      "construct_alignment": "REFERENCE_ONLY second view of movement demand; never ground truth",
+      "leakage_risk": "REFERENCE_ONLY role mechanically blocks model input; upstream formula semantically overlaps slider-travel geometry (documentation-only guard)",
+      "suitability": "weak_supervision reference-only, offline evaluation only"
+    }
+  ],
+  "weak_supervision_pilot_totals": {
+    "records": 35854,
+    "EMITTED": 11130,
+    "ABSTAINED": 24682,
+    "UNAVAILABLE": 42,
+    "INVALID": 0,
+    "emission_rate": 0.310428,
+    "abstention_rate": 0.688402,
+    "agreement_case_count": 191,
+    "disagreement_case_count": 0,
+    "agreement_rate_among_multi_source_cases": 1.0,
+    "effective_independent_support_histogram": {"1": 10748, "2": 191}
+  },
+  "external_sources_status": {
+    "tournament_mappool": "NONE",
+    "mapper_collection_tags": "NONE",
+    "osu_collector": "NONE",
+    "known_skill_category_datasets": "NONE",
+    "osu_oracle": "NONE",
+    "manually_curated_categories": "NONE",
+    "player_performance_contrast": "NONE",
+    "deterministic_feature_dominance": "EXISTS (rule pseudo-labels only)"
+  },
+  "circularity_flags": [
+    {
+      "id": "CIRC-01",
+      "path": "ls.lazy_travel_distance_cs_normalised -> ws01.local.slider_travel_segment pseudo-label -> Active Learning candidate selection -> human PATH question -> same observable locked as construct proxy",
+      "mechanical_guard": "partial (weak-target lineage gate); human-evidence target not in registry",
+      "action": "treat human PATH evidence as construct validation only; never validate a model on the same feature that generated its training pseudo-labels without an independent target"
+    },
+    {
+      "id": "CIRC-02",
+      "path": "spatial.distance_norm_p95 / spatial.velocity_norm_per_s_p95 -> movement_tail rule -> AL selection -> Q-V02-SPAN / Q-V02-URGENCY use the same observables as provisional mappings",
+      "mechanical_guard": "partial",
+      "action": "report expected_sign=null; do not use these questions to validate movement rules"
+    },
+    {
+      "id": "CIRC-03",
+      "path": "legacy CONSERVATIVE_RULES -> weak label prototype -> future model -> same rules as evaluation",
+      "mechanical_guard": "none (legacy path); documented WEAK LABEL != GROUND TRUTH only",
+      "action": "never use legacy weak labels as evaluation targets"
+    },
+    {
+      "id": "CIRC-04",
+      "path": "slider_total_duration_ms used to select retest probes and also proposed as TIME construct primary observable",
+      "mechanical_guard": "none",
+      "action": "pre-register independent validation items selected without using TIME metric before using TIME human evidence to calibrate TIME rules"
+    },
+    {
+      "id": "CIRC-05",
+      "path": "ref.ppy.snap_include_sliders contains slider travel geometry that overlaps PATH; a future model trained on ref.ppy outputs could inherit PATH information",
+      "mechanical_guard": "REFERENCE_ONLY blocks direct input; semantic overlap is documentation-only",
+      "action": "add lineage note if a derivative of ref.ppy is ever registered"
+    },
+    {
+      "id": "CIRC-06",
+      "path": "challenge/disagreement subsets select stimuli and also appear as candidate features; if used as inputs, selection metadata leaks",
+      "mechanical_guard": "CHALLENGE_SELECTION role blocks as input",
+      "action": "never expose split/challenge flags to participant or model inputs"
+    }
+  ],
+  "semantic_mapping_policy": {
+    "mod_labels": "NM1/NM2/HD/HR/DT are NOT mapped to aim/stream/reading/tech anywhere; mod-transformed semantics are unimplemented",
+    "community_labels": "no community tags ingested",
+    "mapping_allowed_only_with": "explicit documented justification and lineage registration"
+  },
+  "recommendation": {
+    "usable_now": "5 deterministic weak rules as acquisition and pseudo-label candidates; FORMAL human pairs are too few to calibrate",
+    "minimum_human_fallback": "independent human calibration is required before any weak label becomes a model target",
+    "primary_risk": "construct circularity and acquisition bias dominate; add independently selected control pairs"
+  }
+}

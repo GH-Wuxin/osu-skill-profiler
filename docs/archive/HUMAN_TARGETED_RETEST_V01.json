@@ -1,0 +1,706 @@
+{
+  "schema_version": "0.1.0",
+  "retest_id": "human-targeted-retest-v01",
+  "phase": "P2A",
+  "status": "PREPARED_NOT_LAUNCHED",
+  "generated_utc": "2026-08-14",
+  "repository": "osu-skill-profiler",
+  "question_definitions": "docs/HUMAN_QUESTION_DEFINITIONS_V02.json",
+  "purpose": "Discriminative probe package to separate the competing slider hypotheses (H_distance vs H_duration) and the surviving dense hypotheses (H1/H2/H3), using the V02 single-axis questions. Prepared only; no human answers collected, no live collection started.",
+  "population_for_percentiles": "31,821 slider_tracking SEGMENT rows (weak-supervision pilot) for slider probes; 998 dense MAP rows for dense probes",
+  "slider_questions_per_pair": [
+    "Q-V02-SLIDER-PATH",
+    "Q-V02-SLIDER-TIME"
+  ],
+  "dense_questions_per_pair": [
+    "Q-V02-DENSE"
+  ],
+  "expected_workload_per_person": {
+    "slider_judgments": 8,
+    "dense_judgments": 2,
+    "control_judgments": 2,
+    "total": 12,
+    "target_players": "3-5"
+  },
+  "probes": [
+    {
+      "probe_id": "S-T1-CORE-A",
+      "type": "TYPE_1",
+      "role": "core",
+      "question_family": "slider",
+      "competing_hypotheses": ["H_distance", "H_duration"],
+      "discrimination": "path p90 equal (110.662 vs 110.662); follow-duration p90 differs 2.05x (321.4 vs 659.3 ms). Q-V02-SLIDER-PATH expectation: SAME/null. Q-V02-SLIDER-TIME expectation: side B.",
+      "expected_direction": {
+        "Q-V02-SLIDER-PATH": null,
+        "Q-V02-SLIDER-TIME": "B"
+      },
+      "side_a": {
+        "map_checksum": "sha256:74d8e9e416e35c975b6f414ef778a5ab9dd6bcccfd082a078112265b5cf2e2d7",
+        "segment_index": 57,
+        "segment_start_ms": 305086.0,
+        "segment_end_ms": 310086.0,
+        "rule_status": "EMITTED",
+        "path_p90": 110.662,
+        "seg_max": 150.30303070762048,
+        "follow_duration_p90_ms": 321.428591353553,
+        "follow_duration_median_ms": 214.2857193946838,
+        "n_sliders": 12,
+        "slider_span_total": 12,
+        "slider_repeat_total": 0,
+        "raw_travel_max_px": 320.0,
+        "circles": 4,
+        "bpm_at_start": 139.99999999999986,
+        "sv_at_start": 1.4999999999999993,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.3497,
+          "path_p90": 0.8362,
+          "segment_max": 0.767,
+          "n_sliders": 0.922,
+          "bpm_at_start": 0.2786
+        }
+      },
+      "side_b": {
+        "map_checksum": "sha256:f1714d03f01fa8dd9148d7b8a3cf1e0faf3d5ff10ec7cf6ca18384dbc453d72a",
+        "segment_index": 24,
+        "segment_start_ms": 146949.0,
+        "segment_end_ms": 151949.0,
+        "rule_status": "EMITTED",
+        "path_p90": 110.662,
+        "seg_max": 134.65592281164112,
+        "follow_duration_p90_ms": 659.3406392191783,
+        "follow_duration_median_ms": 164.83515980479487,
+        "n_sliders": 10,
+        "slider_span_total": 12,
+        "slider_repeat_total": 2,
+        "raw_travel_max_px": 252.0,
+        "circles": 4,
+        "bpm_at_start": 181.99999999999983,
+        "sv_at_start": 0.9000000000000009,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.7509,
+          "path_p90": 0.8362,
+          "segment_max": 0.7175,
+          "n_sliders": 0.847,
+          "bpm_at_start": 0.6901
+        }
+      },
+      "confounders": [
+        "SV differs (1.5 vs 0.9) — affects visual ball speed, not path geometry",
+        "BPM differs (140 vs 182) and is displayed",
+        "follow-duration MEDIAN favours A (214.3 vs 164.8 ms) while p90 favours B — also separates which duration aggregate players use",
+        "n_sliders 12 vs 10 (both high-percentile but comparable)"
+      ],
+      "outlier_characterisation": "non-pathological: both duration p90s within p35-p75; path p90 at p84; BPM p28/p69"
+    },
+    {
+      "probe_id": "S-T1-STRESS",
+      "type": "TYPE_1",
+      "role": "stress_probe",
+      "question_family": "slider",
+      "competing_hypotheses": ["H_distance", "H_duration"],
+      "discrimination": "path p90 nearly equal (74.6621 vs 74.6625); every distance-family metric equal or favours A (seg_max 104.7 vs 79.4, raw max-trail 160 vs 140 px) while follow-duration p90 favours B by 5.74x (375 vs 2153.8 ms). Q-V02-SLIDER-PATH expectation: SAME/null. Q-V02-SLIDER-TIME expectation: B. Reported SEPARATELY from core probes (preregistered rule G5).",
+      "expected_direction": {
+        "Q-V02-SLIDER-PATH": null,
+        "Q-V02-SLIDER-TIME": "B"
+      },
+      "side_a": {
+        "map_checksum": "sha256:67ff4f746c4702a4d66629f8eb14d4b84e201137abf06da5fb8504f0a0685cee",
+        "segment_index": 15,
+        "segment_start_ms": 75850.0,
+        "segment_end_ms": 80850.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 74.6621,
+        "seg_max": 104.67492847101292,
+        "follow_duration_p90_ms": 375.0,
+        "follow_duration_median_ms": 375.0,
+        "n_sliders": 4,
+        "slider_span_total": 5,
+        "slider_repeat_total": 1,
+        "raw_travel_max_px": 160.0,
+        "circles": 13,
+        "bpm_at_start": 160.0,
+        "sv_at_start": 1.0,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.5159,
+          "path_p90": 0.6789,
+          "segment_max": 0.5817,
+          "n_sliders": 0.3668,
+          "bpm_at_start": 0.4251
+        }
+      },
+      "side_b": {
+        "map_checksum": "sha256:a2860bbe08fe668cb634029e2d0f7dfd5e5197af28c4b4f6f1cfbadcf2aa7e71",
+        "segment_index": 17,
+        "segment_start_ms": 98867.0,
+        "segment_end_ms": 103867.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 74.6625,
+        "seg_max": 79.36586701207153,
+        "follow_duration_p90_ms": 2153.846153846156,
+        "follow_duration_median_ms": 153.846153846154,
+        "n_sliders": 6,
+        "slider_span_total": 6,
+        "slider_repeat_total": 0,
+        "raw_travel_max_px": 140.0,
+        "circles": 6,
+        "bpm_at_start": 194.9999999999998,
+        "sv_at_start": 1.0,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.9847,
+          "path_p90": 0.6789,
+          "segment_max": 0.4325,
+          "n_sliders": 0.5465,
+          "bpm_at_start": 0.8163
+        }
+      },
+      "confounders": [
+        "B's duration signal is driven by a single 2153.8 ms slider (p98.5 outlier) — this is why it is a STRESS probe, not everyday evidence",
+        "BPM differs (160 vs 195) and is displayed",
+        "slider counts differ (4 vs 6); circles differ (13 vs 6)",
+        "duration MEDIAN favours A (375 vs 153.8 ms) while p90 favours B — separates duration aggregates"
+      ],
+      "outlier_characterisation": "side B follow-duration p90 is a p98.5 outlier; the pair is deliberately pathological in the time dimension and must not be the only Type 1 evidence"
+    },
+    {
+      "probe_id": "S-T2-CORE-A",
+      "type": "TYPE_2",
+      "role": "core",
+      "question_family": "slider",
+      "competing_hypotheses": ["H_distance", "H_duration"],
+      "discrimination": "follow-duration p90 exactly equal (1440.0 vs 1440.0 ms; medians equal at 480 ms) while path p90 differs 4.79x (290.5 vs 60.7) and seg_max 4.92x favouring A. Q-V02-SLIDER-PATH expectation: A. Q-V02-SLIDER-TIME expectation: SAME/null.",
+      "expected_direction": {
+        "Q-V02-SLIDER-PATH": "A",
+        "Q-V02-SLIDER-TIME": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:9fc8b8be4bcadca35bf7c3309646fe507464fe198ed6f1613781f507a1a1e446",
+        "segment_index": 15,
+        "segment_start_ms": 84226.0,
+        "segment_end_ms": 89226.0,
+        "rule_status": "EMITTED",
+        "path_p90": 290.476,
+        "seg_max": 388.1277293497159,
+        "follow_duration_p90_ms": 1440.0000000000016,
+        "follow_duration_median_ms": 480.0000000000005,
+        "n_sliders": 5,
+        "slider_span_total": 8,
+        "slider_repeat_total": 3,
+        "raw_travel_max_px": 570.0,
+        "circles": 2,
+        "bpm_at_start": 250.0,
+        "sv_at_start": 1.0,
+        "cs": 3.0,
+        "percentiles": {
+          "follow_duration_p90": 0.9588,
+          "path_p90": 0.9758,
+          "segment_max": 0.9635,
+          "n_sliders": 0.4573,
+          "bpm_at_start": 0.9626
+        }
+      },
+      "side_b": {
+        "map_checksum": "sha256:baf6a6db821b6ec568044e1566c07576530cc350cef058abd306e9e05d7648f0",
+        "segment_index": 3,
+        "segment_start_ms": 15575.0,
+        "segment_end_ms": 20575.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 60.6626,
+        "seg_max": 78.79485623191381,
+        "follow_duration_p90_ms": 1440.0,
+        "follow_duration_median_ms": 480.0,
+        "n_sliders": 4,
+        "slider_span_total": 6,
+        "slider_repeat_total": 2,
+        "raw_travel_max_px": 288.0,
+        "circles": 0,
+        "bpm_at_start": 125.0,
+        "sv_at_start": 1.0,
+        "cs": 3.0,
+        "percentiles": {
+          "follow_duration_p90": 0.9587,
+          "path_p90": 0.5968,
+          "segment_max": 0.4287,
+          "n_sliders": 0.3668,
+          "bpm_at_start": 0.1489
+        }
+      },
+      "confounders": [
+        "BPM differs (250 vs 125) and is displayed; equal duration by construction but the visual ball speed differs",
+        "rule status differs (EMITTED vs ABSTAINED) — not shown to players",
+        "raw max-trail follows the p90 side (570 vs 288 px), expected for Type 2"
+      ],
+      "outlier_characterisation": "side A is upper-tail on path (p97.6) and BPM (p96.3); both sides' duration is p95.9 — high but equal (the equality is the design point)"
+    },
+    {
+      "probe_id": "S-T2-CORE-B",
+      "type": "TYPE_2",
+      "role": "core",
+      "question_family": "slider",
+      "competing_hypotheses": ["H_distance", "H_duration"],
+      "discrimination": "follow-duration p90 exactly equal (666.67 vs 666.67 ms) while path p90 differs 4.69x (282.8 vs 60.3) favouring A. Q-V02-SLIDER-PATH expectation: A. Q-V02-SLIDER-TIME expectation: SAME/null.",
+      "expected_direction": {
+        "Q-V02-SLIDER-PATH": "A",
+        "Q-V02-SLIDER-TIME": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:49914de346f46d086c4ed77ec30e4e085d0b026a7a60efa0b6326e1169dca267",
+        "segment_index": 13,
+        "segment_start_ms": 69198.0,
+        "segment_end_ms": 74198.0,
+        "rule_status": "EMITTED",
+        "path_p90": 282.806,
+        "seg_max": 282.8061494787179,
+        "follow_duration_p90_ms": 666.666666666666,
+        "follow_duration_median_ms": 666.666666666666,
+        "n_sliders": 4,
+        "slider_span_total": 8,
+        "slider_repeat_total": 4,
+        "raw_travel_max_px": 320.0,
+        "circles": 5,
+        "bpm_at_start": 180.0000000000002,
+        "sv_at_start": 1.0,
+        "cs": 5.0,
+        "percentiles": {
+          "follow_duration_p90": 0.7606,
+          "path_p90": 0.9747,
+          "segment_max": 0.9276,
+          "n_sliders": 0.3668,
+          "bpm_at_start": 0.6738
+        }
+      },
+      "side_b": {
+        "map_checksum": "sha256:59c4f81824ee0cd803360a0d31ca417c2413fbd96e8bc1f30dbb57e4ddd4664c",
+        "segment_index": 12,
+        "segment_start_ms": 60535.0,
+        "segment_end_ms": 65535.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 60.2918,
+        "seg_max": 106.50463453367556,
+        "follow_duration_p90_ms": 666.666666666666,
+        "follow_duration_median_ms": 444.44444444444395,
+        "n_sliders": 6,
+        "slider_span_total": 6,
+        "slider_repeat_total": 0,
+        "raw_travel_max_px": 165.0,
+        "circles": 2,
+        "bpm_at_start": 135.00000000000014,
+        "sv_at_start": 1.0,
+        "cs": 3.5,
+        "percentiles": {
+          "follow_duration_p90": 0.7606,
+          "path_p90": 0.5947,
+          "segment_max": 0.5935,
+          "n_sliders": 0.5465,
+          "bpm_at_start": 0.2322
+        }
+      },
+      "confounders": [
+        "CS differs (5.0 vs 3.5): the machine path p90 is CS-normalised but the raw canvas rendering is not — a live confound for the path question on this pair",
+        "duration MEDIANS differ (666.7 vs 444.4 ms) while p90s are equal",
+        "BPM differs (180 vs 135) and is displayed",
+        "rule status differs (EMITTED vs ABSTAINED) — not shown to players"
+      ],
+      "outlier_characterisation": "side A path p90 is p97.5; durations both p76 — ordinary"
+    },
+    {
+      "probe_id": "S-RES-1",
+      "type": "TYPE_1",
+      "role": "reserve",
+      "question_family": "slider",
+      "competing_hypotheses": ["H_distance", "H_duration"],
+      "discrimination": "path p90 exactly equal (89.5523 vs 89.5523); follow-duration p90 differs 5.03x (1714.3 vs 340.9 ms) favouring A. Used only if a core probe fails presentation checks.",
+      "expected_direction": {
+        "Q-V02-SLIDER-PATH": null,
+        "Q-V02-SLIDER-TIME": "A"
+      },
+      "side_a": {
+        "map_checksum": "sha256:b090b68f041cdf2ecc37856d0795a69379032c63818639b151862fb3898f780f",
+        "segment_index": 13,
+        "segment_start_ms": 66154.0,
+        "segment_end_ms": 71154.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 89.5523,
+        "seg_max": 139.41406088153337,
+        "follow_duration_p90_ms": 1714.285714285716,
+        "follow_duration_median_ms": 642.8571232387009,
+        "n_sliders": 5,
+        "slider_span_total": 6,
+        "slider_repeat_total": 1,
+        "raw_travel_max_px": 360.0,
+        "circles": 0,
+        "bpm_at_start": 139.99999999999986,
+        "sv_at_start": 1.0,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.9754,
+          "path_p90": 0.7553,
+          "segment_max": 0.7356,
+          "n_sliders": 0.4573,
+          "bpm_at_start": 0.2786
+        }
+      },
+      "side_b": {
+        "map_checksum": "sha256:bb0e6a7097c457f7b6e6140dae5fef9e83699b597d04a9c83e56b934cc5413ef",
+        "segment_index": 15,
+        "segment_start_ms": 75405.0,
+        "segment_end_ms": 80405.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 89.5523,
+        "seg_max": 129.63289329853893,
+        "follow_duration_p90_ms": 340.909090909091,
+        "follow_duration_median_ms": 170.4545454545455,
+        "n_sliders": 8,
+        "slider_span_total": 8,
+        "slider_repeat_total": 0,
+        "raw_travel_max_px": 180.0,
+        "circles": 9,
+        "bpm_at_start": 175.99999999999994,
+        "sv_at_start": 1.0,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.421,
+          "path_p90": 0.7553,
+          "segment_max": 0.6987,
+          "n_sliders": 0.7188,
+          "bpm_at_start": 0.6072
+        }
+      },
+      "confounders": [
+        "raw max-trail favours A (360 vs 180 px) in the SAME direction as duration — cannot separate duration from distance-max-tail",
+        "BPM differs (140 vs 176) and is displayed",
+        "slider counts differ (5 vs 8); circles 0 vs 9"
+      ],
+      "outlier_characterisation": "side A duration p90 is p97.5 — upper tail but not the p98.5 stress outlier"
+    },
+    {
+      "probe_id": "S-RES-2",
+      "type": "TYPE_2",
+      "role": "reserve",
+      "question_family": "slider",
+      "competing_hypotheses": ["H_distance", "H_duration"],
+      "discrimination": "follow-duration p90 equal (652.17 vs 652.17 ms) while path p90 differs 4.72x (60.6 vs 286.3) favouring B. Used only if a core Type 2 probe fails presentation checks.",
+      "expected_direction": {
+        "Q-V02-SLIDER-PATH": "B",
+        "Q-V02-SLIDER-TIME": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:5f77eab37475c300bc8fa3e7f51e3e5b610c8dde387d56b93afc2718d8caa35a",
+        "segment_index": 8,
+        "segment_start_ms": 45218.0,
+        "segment_end_ms": 50218.0,
+        "rule_status": "ABSTAINED",
+        "path_p90": 60.6194,
+        "seg_max": 124.2503631001205,
+        "follow_duration_p90_ms": 652.1739130434787,
+        "follow_duration_median_ms": 326.08695652173935,
+        "n_sliders": 9,
+        "slider_span_total": 10,
+        "slider_repeat_total": 1,
+        "raw_travel_max_px": 259.0,
+        "circles": 2,
+        "bpm_at_start": 184.00000000000006,
+        "sv_at_start": 0.6499999999999994,
+        "cs": 4.0,
+        "percentiles": {
+          "follow_duration_p90": 0.749,
+          "path_p90": 0.5966,
+          "segment_max": 0.6756,
+          "n_sliders": 0.7899,
+          "bpm_at_start": 0.7077
+        }
+      },
+      "side_b": {
+        "map_checksum": "sha256:6824f4016a131f9c32f0c7c540decfb905fd62c496c44497cdd97ea0718b8726",
+        "segment_index": 14,
+        "segment_start_ms": 70296.0,
+        "segment_end_ms": 75296.0,
+        "rule_status": "EMITTED",
+        "path_p90": 286.346,
+        "seg_max": 433.9348282850797,
+        "follow_duration_p90_ms": 652.1739379219391,
+        "follow_duration_median_ms": 434.7826252812928,
+        "n_sliders": 5,
+        "slider_span_total": 6,
+        "slider_repeat_total": 1,
+        "raw_travel_max_px": 450.0,
+        "circles": 10,
+        "bpm_at_start": 138.00000000000006,
+        "sv_at_start": 1.3000000000000003,
+        "cs": 4.3,
+        "percentiles": {
+          "follow_duration_p90": 0.7493,
+          "path_p90": 0.9751,
+          "segment_max": 0.9707,
+          "n_sliders": 0.4573,
+          "bpm_at_start": 0.25
+        }
+      },
+      "confounders": [
+        "CS differs (4.0 vs 4.3)",
+        "duration MEDIANS differ (326 vs 434.8 ms) while p90s equal",
+        "SV differs (0.65 vs 1.3)",
+        "rule status differs (ABSTAINED vs EMITTED) — not shown to players"
+      ],
+      "outlier_characterisation": "side B path p90 p97.5; durations p75 — ordinary"
+    },
+    {
+      "probe_id": "D-D1-CORE",
+      "type": "D1",
+      "role": "core",
+      "question_family": "dense",
+      "competing_hypotheses": ["H1_beat_relative_runs", "H2_density", "H3_morphology"],
+      "discrimination": "general density essentially equal (223.747 vs 223.749 objects/min, rel < 1e-4) while beat-relative runs differ 2.17x (78 vs 36). H1 predicts A; H2 predicts SAME. CS equal (4.0/4.0), BPM close (208 vs 202).",
+      "expected_direction": {
+        "Q-V02-DENSE": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:4d28545af3b13c81f5da8c22e9bf26d92e78090e0b33eb76d7b483ad932c9909",
+        "objects_per_min": 223.747,
+        "beat_runs_ge3": 78,
+        "beat_run_longest_ms": 9231.0,
+        "isolated_tap_share": 0.067319,
+        "rate_max_1s": 10,
+        "object_count": 817,
+        "duration_s": 219.087,
+        "bpm_max": 208.00000000000034,
+        "slider_ratio": 0.43084455324357407,
+        "cs": 4.0,
+        "ar": 9.0
+      },
+      "side_b": {
+        "map_checksum": "sha256:560e0b76f8d683757e7bbbf8c6753c9475c687325a4c1748c39581c53f186350",
+        "objects_per_min": 223.749,
+        "beat_runs_ge3": 36,
+        "beat_run_longest_ms": 7996.0,
+        "isolated_tap_share": 0.039394,
+        "rate_max_1s": 10,
+        "object_count": 330,
+        "duration_s": 88.492,
+        "bpm_max": 202.0,
+        "slider_ratio": 0.5060606060606061,
+        "cs": 4.0,
+        "ar": 8.7
+      },
+      "confounders": [
+        "map durations differ (219 vs 88.5 s) — playback length differs",
+        "isolated_tap_share differs slightly (0.067 vs 0.039) — H3 not fully held"
+      ],
+      "outlier_characterisation": "density p-high (223/min) on both sides but equal by design; runs 78 vs 36 both within common range"
+    },
+    {
+      "probe_id": "D-D3-CORE",
+      "type": "D3",
+      "role": "core",
+      "question_family": "dense",
+      "competing_hypotheses": ["H1_beat_relative_runs", "H2_density", "H3_morphology"],
+      "discrimination": "density close (98.7 vs 99.6 objects/min) and beat-runs equal (12 vs 12) while the morphology proxy (isolated-tap share) differs 0.076 vs 0.801. H3 predicts B; H1/H2 predict SAME. CS equal (3.0/3.0).",
+      "expected_direction": {
+        "Q-V02-DENSE": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:69fafeea9acdf7337d319a3bcaed1a78ac31b54e6fb0c865083c4b277200281f",
+        "objects_per_min": 98.732,
+        "beat_runs_ge3": 12,
+        "beat_run_longest_ms": 96000.0,
+        "isolated_tap_share": 0.075601,
+        "rate_max_1s": 4,
+        "object_count": 291,
+        "duration_s": 176.842,
+        "bpm_max": 100.0,
+        "slider_ratio": 0.46735395189003437,
+        "cs": 3.0,
+        "ar": 4.5
+      },
+      "side_b": {
+        "map_checksum": "sha256:7b96f7c97239a535bb0aef66f9985d679dd238bb064543230d4763d0a73cc387",
+        "objects_per_min": 99.557,
+        "beat_runs_ge3": 12,
+        "beat_run_longest_ms": 1129.0,
+        "isolated_tap_share": 0.801075,
+        "rate_max_1s": 4,
+        "object_count": 186,
+        "duration_s": 112.097,
+        "bpm_max": 186.00000000000017,
+        "slider_ratio": 0.7849462365591398,
+        "cs": 3.0,
+        "ar": 5.0
+      },
+      "confounders": [
+        "BPM differs (100 vs 186) and is displayed — morphology correlates with BPM in this corpus",
+        "slider_ratio differs (0.467 vs 0.785)",
+        "map durations differ (176.8 vs 112.1 s)"
+      ],
+      "outlier_characterisation": "side A beat_run_longest 96 s is a single run spanning the map (isolation near zero) — expected for the all-runs side of a D3 pair"
+    },
+    {
+      "probe_id": "D-D1-RES",
+      "type": "D1",
+      "role": "reserve",
+      "question_family": "dense",
+      "competing_hypotheses": ["H1_beat_relative_runs", "H2_density", "H3_morphology"],
+      "discrimination": "density equal (209.491 vs 209.491 objects/min) while beat-runs differ 2.78x (23 vs 64). H1 predicts B; H2 predicts SAME.",
+      "expected_direction": {
+        "Q-V02-DENSE": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:52486622707e5880e0089d961347d294fd553dd7b13c720b3d5c63b1674b90d4",
+        "objects_per_min": 209.491,
+        "beat_runs_ge3": 23,
+        "beat_run_longest_ms": 9091.0,
+        "isolated_tap_share": 0.02509,
+        "rate_max_1s": 11,
+        "object_count": 279,
+        "duration_s": 79.908,
+        "bpm_max": 164.99999999999983,
+        "slider_ratio": 0.25089605734767023,
+        "cs": 5.0,
+        "ar": null
+      },
+      "side_b": {
+        "map_checksum": "sha256:7f33c066dbd7d890e9471b53433538a6519acfd4e7981e7ebb03dcfb7fe0b085",
+        "objects_per_min": 209.491,
+        "beat_runs_ge3": 64,
+        "beat_run_longest_ms": 8000.0,
+        "isolated_tap_share": 0.068233,
+        "rate_max_1s": 10,
+        "object_count": 894,
+        "duration_s": 256.049,
+        "bpm_max": 180.0000000000002,
+        "slider_ratio": 0.407158836689038,
+        "cs": 3.8,
+        "ar": 9.0
+      },
+      "confounders": [
+        "side A AR is null ('AR 未提供' shown) — presentation irregularity",
+        "CS differs (5.0 vs 3.8)",
+        "map durations differ (79.9 vs 256 s)"
+      ],
+      "outlier_characterisation": "ordinary density; runs 23 vs 64 within common range"
+    },
+    {
+      "probe_id": "D-D2-RES",
+      "type": "D2",
+      "role": "reserve",
+      "question_family": "dense",
+      "competing_hypotheses": ["H1_beat_relative_runs", "H2_density", "H3_morphology"],
+      "discrimination": "beat-runs exactly equal (29 vs 29) while density differs 10.8x (41.4 vs 447.3 objects/min). H2 predicts B; H1 predicts SAME. Morphology proxy differs (0.368 vs 0.018) — H3 not held, recorded as confounder.",
+      "expected_direction": {
+        "Q-V02-DENSE": null
+      },
+      "side_a": {
+        "map_checksum": "sha256:25363f078cdd0c2e4ca50050b0d1be7f673e3a5479be27dfc34f41506bc3012b",
+        "objects_per_min": 41.421,
+        "beat_runs_ge3": 29,
+        "beat_run_longest_ms": 5242.0,
+        "isolated_tap_share": 0.367876,
+        "rate_max_1s": 3,
+        "object_count": 193,
+        "duration_s": 279.567,
+        "bpm_max": 70.00000000000001,
+        "slider_ratio": 0.538860103626943,
+        "cs": 3.0,
+        "ar": 3.0
+      },
+      "side_b": {
+        "map_checksum": "sha256:b6fa3c162ff86b44ceda2010da22ae7f02f27c15d0382a1b4d30673c332f0ae0",
+        "objects_per_min": 447.329,
+        "beat_runs_ge3": 29,
+        "beat_run_longest_ms": 32232.0,
+        "isolated_tap_share": 0.017709,
+        "rate_max_1s": 15,
+        "object_count": 1807,
+        "duration_s": 242.372,
+        "bpm_max": 215.00000000000037,
+        "slider_ratio": 0.19977863862755948,
+        "cs": 4.0,
+        "ar": 9.5
+      },
+      "confounders": [
+        "isolated-tap share differs (0.368 vs 0.018) — morphology confounded with density in this pair",
+        "BPM differs (70 vs 215) — the 70 BPM side is very slow",
+        "CS differs (3.0 vs 4.0); map durations close (279.6 vs 242.4 s)"
+      ],
+      "outlier_characterisation": "side B density (447/min) is upper-tail; side A BPM 70 is lower-tail"
+    }
+  ],
+  "controls": [
+    {
+      "control_id": "CONTROL-R1",
+      "control_type": "EXACT_REPEAT",
+      "source": {"probe_id": "S-T2-CORE-A", "question_id": "Q-V02-SLIDER-TIME"},
+      "purpose": "same-person directional stability on one core question",
+      "spacing_policy": "never adjacent to the source item; same participant only",
+      "expected_stability_note": "repeat consistency is reported alone, not merged into probe agreement"
+    },
+    {
+      "control_id": "CONTROL-I1",
+      "control_type": "AB_INVERSION",
+      "source": {"probe_id": "S-T1-CORE-A", "question_id": "Q-V02-SLIDER-PATH"},
+      "purpose": "side bias check; the pair is presented with swapped A/B",
+      "spacing_policy": "never adjacent to the source item; same participant only",
+      "expected_stability_note": "inverted responses are canonicalised before comparison; inversion consistency is reported alone"
+    }
+  ],
+  "presentation_checks": {
+    "renderer_facts": {
+      "canvas_size": "768x576 both sides",
+      "coordinate_mapping": "512x384 -> 748x556, identical both sides",
+      "zoom": "none",
+      "playback_speed": "1.0x (HTMLAudioElement)",
+      "clock_overlay": "none (no per-slider timer visible)",
+      "audio_required": true,
+      "metadata_shown": ["BID", "CS", "AR", "object_count", "max BPM"]
+    },
+    "status": "COMPLETED_OFFLINE",
+    "verdict": "NO_PRESENTATION_BLOCKER_FOR_CORE_PROBES",
+    "checks_run_utc": "2026-08-14",
+    "per_side_summary": {
+      "audio": "present for all 12 slider sides and all 8 dense sides",
+      "bpm_sv_safety": "no unsafe BPM/SV on any side",
+      "ar_missing": ["S-T2-CORE-B side_a (AR null -> 'AR 未提供' shown)", "D-D1-RES side_a (AR null)"],
+      "window_end_cuts": {
+        "core_probes": "none except S-T1-STRESS side_b: one slider overflows the presented window end by ~74 ms (minor, recorded; stress probe is reported separately anyway)",
+        "reserves": "S-RES-1 side_a (1 slider) and side_b (1 slider) overflow the window end; reserves only"
+      },
+      "sliders_continuing_into_segment_from_context": "present on several sides (1-5 sliders); expected behaviour of the +/-2.0s/1.5s context window, not a defect",
+      "duration_perceivability": "judgeable via ball motion + audio; no explicit timer overlay exists — if participants answer CANNOT_JUDGE with reason presentation_unclear on the time question, the reason is preserved and NOT attributed to the feature"
+    },
+    "ui_adaptations_required_before_launch": [
+      "render Q-V02 question texts (currently the runner is hardwired to the three v0.1 propositions)",
+      "add the SAME label and the CANNOT_JUDGE + 4-reason flow",
+      "support per-question task records (two questions per slider pair) with independent answer capture",
+      "support explicit repeat/inversion control items"
+    ],
+    "ui_adaptation_policy": "runner/tool code may be adapted when the retest is authorised; analyzer behaviour and raw data must remain untouched; formal collection stays stopped"
+  },
+  "preregistered_analysis_rules": {
+    "G1_observable_alignment": {
+      "rule": "human <-> observable direction agreement is computed ONLY for Q-V02-SPAN, Q-V02-URGENCY, Q-V02-SLIDER-PATH, Q-V02-SLIDER-TIME where the provisional mapping is declared. Q-V02-DENSE is excluded (UNDER_REVISION).",
+      "alignment_semantics": "a directional human answer aligned with the mapped observable's direction counts as aligned; SAME against a null expectation counts as aligned; any mismatch counts as misaligned; CANNOT_JUDGE never counts as aligned or misaligned"
+    },
+    "G2_expected_sign_null": {
+      "rule": "null expectations (Type 1 path questions, Type 2 time questions) are reported in their own bucket and never counted as errors"
+    },
+    "G3_cannot_judge": {
+      "rule": "SAME, CANNOT_JUDGE and each CANNOT_JUDGE reason are reported separately; the too_close reason is preserved as the participant's original choice and is never auto-converted to SAME"
+    },
+    "G4_controls": {
+      "rule": "CONTROL-R1 and CONTROL-I1 results are reported alone (per-person direction stability, side-bias rate); never merged into probe-level agreement"
+    },
+    "G5_stress_probe": {
+      "rule": "S-T1-STRESS results are reported separately from the three non-stress core probes; no combined overall agreement rate is computed across stress + core"
+    },
+    "G6_human_disagreement": {
+      "rule": "a persistent human split on a single-axis question is recorded as genuine human disagreement / perceptual boundary; no majority-vote ground truth is created, no participant is ranked, no answer is relabelled"
+    }
+  },
+  "not_started": {
+    "human_answers": "none requested, none collected",
+    "llm_answers": "forbidden as substitutes",
+    "formal_collection": "not started"
+  }
+}

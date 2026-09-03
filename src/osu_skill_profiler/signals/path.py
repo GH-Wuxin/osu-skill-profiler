@@ -1,4 +1,4 @@
-"""Slider path geometry for Local Signal Layer v0.3 (v0.2 replayable).
+"""Slider path geometry for Local Signal Layer v0.4 (v0.2/v0.3 replayable).
 
 Independent Python reimplementation of the audited ppy/osu slider path
 semantics (pinned upstream commit ``b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e``,
@@ -6,8 +6,9 @@ difficulty version ``20260706``).  The algorithms follow the audited upstream
 definitions:
 
   - linear sliders are polylines;
-  - bezier sliders are a single Bezier curve through all control points,
-    adaptively flattened with the 0.25px tolerance used by osu-framework;
+  - legacy bezier sliders split at adjacent duplicate control points (red
+    anchors), with each resulting Bezier segment adaptively flattened using
+    the 0.25px tolerance used by osu-framework;
   - perfect-curve sliders are circular arcs through 3 points, falling back to
     a Bezier when the arc is degenerate;
   - catmull sliders use the 50-step per-segment Catmull-Rom sampling with the
@@ -316,6 +317,7 @@ class SliderPath:
     control_points: tuple[Vec, ...]
     curve_type: str
     expected_distance: Optional[float] = None
+    split_bezier_segments: bool = True
 
     # populated lazily and cached
     _calculated_path: tuple[Vec, ...] = field(default=(), init=False, repr=False)
@@ -386,7 +388,33 @@ class SliderPath:
         if self.curve_type == "L" or len(points) == 1:
             sub_path = [p for p in points]
         elif self.curve_type == "B":
-            sub_path = _bspline_to_piecewise_linear(points, max(1, len(points) - 1), budget)
+            bezier_segments: list[list[Vec]] = []
+            if self.split_bezier_segments:
+                segment_start = 0
+                # A repeated final control point is not a red-anchor split in
+                # the legacy decoder; only duplicates with a following point
+                # start another Bezier segment.
+                for i in range(max(0, len(points) - 2)):
+                    if points[i] == points[i + 1]:
+                        bezier_segments.append(points[segment_start:i + 1])
+                        segment_start = i + 1
+                bezier_segments.append(points[segment_start:])
+            else:
+                bezier_segments.append(points)
+
+            sub_path = []
+            for segment in bezier_segments:
+                if not segment:
+                    continue
+                flattened = _bspline_to_piecewise_linear(
+                    segment,
+                    max(1, len(segment) - 1),
+                    budget,
+                )
+                if budget.exceeded:
+                    sub_path = []
+                    break
+                sub_path.extend(flattened)
         elif self.curve_type == "P":
             arc: Optional[dict] = None
             if len(points) == 3:
@@ -423,8 +451,9 @@ class SliderPath:
             object.__setattr__(self, "_calculated_length", 0.0)
             return
 
-        # Drop consecutive duplicate points across segments (single segment for
-        # .osu sliders, kept for structural parity with the audited builder).
+        # Joined Bezier segments share their boundary vertex.  Collapse that
+        # duplicate, along with any equivalent consecutive vertices emitted by
+        # the other flatteners, before accumulating path length.
         cleaned: list[Vec] = []
         for point in sub_path:
             if not cleaned or cleaned[-1] != point:
@@ -495,13 +524,20 @@ def build_slider_path(
     curve_type: str | None,
     control_points: Iterable[tuple[float, float]],
     expected_distance: float | None,
+    *,
+    split_bezier_segments: bool = True,
 ) -> SliderPath:
     """Build a path-relative ``SliderPath`` from parsed slider data."""
 
     points = [(float(x), float(y)) for x, y in control_points]
     if not points:
         points = [(0.0, 0.0)]
-    return SliderPath(tuple(points), curve_type or "L", expected_distance)
+    return SliderPath(
+        tuple(points),
+        curve_type or "L",
+        expected_distance,
+        split_bezier_segments,
+    )
 
 
 __all__ = ["SliderPath", "build_slider_path"]

@@ -452,12 +452,19 @@ class BidReviewWorkbench:
         applied_mod_context = metadata.get("mod_transform_context", {})
         applied_mods = metadata.get("mod_context", {})
         checksum = model.sha256_file_bytes(map_path.read_bytes())
+        component_kwargs = {
+            "difficulty": metadata.get("difficulty"),
+            "clock_rate": applied_mod_context.get("clock_rate", 1.0),
+            "effective_mods": applied_mods.get("effective_mods", []),
+        }
+        if hasattr(model, "EXPECTED_LOCAL_SIGNAL_VERSION"):
+            component_kwargs["source_local_signal_version"] = metadata.get(
+                "local_signal_version"
+            )
         components, warnings = model.extract_components(
             local_rows,
             features,
-            difficulty=metadata.get("difficulty"),
-            clock_rate=applied_mod_context.get("clock_rate", 1.0),
-            effective_mods=applied_mods.get("effective_mods", []),
+            **component_kwargs,
         )
         if local_stars is not None and float(local_stars) > 0.0:
             components["v091_nm_star_anchor"] = float(local_stars)

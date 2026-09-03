@@ -1,0 +1,61 @@
+{
+  "schema_version": "0.1.0",
+  "collection_id": "collection_001",
+  "snapshot_id": "snapshot-a33e951ca690cf1904b0d244",
+  "snapshot_manifest_sha256": "b5efbc4ca549c03583f8aae9b8478c87a726d7c1deb4943a03bf2b80b108a0b5",
+  "collection_status": "COMPLETE_AT_64_RESPONSES",
+  "disposition": "PILOT_USABILITY_PASS_WITH_CAVEATS",
+  "response_count": 64,
+  "responded_participant_count": 15,
+  "completed_initial_five_count": 12,
+  "completed_current_assignment_count": 11,
+  "covered_task_count": 40,
+  "double_covered_task_count": 24,
+  "single_covered_task_count": 16,
+  "raw_human_evidence_validated": true,
+  "human_evidence_is_ground_truth": false,
+  "training_eligible": false,
+  "taxonomy_frozen": false,
+  "majority_vote_labels_created": false,
+  "overall_directional_agreement": {
+    "agreeing_pairs": 21,
+    "comparable_pairs": 24,
+    "rate": 0.875
+  },
+  "provisional_proposition_dispositions": [
+    {
+      "proposition_key": "ws01.provisional.dense_timing_pressure_high",
+      "comparable_pairs": 8,
+      "directional_agreement_rate": 1.0,
+      "disposition": "RETAIN_WITH_CONSTRUCT_AND_WORDING_REVIEW"
+    },
+    {
+      "proposition_key": "ws01.provisional.movement_demand_high",
+      "comparable_pairs": 7,
+      "directional_agreement_rate": 0.8571428571428571,
+      "disposition": "RETAIN_WITH_CONFLICT_AND_WORDING_REVIEW"
+    },
+    {
+      "proposition_key": "ws01.provisional.slider_tracking_travel_high",
+      "comparable_pairs": 9,
+      "directional_agreement_rate": 0.7777777777777778,
+      "disposition": "REVISE_AND_AUDIT_BEFORE_STRONGER_USE"
+    }
+  ],
+  "direction_conflict_task_ids": [
+    "task-55b0b9f0e001269a94698d85",
+    "task-b863fbee3a4211e4b959054d",
+    "task-d4f690cb01133542a5b3a3bf"
+  ],
+  "direction_conflict_selection_context": {
+    "task-55b0b9f0e001269a94698d85": "CHALLENGE_AUDIT_LEGACY_FORMAT",
+    "task-b863fbee3a4211e4b959054d": "ABSTENTION_HEAVY_BOUNDARY_CASE",
+    "task-d4f690cb01133542a5b3a3bf": "CHALLENGE_AUDIT_LEGACY_FORMAT_PATHOLOGICAL"
+  },
+  "qualitative_findings": {
+    "dense_timing_wording_construct_risk_observed": true,
+    "same_annotator_repeat_recognized_by_participant": true,
+    "optional_note_count": 2
+  },
+  "recommended_next_action": "VISUAL_REPLAY_THREE_CONFLICT_TASKS_AND_REVIEW_PROVISIONAL_WORDING"
+}

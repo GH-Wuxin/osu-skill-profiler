@@ -15,7 +15,8 @@ UPSTREAM_COMMIT = "b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e"
 UPSTREAM_DIFFICULTY_VERSION = 20260706
 
 LEGACY_SIGNAL_VERSION = "0.2.0"
-SIGNAL_VERSION = "0.3.0"
+PREVIOUS_SIGNAL_VERSION = "0.3.0"
+SIGNAL_VERSION = "0.4.0"
 
 # ---------------------------------------------------------------------------
 # schema
@@ -311,14 +312,20 @@ SIGNAL_SCHEMA_V03.update(
     }
 )
 
-SIGNAL_SCHEMA = SIGNAL_SCHEMA_V03
+SIGNAL_SCHEMA_V04: dict[str, dict] = {
+    name: dict(entry) for name, entry in SIGNAL_SCHEMA_V03.items()
+}
+
+SIGNAL_SCHEMA = SIGNAL_SCHEMA_V04
 
 
 def signal_schema(version: str) -> dict[str, dict]:
     if version == LEGACY_SIGNAL_VERSION:
         return SIGNAL_SCHEMA_V02
-    if version == SIGNAL_VERSION:
+    if version == PREVIOUS_SIGNAL_VERSION:
         return SIGNAL_SCHEMA_V03
+    if version == SIGNAL_VERSION:
+        return SIGNAL_SCHEMA_V04
     raise ValueError(f"unsupported signal version: {version}")
 
 
@@ -337,14 +344,17 @@ def _numeric_signals(schema: dict[str, dict]) -> tuple[str, ...]:
 
 NUMERIC_SIGNALS_V02 = _numeric_signals(SIGNAL_SCHEMA_V02)
 NUMERIC_SIGNALS_V03 = _numeric_signals(SIGNAL_SCHEMA_V03)
-NUMERIC_SIGNALS = NUMERIC_SIGNALS_V03
+NUMERIC_SIGNALS_V04 = _numeric_signals(SIGNAL_SCHEMA_V04)
+NUMERIC_SIGNALS = NUMERIC_SIGNALS_V04
 
 
 def numeric_signals(version: str) -> tuple[str, ...]:
     if version == LEGACY_SIGNAL_VERSION:
         return NUMERIC_SIGNALS_V02
-    if version == SIGNAL_VERSION:
+    if version == PREVIOUS_SIGNAL_VERSION:
         return NUMERIC_SIGNALS_V03
+    if version == SIGNAL_VERSION:
+        return NUMERIC_SIGNALS_V04
     raise ValueError(f"unsupported signal version: {version}")
 
 SEGMENT_SUMMARY_FIELDS = ("mean", "p90", "max")
@@ -400,9 +410,11 @@ __all__ = [
     "SIGNAL_SCHEMA",
     "SIGNAL_SCHEMA_V02",
     "SIGNAL_SCHEMA_V03",
+    "SIGNAL_SCHEMA_V04",
     "NUMERIC_SIGNALS",
     "NUMERIC_SIGNALS_V02",
     "NUMERIC_SIGNALS_V03",
+    "NUMERIC_SIGNALS_V04",
     "SEGMENT_SUMMARY_FIELDS",
     "DUPLICATE_ALIASES",
     "migration_table",
@@ -411,6 +423,7 @@ __all__ = [
     "UPSTREAM_DIFFICULTY_VERSION",
     "SIGNAL_VERSION",
     "LEGACY_SIGNAL_VERSION",
+    "PREVIOUS_SIGNAL_VERSION",
     "signal_schema",
     "numeric_signals",
 ]

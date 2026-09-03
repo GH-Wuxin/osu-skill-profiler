@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from ...parser.model import Beatmap
-from ...signals.contract import LEGACY_SIGNAL_VERSION, SIGNAL_VERSION
+from ...signals.contract import LEGACY_SIGNAL_VERSION, PREVIOUS_SIGNAL_VERSION
 from ...signals.extractor import LocalSignalExtractor
 from .contract import LEGACY_REFERENCE_VERSION, REFERENCE_VERSION
 
@@ -113,7 +113,10 @@ def build_ref_objects(
     if reference_version == LEGACY_REFERENCE_VERSION:
         local_version = LEGACY_SIGNAL_VERSION
     elif reference_version == REFERENCE_VERSION:
-        local_version = SIGNAL_VERSION
+        # Reference 0.2 is frozen on Local 0.3 geometry.  Local 0.4 corrects
+        # compound Bezier decoding and requires a separately versioned
+        # reference release before these values may change.
+        local_version = PREVIOUS_SIGNAL_VERSION
     else:
         raise ValueError(f"unsupported reference version: {reference_version}")
 

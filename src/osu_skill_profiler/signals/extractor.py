@@ -1,4 +1,4 @@
-"""Per-object Local Signal extraction (Layer A, v0.3 current; v0.2 replayable).
+"""Per-object Local Signal extraction (Layer A, v0.4 current; v0.2/v0.3 replayable).
 
 The extractor processes hit objects in .osu file order (matching the audited
 ppy/osu difficulty preprocessing order) while also emitting a

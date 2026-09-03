@@ -1,0 +1,412 @@
+{
+  "schema_version": "0.1.0",
+  "audit_phase": "P1.5",
+  "purpose": "Hypothesis falsification / evidence closure: counterbalanced slider probes identified from EXISTING data, and B2 dense candidate-mechanism elimination. No human answers were collected for these probes.",
+  "generated_utc": "2026-08-14",
+  "evidence_snapshot_id": "snapshot-a33e951ca690cf1904b0d244",
+  "read_only": true,
+  "hypotheses": {
+    "H_distance": "players judge the slider question mainly by slider path/follow DISTANCE",
+    "H_duration": "players judge mainly by per-slider follow DURATION / time tail"
+  },
+  "corpus_search_result": {
+    "status": "COUNTERBALANCED_PAIRS_FOUND",
+    "source": "weak_supervision_v01 pilot evidence (31,821 slider_tracking SEGMENT rows) joined with feature_qa_5k path_abs and the .osu corpus",
+    "candidate_segments": 9355,
+    "type1_pairs_found": 1295027,
+    "type2_pairs_found": 2000694,
+    "parse_failures": 0,
+    "missing_assets": 0,
+    "search_parameters": {
+      "min_sliders_per_segment": 4,
+      "p90_path_band": [60.0, 300.0],
+      "type1_p90_tolerance": 0.03,
+      "type1_duration_min_ratio": 1.5,
+      "type2_duration_tolerance": 0.10,
+      "type2_p90_min_ratio": 1.5,
+      "duration_metric": "p90 of per-slider slider_total_duration_ms over sliders whose start time falls inside the canonical 5 s segment (NM, as parsed; full traversal incl. all spans)"
+    }
+  },
+  "probes": [
+    {
+      "probe_id": "S-PROBE-T1-01",
+      "type": "TYPE_1",
+      "discriminates": "H_duration",
+      "rationale": "machine p90 nearly identical (74.6621 vs 74.6625); every distance-family observable is equal or favours A (seg_max 104.7 vs 79.4, raw max-trail 160 vs 140 px), while per-slider follow-duration p90 favours B by 5.74x (375 vs 2153.8 ms). H_duration predicts B; H_distance-by-p90 predicts indifference; H_distance-by-max-tail predicts A. The three readings are fully separable on this pair.",
+      "side_a": {
+        "map_checksum": "sha256:67ff4f746c4702a4d66629f8eb14d4b84e201137abf06da5fb8504f0a0685cee",
+        "segment_index": 15,
+        "start_ms": 75850.0,
+        "end_ms": 80850.0,
+        "rule_status": "ABSTAINED",
+        "rule_strength": null,
+        "p90_path": 74.6621,
+        "seg_max": 104.67492847101292,
+        "follow_duration_p90_ms": 375.0,
+        "follow_duration_median_ms": 375.0,
+        "follow_duration_max_ms": 375.0,
+        "n_sliders": 4,
+        "slider_span_total": 5,
+        "slider_repeat_total": 1,
+        "raw_travel_sum_px": 560.0,
+        "raw_travel_max_px": 160.0,
+        "circles": 13,
+        "bpm_at_start": 160.0,
+        "sv_at_start": 1.0,
+        "cs": 4.0
+      },
+      "side_b": {
+        "map_checksum": "sha256:a2860bbe08fe668cb634029e2d0f7dfd5e5197af28c4b4f6f1cfbadcf2aa7e71",
+        "segment_index": 17,
+        "start_ms": 98867.0,
+        "end_ms": 103867.0,
+        "rule_status": "ABSTAINED",
+        "rule_strength": null,
+        "p90_path": 74.6625,
+        "seg_max": 79.36586701207153,
+        "follow_duration_p90_ms": 2153.846153846156,
+        "follow_duration_median_ms": 153.846153846154,
+        "follow_duration_max_ms": 2153.846153846156,
+        "n_sliders": 6,
+        "slider_span_total": 6,
+        "slider_repeat_total": 0,
+        "raw_travel_sum_px": 612.5,
+        "raw_travel_max_px": 140.0,
+        "circles": 6,
+        "bpm_at_start": 194.9999999999998,
+        "sv_at_start": 1.0,
+        "cs": 4.0
+      },
+      "deltas": {
+        "p90_path_abs_delta": 0.0004,
+        "follow_duration_p90_ratio": 5.74,
+        "seg_max_ratio": 1.32,
+        "raw_travel_max_ratio": 1.14
+      },
+      "confounders": [
+        "B's duration signal is driven by a single 2153.8 ms slider (duration p90 == max; median is 153.8 ms) — the probe therefore tests one very long-held slider against a batch of uniform 375 ms sliders",
+        "BPM differs (160 vs 195) and is displayed in the UI",
+        "slider counts differ (4 vs 6); circles differ (13 vs 6)",
+        "duration median favours A (375 vs 153.8 ms) — so the probe also separates which duration AGGREGATE players use (p90/max vs median)"
+      ]
+    },
+    {
+      "probe_id": "S-PROBE-T1-02",
+      "type": "TYPE_1",
+      "discriminates": "H_duration",
+      "rationale": "machine p90 exactly equal (89.5523 vs 89.5523); seg_max close (139.4 vs 129.6); follow-duration p90 differs 5.0x (1714.3 vs 340.9 ms) favouring A. H_duration predicts A; H_distance-by-p90 predicts indifference.",
+      "side_a": {
+        "map_checksum": "sha256:b090b68f041cdf2ecc37856d0795a69379032c63818639b151862fb3898f780f",
+        "segment_index": 13,
+        "start_ms": 66154.0,
+        "end_ms": 71154.0,
+        "rule_status": "ABSTAINED",
+        "rule_strength": null,
+        "p90_path": 89.5523,
+        "seg_max": 139.41406088153337,
+        "follow_duration_p90_ms": 1714.285714285716,
+        "follow_duration_median_ms": 642.8571232387009,
+        "follow_duration_max_ms": 1714.285714285716,
+        "n_sliders": 5,
+        "slider_span_total": 6,
+        "slider_repeat_total": 1,
+        "raw_travel_sum_px": 657.0,
+        "raw_travel_max_px": 360.0,
+        "circles": 0,
+        "bpm_at_start": 139.99999999999986,
+        "sv_at_start": 1.0,
+        "cs": 4.0
+      },
+      "side_b": {
+        "map_checksum": "sha256:bb0e6a7097c457f7b6e6140dae5fef9e83699b597d04a9c83e56b934cc5413ef",
+        "segment_index": 15,
+        "start_ms": 75405.0,
+        "end_ms": 80405.0,
+        "rule_status": "ABSTAINED",
+        "rule_strength": null,
+        "p90_path": 89.5523,
+        "seg_max": 129.63289329853893,
+        "follow_duration_p90_ms": 340.909090909091,
+        "follow_duration_median_ms": 170.4545454545455,
+        "follow_duration_max_ms": 340.909090909091,
+        "n_sliders": 8,
+        "slider_span_total": 8,
+        "slider_repeat_total": 0,
+        "raw_travel_sum_px": 985.5,
+        "raw_travel_max_px": 180.0,
+        "circles": 9,
+        "bpm_at_start": 175.99999999999994,
+        "sv_at_start": 1.0,
+        "cs": 4.0
+      },
+      "deltas": {
+        "p90_path_abs_delta": 0.0,
+        "follow_duration_p90_ratio": 5.03,
+        "seg_max_ratio": 1.08,
+        "raw_travel_max_ratio": 2.0
+      },
+      "confounders": [
+        "raw max-trail favours A (360 vs 180 px) in the SAME direction as duration — a player using the longest-slider-distance reading would also pick A, so this pair cannot separate duration from distance-max-tail (S-PROBE-T1-01 covers that separation)",
+        "BPM differs (140 vs 176) and is displayed",
+        "slider counts differ (5 vs 8); circles 0 vs 9 (window composition)"
+      ]
+    },
+    {
+      "probe_id": "S-PROBE-T2-01",
+      "type": "TYPE_2",
+      "discriminates": "H_distance",
+      "rationale": "follow-duration p90 exactly equal (1440.0 vs 1440.0 ms; medians also equal at 480 ms), while machine p90 differs 4.79x (290.5 vs 60.7) and seg_max 4.92x (388.1 vs 78.8) favouring A. H_distance predicts A; H_duration predicts indifference.",
+      "side_a": {
+        "map_checksum": "sha256:9fc8b8be4bcadca35bf7c3309646fe507464fe198ed6f1613781f507a1a1e446",
+        "segment_index": 15,
+        "start_ms": 84226.0,
+        "end_ms": 89226.0,
+        "rule_status": "EMITTED",
+        "rule_strength": 0.761905,
+        "p90_path": 290.476,
+        "seg_max": 388.1277293497159,
+        "follow_duration_p90_ms": 1440.0000000000016,
+        "follow_duration_median_ms": 480.0000000000005,
+        "follow_duration_max_ms": 1440.0000000000016,
+        "n_sliders": 5,
+        "slider_span_total": 8,
+        "slider_repeat_total": 3,
+        "raw_travel_sum_px": 1425.0,
+        "raw_travel_max_px": 570.0,
+        "circles": 2,
+        "bpm_at_start": 250.0,
+        "sv_at_start": 1.0,
+        "cs": 3.0
+      },
+      "side_b": {
+        "map_checksum": "sha256:baf6a6db821b6ec568044e1566c07576530cc350cef058abd306e9e05d7648f0",
+        "segment_index": 3,
+        "start_ms": 15575.0,
+        "end_ms": 20575.0,
+        "rule_status": "ABSTAINED",
+        "rule_strength": null,
+        "p90_path": 60.6626,
+        "seg_max": 78.79485623191381,
+        "follow_duration_p90_ms": 1440.0,
+        "follow_duration_median_ms": 480.0,
+        "follow_duration_max_ms": 1440.0,
+        "n_sliders": 4,
+        "slider_span_total": 6,
+        "slider_repeat_total": 2,
+        "raw_travel_sum_px": 576.0,
+        "raw_travel_max_px": 288.0,
+        "circles": 0,
+        "bpm_at_start": 125.0,
+        "sv_at_start": 1.0,
+        "cs": 3.0
+      },
+      "deltas": {
+        "p90_path_ratio": 4.79,
+        "seg_max_ratio": 4.92,
+        "follow_duration_p90_abs_delta": 0.0,
+        "follow_duration_median_abs_delta": 0.0
+      },
+      "confounders": [
+        "BPM differs (250 vs 125) and is displayed — raw follow time is equal by construction but the BALL speed differs visually",
+        "rule status differs (EMITTED vs ABSTAINED) though the human question does not show status",
+        "raw max-trail follows the p90 side (570 vs 288 px) — expected for Type 2"
+      ]
+    },
+    {
+      "probe_id": "S-PROBE-T2-02",
+      "type": "TYPE_2",
+      "discriminates": "H_distance",
+      "rationale": "follow-duration p90 exactly equal (666.67 vs 666.67 ms), while machine p90 differs 4.69x (282.8 vs 60.3) and seg_max 2.66x (282.8 vs 106.5) favouring A. H_distance predicts A; H_duration predicts indifference.",
+      "side_a": {
+        "map_checksum": "sha256:49914de346f46d086c4ed77ec30e4e085d0b026a7a60efa0b6326e1169dca267",
+        "segment_index": 13,
+        "start_ms": 69198.0,
+        "end_ms": 74198.0,
+        "rule_status": "EMITTED",
+        "rule_strength": 0.731225,
+        "p90_path": 282.806,
+        "seg_max": 282.8061494787179,
+        "follow_duration_p90_ms": 666.666666666666,
+        "follow_duration_median_ms": 666.666666666666,
+        "follow_duration_max_ms": 666.666666666666,
+        "n_sliders": 4,
+        "slider_span_total": 8,
+        "slider_repeat_total": 4,
+        "raw_travel_sum_px": 1280.0,
+        "raw_travel_max_px": 320.0,
+        "circles": 5,
+        "bpm_at_start": 180.0000000000002,
+        "sv_at_start": 1.0,
+        "cs": 5.0
+      },
+      "side_b": {
+        "map_checksum": "sha256:59c4f81824ee0cd803360a0d31ca417c2413fbd96e8bc1f30dbb57e4ddd4664c",
+        "segment_index": 12,
+        "start_ms": 60535.0,
+        "end_ms": 65535.0,
+        "rule_status": "ABSTAINED",
+        "rule_strength": null,
+        "p90_path": 60.2918,
+        "seg_max": 106.50463453367556,
+        "follow_duration_p90_ms": 666.666666666666,
+        "follow_duration_median_ms": 444.44444444444395,
+        "follow_duration_max_ms": 666.666666666666,
+        "n_sliders": 6,
+        "slider_span_total": 6,
+        "slider_repeat_total": 0,
+        "raw_travel_sum_px": 660.0,
+        "raw_travel_max_px": 165.0,
+        "circles": 2,
+        "bpm_at_start": 135.00000000000014,
+        "sv_at_start": 1.0,
+        "cs": 3.5
+      },
+      "deltas": {
+        "p90_path_ratio": 4.69,
+        "seg_max_ratio": 2.66,
+        "follow_duration_p90_abs_delta": 0.0,
+        "follow_duration_median_abs_delta": 222.22
+      },
+      "confounders": [
+        "CS differs (5.0 vs 3.5) — the machine p90 is CS-normalised but the raw canvas rendering is not",
+        "duration MEDIANS differ (666.7 vs 444.4 ms) while p90s are equal",
+        "BPM differs (180 vs 135) and is displayed",
+        "rule status differs (EMITTED vs ABSTAINED)"
+      ]
+    }
+  ],
+  "probe_usage_rule": "These pairs are identified for a future bounded P2 probe. Do NOT fabricate human answers for them now. Do NOT treat them as new tasks in any live collection.",
+  "dense_b2_candidate_elimination": {
+    "task_id": "task-2ae01c9c759740362b33f18d",
+    "human_direction": "B (4/4 incl. exact-repeat control)",
+    "note": "computed on the 9 directional dense tasks + 1 ambiguous control; direction agreement counted after canonical-order verification",
+    "candidates": [
+      {
+        "candidate": "current fixed <=125ms burst window (existing code features object_rate_max_1s + burst_longest_125ms)",
+        "code_observable": true,
+        "b2_delta": "rate 3 vs 3; burst 0 vs 0 — zero difference",
+        "consistent_with_human_b2": false,
+        "counterexamples": "cannot explain B2 at all; overall 6/9 consistent on other dense tasks",
+        "collinear_with": "the code's positive discriminator (>=9/s) is simply not applicable in this density band",
+        "verdict": "CONTRADICTED (as the B2 driver); SUPPORTED (as a code-side coverage gap)"
+      },
+      {
+        "candidate": "fixed wider burst windows 150-300ms",
+        "code_observable": false,
+        "b2_delta": "0 runs on both sides at every window <=300ms",
+        "consistent_with_human_b2": false,
+        "counterexamples": "zero signal on B2; 6-7/9 consistent elsewhere",
+        "collinear_with": "BPM scale of each map",
+        "verdict": "CONTRADICTED (as the B2 driver)"
+      },
+      {
+        "candidate": "fixed wider windows 400-500ms",
+        "code_observable": false,
+        "b2_delta": "runs>=3: A 0 vs B 20 (longest 1600ms)",
+        "consistent_with_human_b2": true,
+        "counterexamples": "263cea7e/8f60b830/a933aa2d (humans pick the clearly-faster side even when the other side has more 400-500ms runs)",
+        "collinear_with": "map BPM (B2's B is 150 BPM -> 400ms = one half beat)",
+        "verdict": "PLAUSIBLE"
+      },
+      {
+        "candidate": "beat-relative sustained runs (gaps <= 1.5x local beat length)",
+        "code_observable": false,
+        "b2_delta": "runs>=3: A 0 vs B 20",
+        "consistent_with_human_b2": true,
+        "counterexamples": "8f60b830 and a933aa2d (faster side wins); 891c407b (EQUAL despite 26 vs 17)",
+        "collinear_with": "general density",
+        "verdict": "PLAUSIBLE (best-specified sustained-rhythm candidate)"
+      },
+      {
+        "candidate": "general object frequency (objects/min)",
+        "code_observable": false,
+        "b2_delta": "A 48.6 vs B 75.0 -> B",
+        "consistent_with_human_b2": true,
+        "counterexamples": "4319b133 (A 104.9 vs B 72.5 but human B - the participant explicitly filtered single-taps); 891c407b (EQUAL despite 64.9 vs 84.4)",
+        "collinear_with": "the visible object-count metadata (same underlying quantity)",
+        "verdict": "PLAUSIBLE (7/9 overall, best single fixed candidate; fails exactly on the single-tap-vs-stream case)"
+      },
+      {
+        "candidate": "slider repeat/reversal structure",
+        "code_observable": false,
+        "b2_delta": "repeats 5 vs 24 -> B",
+        "consistent_with_human_b2": true,
+        "counterexamples": "6/9 direction-contradicted overall",
+        "collinear_with": "slider spans and object frequency; reversal is NOT equivalent to extra clicks",
+        "verdict": "WEAK (structural candidate only; no click-count interpretation permitted)"
+      },
+      {
+        "candidate": "map-derived slider tick counts (NM)",
+        "code_observable": false,
+        "b2_delta": "A 36 vs B 43 -> B (marginal)",
+        "consistent_with_human_b2": true,
+        "counterexamples": "7/9 direction-contradicted overall",
+        "collinear_with": "slider duration structure",
+        "verdict": "WEAK / CONTRADICTED as a general mechanism"
+      },
+      {
+        "candidate": "single-tap vs sustained-stream distinction (player-visible)",
+        "code_observable": false,
+        "b2_delta": "B has 20 beat-relative runs vs A 0; A's few objects are isolated holds",
+        "consistent_with_human_b2": true,
+        "counterexamples": "none found among the 10 dense tasks; directly attested by the 4319b133 note ('大多是单点而非连续点击段')",
+        "collinear_with": "beat-relative runs candidate (this is its perceptual reading)",
+        "verdict": "PLAUSIBLE (attested); UNOBSERVABLE_WITH_CURRENT_DATA by the code"
+      },
+      {
+        "candidate": "alternating vs single-tap playstyle pattern",
+        "code_observable": false,
+        "b2_delta": "not present in map data",
+        "consistent_with_human_b2": "n/a",
+        "counterexamples": "n/a",
+        "collinear_with": "n/a",
+        "verdict": "UNOBSERVABLE_WITH_CURRENT_DATA (playstyle property; needs replay/input data)"
+      },
+      {
+        "candidate": "effective press/release structure",
+        "code_observable": false,
+        "b2_delta": "not present in map data",
+        "consistent_with_human_b2": "n/a",
+        "counterexamples": "n/a",
+        "collinear_with": "n/a",
+        "verdict": "UNOBSERVABLE_WITH_CURRENT_DATA (no replay/input data exists)"
+      },
+      {
+        "candidate": "visible metadata anchor (object count / BPM displayed)",
+        "code_observable": "presentation-level",
+        "b2_delta": "UI showed 174 vs 94 objects; 150 vs 212 BPM",
+        "consistent_with_human_b2": true,
+        "counterexamples": "891c407b (displayed counts favour B, human EQUAL)",
+        "collinear_with": "objects/min candidate (identical quantity)",
+        "verdict": "PLAUSIBLE confound (presentation, not a mechanism); cannot be separated from general density without a metadata-hidden probe"
+      }
+    ],
+    "composite_observation": "On pairs where one side is clearly faster AND denser (peak 1s rate and object frequency well separated), humans follow the faster side (263cea7e, 2bd327, 8f60b830, a933aa2d, d545e72e); where both sides are slow (peak rate <=4: B2 and 4319b133), humans fall back to sustained-rhythm structure (beat-relative runs), consistent with the question wording '连续快速点击' (fast AND continuous). One EQUAL case (891c407b) is violated by every single candidate. This composite is a hypothesis over n=9 directional cases, not a proof.",
+    "verdict_on_b2": "Still MISSING_OBSERVABLE: the code observes none of the viable candidate observables for this pair; no single mechanism is uniquely identified and none is declared a winner."
+  },
+  "third_vote_policy": {
+    "decision": "no additional ordinary A/B votes were or will be solicited for C1/C3/B3 in this phase",
+    "C1_C3": "multi-axis tradeoffs; more votes would change majority ratios, not identify the observable",
+    "B3": "retained as GENUINE HUMAN DISAGREEMENT / unresolved boundary candidate (2-2 across source + exact-repeat control)",
+    "future": "P4 may revisit via its own repeat/inversion design if needed"
+  },
+  "follow_duration_derivability": {
+    "q1_parse_layer_has_start_end": true,
+    "q1_detail": "HitObject.time_ms is the start; the normalized layer exposes canonical_end_time_ms() = time_ms + slider_total_duration_ms; slider_total_duration_ms = single_span_duration_ms * span_count (span_count = max(1, parsed_slides); repeat_count = span_count - 1)",
+    "q2_offline_computable_without_analyzer_change": true,
+    "q2_detail": "parse_osu_file + normalize (project parser, unchanged) yields per-slider slider_total_duration_ms; segment aggregates (p90/median/max over sliders whose start falls inside the canonical 5 s segment) were computed for 31,821 segments by tmp/gap_audit/find_counterbalanced_probes_v01.py",
+    "q3_repeat_duration_semantics": "full traversal across every span; ball follows span_count passes in the renderer, so total duration is the visual follow time",
+    "q3_formula": "single_span = pixel_length / (SliderMultiplier * 100 * SV) * beat_length_ms (osu formula, normalized layer); contract form: path_distance / velocity; total = single_span * span_count",
+    "q4_speed_mods": "current scope is NM-only (no mod input anywhere in the pipeline; the presentation always shows NM). If mods ever enter: effective duration = raw_total_duration / speed_multiplier (DT 1.5, HT 0.75); which duration to present must be an explicit contract decision, not silently mixed",
+    "q5_existing_equivalent_fields": true,
+    "q5_detail": "Local signal v0.3 already computes per-row ls.slider_total_duration_ms AND ls.lazy_travel_time_ms (tracking time incl. late tick before tail reorder); the slider_control_load proposition consumes map-level slider.duration_ms_p90; the slider_tracking rule consumes ONLY ls.lazy_travel_distance_cs_normalised p90. The time-domain fields exist in the same layer but are not rule inputs",
+    "q6_why_segment_max_exists_but_unused": "it is carried from the Local source's segment summary via context.provenance['source_segment_max'] and echoed as a diagnostic; the v0.1 rule's declared discriminator consumes only p90 (>=100 positive, max==0 negative, else abstain). The only on-record rationale is the documented failure mode 'segment p90 can hide one extreme slider' plus the pilot rule policy 'Thresholds are sparse QA discriminators, not learned boundaries'",
+    "q7_exact_p90_failure_mode_for_extreme_slider": "p90 is the 90th-percentile row of per-row lazy travel distance (non-slider rows are zero). A single extreme slider lies ABOVE p90: its magnitude is not reflected in the p90 value, only whether it shifts the 90% boundary. The rule therefore cannot distinguish 'one monster slider among short ones' from 'uniformly long sliders' — exactly the B4/B5/B6 situation (segment_max 188.4 vs 114.2 hidden behind p90 108.767 vs 108.768)"
+  },
+  "files_written_by_this_phase": [
+    "docs/HUMAN_CODE_GAP_HYPOTHESIS_CHECK_V01.md",
+    "docs/HUMAN_CODE_GAP_PROBES_V01.json",
+    "P1 amendments (marked AMENDMENT (P1.5)) in HUMAN_CODE_GAP_AUDIT_V01.md, HUMAN_CODE_GAP_DISPOSITION_V01.json, docs/archive/HUMAN_CODE_GAP_AUDIT_V01_HANDOVER_2026-08-14.md",
+    "tmp/gap_audit/: find_counterbalanced_probes_v01.py, dense_candidates_v01.py, amend_disposition_v01.py + intermediate JSON/TXT (ignored)"
+  ]
+}

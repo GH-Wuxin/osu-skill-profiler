@@ -17,7 +17,7 @@ from typing import Optional
 from ..parser.model import Beatmap, HitObject
 from ..parser.osu_parser import effective_timing
 from ..slider_semantics import canonical_slider_counts, canonical_slider_timing
-from . import LEGACY_SIGNAL_VERSION, SIGNAL_VERSION
+from . import LEGACY_SIGNAL_VERSION, PREVIOUS_SIGNAL_VERSION, SIGNAL_VERSION
 from .path import SliderPath, build_slider_path
 
 MIN_DELTA_TIME = 25.0
@@ -169,7 +169,11 @@ def _build_geometry(
     cs_radius: Optional[float],
     signal_version: str = SIGNAL_VERSION,
 ) -> SliderGeometry:
-    if signal_version not in (LEGACY_SIGNAL_VERSION, SIGNAL_VERSION):
+    if signal_version not in (
+        LEGACY_SIGNAL_VERSION,
+        PREVIOUS_SIGNAL_VERSION,
+        SIGNAL_VERSION,
+    ):
         raise ValueError(f"unsupported signal version: {signal_version}")
     provenance: list[str] = []
     counts = canonical_slider_counts(obj.slider_slides)
@@ -196,7 +200,12 @@ def _build_geometry(
     # prepends it to the control point list, so the path always starts at
     # (0, 0) in path-relative coordinates.
     relative_points = [(0.0, 0.0)] + [(float(px) - obj.x, float(py) - obj.y) for px, py in obj.slider_points]
-    path = build_slider_path(obj.slider_curve_type, relative_points, expected_distance)
+    path = build_slider_path(
+        obj.slider_curve_type,
+        relative_points,
+        expected_distance,
+        split_bezier_segments=signal_version == SIGNAL_VERSION,
+    )
     _ = path.distance  # force lazy flattening; blocked_reason is set inside
     if path.blocked_reason is not None:
         # Pathological high-degree geometry is refused rather than flattened

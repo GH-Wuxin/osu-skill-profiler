@@ -41,15 +41,16 @@ from osu_skill_profiler.reference.ppy.extractor import ReferenceSignalExtractor 
 from osu_skill_profiler.signals.contract import (  # noqa: E402
     LEGACY_SIGNAL_VERSION,
     NUMERIC_SIGNALS_V02,
+    PREVIOUS_SIGNAL_VERSION,
     SIGNAL_VERSION,
 )
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor  # noqa: E402
 
-QA_VERSION = "0.3.0"
+QA_VERSION = "0.4.0"
 MAGNITUDE_LABELS = ("<=1e-9", "<=1e-6", "<=1e-3", "<=1", "<=1e3", ">1e3")
 EXPECTED_VERSIONS = {
     "feature": [LEGACY_FEATURE_VERSION, FEATURE_VERSION],
-    "local": [LEGACY_SIGNAL_VERSION, SIGNAL_VERSION],
+    "local": [LEGACY_SIGNAL_VERSION, PREVIOUS_SIGNAL_VERSION, SIGNAL_VERSION],
     "reference": [LEGACY_REFERENCE_VERSION, REFERENCE_VERSION],
 }
 COMMON_FEATURE_FIELDS = sorted(set(FEATURE_SCHEMA_V01) & set(FEATURE_SCHEMA_V02))
@@ -268,6 +269,9 @@ def _process(record: dict[str, Any]) -> dict[str, Any]:
     local_old = LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(beatmap)
     local_old_ms = (time.perf_counter() - t0) * 1000.0
     t0 = time.perf_counter()
+    local_previous = LocalSignalExtractor(PREVIOUS_SIGNAL_VERSION).extract(beatmap)
+    local_previous_ms = (time.perf_counter() - t0) * 1000.0
+    t0 = time.perf_counter()
     local_new = LocalSignalExtractor(SIGNAL_VERSION).extract(beatmap)
     local_new_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -280,7 +284,8 @@ def _process(record: dict[str, Any]) -> dict[str, Any]:
 
     object_count = len(beatmap.hit_objects)
     counts = {
-        len(local_old["objects"]), len(local_new["objects"]),
+        len(local_old["objects"]), len(local_previous["objects"]),
+        len(local_new["objects"]),
         len(reference_old["objects"]), len(reference_new["objects"]),
     }
     if counts != {object_count}:
@@ -341,12 +346,14 @@ def _process(record: dict[str, Any]) -> dict[str, Any]:
         "reference_changed_object_count": len(reference_changed_indices),
         "reference_reading_only_object_count": len(reading_only_indices),
         "local_geometry_blocked_old": _blocked_count(local_old["objects"], "ls.provenance"),
+        "local_geometry_blocked_previous": _blocked_count(local_previous["objects"], "ls.provenance"),
         "local_geometry_blocked_new": _blocked_count(local_new["objects"], "ls.provenance"),
         "reference_geometry_blocked_old": _blocked_count(reference_old["objects"], "ref.provenance"),
         "reference_geometry_blocked_new": _blocked_count(reference_new["objects"], "ref.provenance"),
         "timing_ms": {
             "feature_both": feature_ms,
             "local_old": local_old_ms,
+            "local_previous": local_previous_ms,
             "local_new": local_new_ms,
             "reference_old": reference_old_ms,
             "reference_new": reference_new_ms,
@@ -484,7 +491,7 @@ def _resume_record_complete(row: dict[str, Any]) -> bool:
         return False
     timing = row.get("timing_ms")
     if not isinstance(timing, dict) or set(timing) != {
-        "feature_both", "local_old", "local_new", "reference_old", "reference_new", "total",
+        "feature_both", "local_old", "local_previous", "local_new", "reference_old", "reference_new", "total",
     }:
         return False
     return all(

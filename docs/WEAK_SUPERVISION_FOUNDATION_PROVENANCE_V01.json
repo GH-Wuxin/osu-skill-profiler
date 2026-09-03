@@ -1,0 +1,92 @@
+{
+  "schema_version": "0.1.0",
+  "snapshot_purpose": "Foundation consumed by Weak Supervision Infrastructure v0.1",
+  "repository": "osu-skill-profiler",
+  "head": "bc8655c2fa5d3f23807048c921cfd7f1e75bcdb9",
+  "branch": "main",
+  "worktree_at_snapshot": {
+    "staged_diff": "empty",
+    "preexisting_paths": [
+      {
+        "path": "docs/PRE_ML_FOUNDATION_REMEDIATION_V01.md",
+        "state": "modified",
+        "sha256": "601925bc5bf6b3ba302ec65aa1becdcf7096d0e61eba116c9ef7cbdd6cef6bbc"
+      },
+      {
+        "path": "docs/RED_TEAM_BLOCKER_RECHECK_V02.md",
+        "state": "untracked",
+        "sha256": "421e0191457db01ac8542eb1478705f2675a4489e75f0d9dcf20afb8b6544edc"
+      },
+      {
+        "path": "tools/performance_probe.py",
+        "state": "untracked",
+        "sha256": "c89db6889ebc9a23a9d626eda8ac93f0a7200233d9a3a650aaa1565f6ee0d4e8"
+      }
+    ],
+    "note": "Weak Supervision files and the handover document are intentionally excluded from preexisting state."
+  },
+  "contracts": {
+    "feature": {
+      "current": "0.2.0",
+      "historical": "0.1.0",
+      "contract": "docs/FEATURE_MIGRATION_V01_TO_V02.md"
+    },
+    "local_signal": {
+      "current": "0.3.0",
+      "historical": "0.2.0",
+      "contract": "docs/LOCAL_SIGNAL_CONTRACT_V03.md"
+    },
+    "reference_signal": {
+      "current": "0.2.0",
+      "historical": "0.1.0",
+      "contract": "docs/PPY_REFERENCE_SIGNAL_CONTRACT_V02.md",
+      "reference_only": true,
+      "upstream_repository": "ppy/osu",
+      "upstream_commit": "b45c1a26e5db0ef94d6ecaca4fed9f77ce78e29e",
+      "upstream_difficulty_version": 20260706
+    },
+    "split": {
+      "split_version": "0.1.0",
+      "corrected_artifact_directory": "training/datasets/splits/v02",
+      "challenge_subset_version": "0.2.0",
+      "identity_audit_sha256": "88f7df3bcd745de082262ab9884c9dee8100c4ffd9ddc763970fb8654296fe5b",
+      "contract": "docs/DATASET_SPLIT_CONTRACT_V01.md"
+    },
+    "target_leakage": {
+      "policy_version": "0.1.0",
+      "default_deny": true,
+      "contract": "docs/TARGET_LEAKAGE_ENFORCEMENT_V01.md"
+    }
+  },
+  "reports": {
+    "independent_red_team": {
+      "path": "docs/INDEPENDENT_RED_TEAM_AUDIT_V01.md",
+      "sha256": "3a98704bbfd03fca294cbda94b6bc0b80ce9f9fc39ca2df0cf377de3bfb5719c"
+    },
+    "remediation": {
+      "path": "docs/PRE_ML_FOUNDATION_REMEDIATION_V01.md",
+      "sha256_at_snapshot": "601925bc5bf6b3ba302ec65aa1becdcf7096d0e61eba116c9ef7cbdd6cef6bbc"
+    },
+    "blocker_recheck": {
+      "path": "docs/RED_TEAM_BLOCKER_RECHECK_V02.md",
+      "sha256": "421e0191457db01ac8542eb1478705f2675a4489e75f0d9dcf20afb8b6544edc",
+      "blocker_remediation_verified": true,
+      "ready_for_weak_supervision": "YES_WITH_CAVEATS"
+    }
+  },
+  "relevant_artifacts": {
+    "feature_qa_full_v02": "sha256:6cabf2c7a5e1fd82e75186cd1aa911d4ccc34a98d4220747a459e46ea3d8527c",
+    "local_signal_qa_full_v03": "sha256:787f9d02b02883f92872a08445f27fc473410e2e24063fa2d0112713a3cb1ad0",
+    "reference_signal_qa_full_v02_corrected": "sha256:425b05dd1672305f0bd768e3591aafcba9a08b75f5d844656899c4e1f1a86a19",
+    "delta_20k": "sha256:d974d8a07b33b3b9d4121b2fa42b0700e6287e407df40703c67c11139d8602cf",
+    "source_manifest": "sha256:f3bd3ffd2ca05787ed5f5d6dea2c5ddaef254eb6d5bc3fa372d7ce1d0a733247"
+  },
+  "foundation_test_evidence": {
+    "independent_micro_oracle": "28/28 PASS",
+    "targeted_feature_local_reference_leakage": "85/85 PASS",
+    "full_unit_suite_recheck_before_implementation": "201/201 PASS",
+    "corrected_local_golden": "155/155 PASS",
+    "corrected_reference_golden": "128/128 PASS"
+  },
+  "historical_artifacts_recomputed": false
+}

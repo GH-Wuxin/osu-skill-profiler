@@ -1,0 +1,1078 @@
+{
+  "schema_version": "0.1.0",
+  "audit_id": "human-code-gap-audit-v01",
+  "generated_utc": "2026-08-14",
+  "repository": "osu-skill-profiler",
+  "evidence_snapshot_id": "snapshot-a33e951ca690cf1904b0d244",
+  "evidence_snapshot_manifest_sha256": "b5efbc4ca549c03583f8aae9b8478c87a726d7c1deb4943a03bf2b80b108a0b5",
+  "read_only": true,
+  "human_evidence_is_ground_truth": false,
+  "code_selection_is_ground_truth": false,
+  "expected_sign_null_semantics": "null expected sign is recorded, not treated as a code direction error",
+  "visual_observation_method": "renderer code + presented-window geometry parsed from corpus + displayed metadata; no persisted replay/render artifacts exist",
+  "canonical_ordinal_mapping": {
+    "A_CLEARLY_HIGHER": 2,
+    "A_SLIGHTLY_HIGHER": 1,
+    "APPROX_EQUAL": 0,
+    "B_SLIGHTLY_HIGHER": -1,
+    "B_CLEARLY_HIGHER": -2
+  },
+  "question_texts": {
+    "ws01.provisional.dense_timing_pressure_high": "哪一侧更常出现需要连续快速点击的密集段落？",
+    "ws01.provisional.movement_demand_high": "哪一侧整张谱面的光标移动通常更快、跨度也更大？",
+    "ws01.provisional.slider_tracking_travel_high": "哪一侧片段中较长的一批滑条，通常需要更远的持续跟随？"
+  },
+  "disposition_counts": {
+    "MISSING_OBSERVABLE": 4,
+    "MULTI_AXIS_TRADEOFF": 3,
+    "GENUINE_BOUNDARY": 1,
+    "PRESENTATION_DEFECT": 1,
+    "WORDING_DRIFT": 0,
+    "POSSIBLE_RUSHED_RESPONSE": 0
+  },
+  "secondary_disposition_counts": {
+    "WORDING_DRIFT": 4,
+    "POSSIBLE_RUSHED_RESPONSE": 1
+  },
+  "cases": [
+    {
+      "case_id": "B1",
+      "task_id": "task-263cea7e561caaa0b8295f42",
+      "question_id": "ws01.provisional.dense_timing_pressure_high",
+      "question_text": "哪一侧更常出现需要连续快速点击的密集段落？",
+      "class": "boundary",
+      "selection_reason": "BOUNDARY_ADJACENT",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_002",
+            "answer": "A_CLEARLY_HIGHER",
+            "canonical_ordinal": 2,
+            "latency_ms": 9693,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_027",
+            "answer": "A_SLIGHTLY_HIGHER",
+            "canonical_ordinal": 1,
+            "latency_ms": 92985,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "A",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": "annotator_002 at 9693 ms is fast but within that annotator's personal norm (all five answers 7597-12489 ms); audit flag only"
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "A",
+        "selection_reason": "aggregated signal_position A 0.772111 vs B 0.772000 (margin 0.000111)",
+        "raw_feature_direction": "A (object_rate_max_1s 11 vs 10; burst 949 vs 948 ms)",
+        "rules": [
+          {
+            "rule_id": "ws01.observable.dense_timing",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.088444,
+              "direction": "POSITIVE"
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.088,
+              "direction": "POSITIVE"
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "object_rate_max_1s": {
+          "a": 11.0,
+          "b": 10.0,
+          "a_minus_b": 1.0
+        },
+        "burst_longest_125ms": {
+          "a": 949.0,
+          "b": 948.0,
+          "a_minus_b": 1.0
+        },
+        "bpm_max": {
+          "a": 158.0,
+          "b": 95.0
+        },
+        "object_count": {
+          "a": 170.0,
+          "b": 302.0
+        },
+        "note": "strength=min((rate-9)/7,(burst-750)/2250) caps both sides by the near-identical burst term, hiding the rate delta in the aggregated signal"
+      },
+      "visual_observation": "A: 39.7 s, 158 BPM, circle-dominated (129 circles / 41 sliders), short bursts; B: 80.8 s, 95 BPM, slider-heavy (169 circles / 133 sliders). UI displayed object counts and BPM. No persisted replay artifact.",
+      "primary_disposition": "GENUINE_BOUNDARY",
+      "secondary_disposition": null,
+      "confidence": "MEDIUM",
+      "evidence": [
+        "snapshot responses: A_CLEARLY(9693ms) + A_SLIGHTLY(92985ms), canonical direction A",
+        "code diagnostics object_rate_max_1s 11 vs 10; burst 949 vs 948 (nearly identical)",
+        "recomputed snapshot hashes match declarations (evidence rows pinned)",
+        "aggregated code direction A, margin 0.000111; expected_sign null"
+      ],
+      "notes": "The careful voter said SLIGHTLY, matching the genuinely tiny feature delta. The min() strength collapse masks the only differing feature. No disposition change proposed; fast vote flagged only."
+    },
+    {
+      "case_id": "B2",
+      "task_id": "task-2ae01c9c759740362b33f18d",
+      "question_id": "ws01.provisional.dense_timing_pressure_high",
+      "question_text": "哪一侧更常出现需要连续快速点击的密集段落？",
+      "class": "boundary",
+      "selection_reason": "BOUNDARY_ADJACENT",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_023",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": -1,
+            "latency_ms": 76404,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_026",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 77639,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "B (4/4 incl. repeat control)",
+        "repeat_inversion_extra_judgments": [
+          {
+            "source_control": "EXACT_REPEAT task-6de2b20234021d1902592ca1",
+            "annotator_id": "annotator_002",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": -1,
+            "latency_ms": 11314
+          },
+          {
+            "source_control": "EXACT_REPEAT task-6de2b20234021d1902592ca1",
+            "annotator_id": "annotator_028",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 107373,
+            "confidence_band": "HIGH"
+          }
+        ],
+        "total_judgments_for_pair": 4,
+        "cannot_judge": false,
+        "abnormally_short_latency": null
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "EQUAL",
+        "selection_reason": "identical diagnostics on both sides: object_rate_max_1s=3, burst_longest_125ms=0, both NEGATIVE strength 0.25; signal 0.1875 vs 0.1875 (margin 0.0)",
+        "raw_feature_direction": "none (features identical)",
+        "rules": [
+          {
+            "rule_id": "ws01.observable.dense_timing",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.25,
+              "direction": "NEGATIVE"
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.25,
+              "direction": "NEGATIVE"
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "object_rate_max_1s": {
+          "a": 3.0,
+          "b": 3.0,
+          "a_minus_b": 0.0
+        },
+        "burst_longest_125ms": {
+          "a": 0.0,
+          "b": 0.0,
+          "a_minus_b": 0.0
+        },
+        "bpm_max": {
+          "a": 212.55,
+          "b": 150.0
+        },
+        "object_count": {
+          "a": 94.0,
+          "b": 174.0
+        },
+        "slider_repeat_count_total": {
+          "a": 5.0,
+          "b": 24.0
+        },
+        "slider_ratio": {
+          "a": 0.4255,
+          "b": 0.5862
+        },
+        "note": "code sees zero difference; B has 2x objects, pervasive 2-span slider repeats (400-1600 ms follows) vs A's long 2.3-4.5 s holds and 3 spinners"
+      },
+      "visual_observation": "B renders a continuous 150 BPM tap-tap slider-repeat rhythm; A renders sparse single taps with multi-second holds. UI displayed '302 个物件 vs 94 个物件' and BPM despite not-asking clauses. No persisted replay artifact.",
+      "primary_disposition": "MISSING_OBSERVABLE",
+      "secondary_disposition": "WORDING_DRIFT",
+      "confidence": "HIGH",
+      "evidence": [
+        "4/4 human judgments B across source + exact-repeat control",
+        "code diagnostics byte-identical (rate 3/3, burst 0/0), margin 0.0",
+        "B: repeat_count_total 24 vs 5; 102 sliders with 2-span repeats vs A's long holds",
+        "sibling-task note by annotator_007 on task-4319b133: 'B 完全没有连续点击段，A 虽然有高密度段但大多是单点而非连续点击段'",
+        "machine semantics burst window <=125ms much narrower than player reading of '连续快速点击'"
+      ],
+      "notes": "Confidence HIGH on 'code has no differentiating signal while humans agree'; the specific missing observable is not uniquely identifiable from data and is listed as candidates. AMENDMENT (P1.5): slider reversal/repeat structure is a structural candidate only - reversal is not equivalent to extra clicks, and no replay/input data exists to establish click pressure. Candidates: reversal/repeat structure, wider sustained-tap runs, single-tap-vs-stream. Visible object-count metadata is a presentation anchor candidate."
+    },
+    {
+      "case_id": "B3",
+      "task_id": "task-bb6f8c7d483672b42ff45b9c",
+      "question_id": "ws01.provisional.movement_demand_high",
+      "question_text": "哪一侧整张谱面的光标移动通常更快、跨度也更大？",
+      "class": "boundary",
+      "selection_reason": "BOUNDARY_ADJACENT",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_003",
+            "answer": "A_CLEARLY_HIGHER",
+            "canonical_ordinal": 2,
+            "latency_ms": 38112,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_010",
+            "answer": "A_CLEARLY_HIGHER",
+            "canonical_ordinal": 2,
+            "latency_ms": 54539,
+            "confidence_band": "MEDIUM",
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "split",
+        "repeat_inversion_extra_judgments": [
+          {
+            "source_control": "EXACT_REPEAT task-3b895e9792b51bab6fbba308 (same pair, same order)",
+            "annotator_id": "annotator_008",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": -1,
+            "latency_ms": 64731
+          },
+          {
+            "source_control": "EXACT_REPEAT task-3b895e9792b51bab6fbba308 (same pair, same order)",
+            "annotator_id": "annotator_030",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": -1,
+            "latency_ms": 17384
+          }
+        ],
+        "total_judgments_for_pair": 4,
+        "premise_correction": "2x A_CLEARLY vs 2x B_SLIGHTLY across source+repeat: humans are NOT directionally consistent on this boundary case",
+        "cannot_judge": false,
+        "abnormally_short_latency": null
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "A",
+        "selection_reason": "aggregated signal_position A 0.839812 vs B 0.839511 (margin 0.000301); aggregation quirk: A's abstained observable + reference 0.359 outranks B's min()-capped observable 0.0927 + reference 0.623",
+        "raw_feature_direction": "B (dist_p95 0.720 vs 0.609; vel_p95 3.556 vs 2.806; ppy p90 3.171 vs 2.590)",
+        "rules": [
+          {
+            "rule_id": "ws01.observable.movement_tail",
+            "side_a": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "distance_norm_p95": 0.609077,
+                "velocity_norm_per_s_p95": 2.80648
+              }
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.092748,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "distance_norm_p95": 0.71962,
+                "velocity_norm_per_s_p95": 3.55649
+              }
+            }
+          },
+          {
+            "rule_id": "ws01.reference.ppy_snap_tail",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.359246,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "ref_ppy_snap_include_sliders_p90": 2.59034
+              }
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.623344,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "ref_ppy_snap_include_sliders_p90": 3.17136
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "distance_norm_p95": {
+          "a": 0.609077,
+          "b": 0.71962,
+          "a_minus_b": -0.110543
+        },
+        "velocity_norm_per_s_p95": {
+          "a": 2.80648,
+          "b": 3.55649,
+          "a_minus_b": -0.75001
+        },
+        "ref_ppy_snap_include_sliders_p90": {
+          "a": 2.59034,
+          "b": 3.17136,
+          "a_minus_b": -0.58102
+        },
+        "audit_median_spacing_norm": {
+          "a": 0.316811,
+          "b": 0.359736,
+          "a_minus_b": -0.042925
+        },
+        "audit_median_velocity_norm_per_s": {
+          "a": 1.31952,
+          "b": 1.302997,
+          "a_minus_b": 0.016523
+        },
+        "bpm_max": {
+          "a": 186.0,
+          "b": 180.5
+        },
+        "object_count": {
+          "a": 883.0,
+          "b": 1187.0
+        },
+        "cs": {
+          "a": 4.0,
+          "b": 3.6
+        },
+        "note": "audit median stats computed read-only with the project parser; not pipeline features. All pipeline features favour B; aggregated signal favours A; median velocity favours A."
+      },
+      "visual_observation": "A: 186 BPM, 883 objects, CS 4.0; B: 180.5 BPM, 1187 objects, CS 3.6. UI displayed object counts and BPM. No persisted replay artifact; mechanism cannot be adjudicated without live viewing.",
+      "primary_disposition": "MULTI_AXIS_TRADEOFF",
+      "secondary_disposition": null,
+      "confidence": "LOW",
+      "evidence": [
+        "2-2 human split across source + exact-repeat control (premise correction)",
+        "pipeline features (dist/vel p95, ppy p90) all favour B",
+        "aggregated signal_position favours A by 0.0003 due to strength aggregation quirk",
+        "audit median velocity favours A by 0.017; median spacing favours B",
+        "contract known_ambiguity: 速度和跨度可能指向不同侧"
+      ],
+      "notes": "Lowest-confidence case of the nine. AND-wording over two axes plus a 2-2 human split; code aggregation direction contradicts its own raw features. Requires third-party visual replay (P2) before stronger claims."
+    },
+    {
+      "case_id": "B4",
+      "task_id": "task-0680617df571e66f6face2da",
+      "question_id": "ws01.provisional.slider_tracking_travel_high",
+      "question_text": "哪一侧片段中较长的一批滑条，通常需要更远的持续跟随？",
+      "class": "boundary",
+      "selection_reason": "BOUNDARY_ADJACENT",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_010",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": 2,
+            "latency_ms": 21343,
+            "confidence_band": "MEDIUM",
+            "presentation_order": "BA",
+            "canonical_answer": "A_CLEARLY_HIGHER"
+          },
+          {
+            "annotator_id": "annotator_022",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": 1,
+            "latency_ms": 23922,
+            "confidence_band": null,
+            "presentation_order": "BA",
+            "canonical_answer": "A_SLIGHTLY_HIGHER"
+          }
+        ],
+        "direction": "A",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": null
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "B",
+        "selection_reason": "aggregated signal_position A 0.758767 vs B 0.758768 (margin 0.000001; hair-thin B from p90 108.767 vs 108.768)",
+        "raw_feature_direction": "none (p90 equal to 0.001); segment_max A 188.4 vs B 114.2 favours A",
+        "rules": [
+          {
+            "rule_id": "ws01.local.slider_travel_segment",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.035067,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 108.767,
+                "segment_max": 188.43806095399992
+              }
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.035072,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 108.768,
+                "segment_max": 114.15653896284434
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "lazy_travel_distance_segment_p90": {
+          "a": 108.767,
+          "b": 108.768,
+          "a_minus_b": -0.001
+        },
+        "segment_max": {
+          "a": 188.438,
+          "b": 114.157,
+          "a_minus_b": 74.281
+        },
+        "window_slider_count": {
+          "a": 16,
+          "b": 24
+        },
+        "long_slider_pixel_length": {
+          "a": 234.0,
+          "b": 172.5
+        },
+        "long_slider_follow_duration_ms": {
+          "a": 342.9,
+          "b": 265.5
+        },
+        "bpm_max": {
+          "a": 175.0,
+          "b": 113.0
+        },
+        "note": "rule consumes only p90; segment_max available in provenance but unused (rule failure_mode: 'segment p90 can hide one extreme slider')"
+      },
+      "visual_observation": "A window 246.05-254.55s: 16 sliders (234/117 px alternating, two 4-span 30/42 px repeats, follows 171-343 ms), 20 circles; B window 53.21-61.71s: 24 sliders (172.5/86.25 px, follows 133-266 ms), 8 circles. A's long-slider batch is longer-path AND longer-duration. No persisted replay artifact.",
+      "primary_disposition": "MISSING_OBSERVABLE",
+      "secondary_disposition": "WORDING_DRIFT",
+      "confidence": "MEDIUM",
+      "evidence": [
+        "p90 equal to 0.001 yet humans agree A (clear + slight, MEDIUM confidence on clear vote)",
+        "A's long sliders: 234 px path, 342.9 ms follow vs B 172.5 px, 265.5 ms",
+        "segment_max A 188.4 vs B 114.2 not consumed by rule",
+        "wording '更远的持续跟随' blends distance and duration"
+      ],
+      "notes": "Distance-max and duration readings coincide (both A), so the case alone cannot separate them; the cross-case pattern (B5/B6) isolates duration as the consistent driver. AMENDMENT (P1.5): follow duration is correlational evidence only; within these pairs distance and duration did not vary independently, so the player-used observable is not uniquely identified."
+    },
+    {
+      "case_id": "B5",
+      "task_id": "task-14cfa82a9bcb6409aba93ad8",
+      "question_id": "ws01.provisional.slider_tracking_travel_high",
+      "question_text": "哪一侧片段中较长的一批滑条，通常需要更远的持续跟随？",
+      "class": "boundary",
+      "selection_reason": "BOUNDARY_ADJACENT",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_003",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 354523,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_028",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 44293,
+            "confidence_band": "HIGH",
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "B",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": null
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "B",
+        "selection_reason": "aggregated signal_position A 0.766598 vs B 0.766610 (margin 0.000012)",
+        "raw_feature_direction": "none (p90 equal to 0.012); segment_max A 348.0 vs B 224.9 favours A",
+        "rules": [
+          {
+            "rule_id": "ws01.local.slider_travel_segment",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.066393,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 116.598,
+                "segment_max": 348.03171223449203
+              }
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.066442,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 116.61,
+                "segment_max": 224.9359094996313
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "lazy_travel_distance_segment_p90": {
+          "a": 116.598,
+          "b": 116.61,
+          "a_minus_b": -0.012
+        },
+        "segment_max": {
+          "a": 348.032,
+          "b": 224.936,
+          "a_minus_b": 123.096
+        },
+        "window_slider_count": {
+          "a": 12,
+          "b": 4
+        },
+        "equal_length_210px_follow_duration_ms": {
+          "a": 252.8,
+          "b": 529.4
+        },
+        "longest_slider_follow_duration_ms": {
+          "a": 674.2,
+          "b": 705.9
+        },
+        "bpm_max": {
+          "a": 178.0,
+          "b": 85.0
+        },
+        "note": "humans did NOT follow the distance/max reading (A larger); the duration reading (B) matches both votes"
+      },
+      "visual_observation": "A window 128.57-137.07s: busy 178 BPM, 12 sliders (84-674 ms follows), 29 circles; B window 48.95-57.45s: sparse 85 BPM, 4 sliders (353-706 ms follows), 10 circles + spinner. Same 210 px slider follows 2.1x longer on B. No persisted replay artifact.",
+      "primary_disposition": "MISSING_OBSERVABLE",
+      "secondary_disposition": "WORDING_DRIFT",
+      "confidence": "MEDIUM",
+      "evidence": [
+        "p90 equal yet humans B_CLEARLY x2 (one HIGH confidence)",
+        "equal-pixel sliders follow 2.1x longer on B (529.4 vs 252.8 ms)",
+        "distance/max reading favours A; humans chose the duration side",
+        "wording '更远的持续跟随' blends distance and duration"
+      ],
+      "notes": "Follow duration is the only examined observable that matches the human direction here, isolating it from the coincident readings of B4. AMENDMENT (P1.5): follow duration is correlational evidence only; within these pairs distance and duration did not vary independently, so the player-used observable is not uniquely identified."
+    },
+    {
+      "case_id": "B6",
+      "task_id": "task-f28185e673a934a4c8d11fb9",
+      "question_id": "ws01.provisional.slider_tracking_travel_high",
+      "question_text": "哪一侧片段中较长的一批滑条，通常需要更远的持续跟随？",
+      "class": "boundary",
+      "selection_reason": "BOUNDARY_ADJACENT",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_026",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 35622,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_027",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 218138,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "B",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": null
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "A",
+        "selection_reason": "aggregated signal_position A 0.766820 vs B 0.766803 (margin 0.000017, hair-thin A opposite to humans)",
+        "raw_feature_direction": "none (p90 equal to 0.017); segment_max A 118.6 vs B 183.8 favours B",
+        "rules": [
+          {
+            "rule_id": "ws01.local.slider_travel_segment",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.06728,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 116.82,
+                "segment_max": 118.57575876469947
+              }
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.067214,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 116.803,
+                "segment_max": 183.84487859168706
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "lazy_travel_distance_segment_p90": {
+          "a": 116.82,
+          "b": 116.803,
+          "a_minus_b": 0.017
+        },
+        "segment_max": {
+          "a": 118.576,
+          "b": 183.845,
+          "a_minus_b": -65.269
+        },
+        "window_slider_count": {
+          "a": 12,
+          "b": 8
+        },
+        "equal_length_follow_duration_ms": {
+          "a": 296.3,
+          "b": 600.0
+        },
+        "longest_slider_follow_duration_ms": {
+          "a": 444.4,
+          "b": 1000.0
+        },
+        "bpm_max": {
+          "a": 135.0,
+          "b": 150.0
+        },
+        "note": "code hair direction A; humans B; duration and max both favour B"
+      },
+      "visual_observation": "A window 294.85-303.35s: 12 sliders (173.3 px, 148-444 ms follows) at 135 BPM; B window 43.02-51.52s: 8 sliders (172.8/288 px, 200-1000 ms follows) at 150 BPM. Same-length sliders follow 2x longer on B. No persisted replay artifact.",
+      "primary_disposition": "MISSING_OBSERVABLE",
+      "secondary_disposition": "WORDING_DRIFT",
+      "confidence": "MEDIUM",
+      "evidence": [
+        "p90 equal (0.017 apart) yet humans B_CLEARLY x2, opposite to the code's hair-thin A",
+        "equal-pixel sliders follow 2x longer on B (600 vs 296.3 ms); B's 288 px sliders follow 1000 ms",
+        "segment_max favours B here (183.8 vs 118.6) and humans followed B",
+        "wording '更远的持续跟随' blends distance and duration"
+      ],
+      "notes": "Duration and max readings coincide (both B) in this pair; combined with B4/B5 the duration reading is the only one consistent across all three boundary slider pairs. AMENDMENT (P1.5): follow duration is correlational evidence only; within these pairs distance and duration did not vary independently, so the player-used observable is not uniquely identified."
+    },
+    {
+      "case_id": "C1",
+      "task_id": "task-d4f690cb01133542a5b3a3bf",
+      "question_id": "ws01.provisional.slider_tracking_travel_high",
+      "question_text": "哪一侧片段中较长的一批滑条，通常需要更远的持续跟随？",
+      "class": "conflict",
+      "selection_reason": "CHALLENGE_AUDIT (legacy_format_ood + pathological_challenge)",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_011",
+            "answer": "B_CLEARLY_HIGHER",
+            "canonical_ordinal": -2,
+            "latency_ms": 49864,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_030",
+            "answer": "A_CLEARLY_HIGHER",
+            "canonical_ordinal": 2,
+            "latency_ms": 6729,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "conflict (A_clear vs B_clear)",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": "annotator_030 at 6729 ms is the fastest response in that annotator's whole session (median 22667 ms); audit flag only"
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "EQUAL (both sides ABSTAINED; no code direction)",
+        "selection_reason": "slider travel rule abstains below p90=100 with nonzero max; raw p90 nonetheless 44.9 (B) vs 29.7 (A)",
+        "raw_feature_direction": "B by distance (p90 44.9 vs 29.7); A by follow duration (786.5/524.3 ms vs 346.8/173.4 ms)",
+        "rules": [
+          {
+            "rule_id": "ws01.local.slider_travel_segment",
+            "side_a": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 29.6651,
+                "segment_max": 59.33017462840236
+              }
+            },
+            "side_b": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 44.8744,
+                "segment_max": 82.65866806128025
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "lazy_travel_distance_segment_p90": {
+          "a": 29.6651,
+          "b": 44.8744,
+          "a_minus_b": -15.2093
+        },
+        "segment_max": {
+          "a": 59.33,
+          "b": 82.659,
+          "a_minus_b": -23.328
+        },
+        "window_slider_count": {
+          "a": 4,
+          "b": 10
+        },
+        "equal_length_follow_duration_ms": {
+          "a": 786.5,
+          "b": 346.8
+        },
+        "bpm_max": {
+          "a": 114.4,
+          "b": 202.0
+        },
+        "cs": {
+          "a": 5.0,
+          "b": 4.0
+        },
+        "ar": {
+          "a": null,
+          "b": 9.0
+        },
+        "note": "distance axis favours B, duration axis favours A (2.3x on equal-length sliders); code abstained on both"
+      },
+      "visual_observation": "A: legacy 2006 map (Weezer), 114 BPM, CS 5.0, AR shown as 'AR 未提供', window 31.5-40.0s with 4 slow sliders (786.5 ms holds); B: 202 BPM modern marathon, window 964.7-973.2s with 10 fast sliders (347 ms) + 13 circles + spinner. Two visually opposite eras/styles. No persisted replay artifact; presentation degradation cannot be excluded (legacy + pathological flags).",
+      "primary_disposition": "MULTI_AXIS_TRADEOFF",
+      "secondary_disposition": "POSSIBLE_RUSHED_RESPONSE",
+      "confidence": "MEDIUM",
+      "evidence": [
+        "code abstained both sides (no code direction; null expected sign)",
+        "raw p90 favours B (44.9 vs 29.7); follow duration favours A (2.3x)",
+        "one human per reading, both CLEARLY",
+        "annotator_030's 6.7 s response is a personal outlier (flagged, answer retained)",
+        "legacy_format_ood + pathological_challenge; AR unavailable in UI"
+      ],
+      "notes": "The two CLEARLY votes sit exactly on the two different readings of the distance/duration blend. Rushed-response and presentation concerns are secondary, not adjudicated."
+    },
+    {
+      "case_id": "C2",
+      "task_id": "task-55b0b9f0e001269a94698d85",
+      "question_id": "ws01.provisional.slider_tracking_travel_high",
+      "question_text": "哪一侧片段中较长的一批滑条，通常需要更远的持续跟随？",
+      "class": "conflict",
+      "selection_reason": "CHALLENGE_AUDIT (legacy_format_ood)",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_006",
+            "answer": "APPROX_EQUAL",
+            "canonical_ordinal": 0,
+            "latency_ms": 11108,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          },
+          {
+            "annotator_id": "annotator_026",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": -1,
+            "latency_ms": 30750,
+            "confidence_band": null,
+            "presentation_order": "AB"
+          }
+        ],
+        "direction": "conflict (EQUAL vs B_slight; ordinal distance 1)",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": "annotator_006 at 11108 ms is within that annotator's personal norm (median 12238 ms); noted, not flagged as anomalous"
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "EQUAL (both sides ABSTAINED; no code direction)",
+        "selection_reason": "slider travel rule abstains below p90=100 with nonzero max; raw p90 7.1 (A) vs 80.8 (B)",
+        "raw_feature_direction": "B by distance (11x p90); follow duration mixed (B's 2499.6 ms slider vs A's many short follows)",
+        "rules": [
+          {
+            "rule_id": "ws01.local.slider_travel_segment",
+            "side_a": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 7.08284,
+                "segment_max": 35.41419892843933
+              }
+            },
+            "side_b": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "lazy_travel_distance_segment_p90": 80.786,
+                "segment_max": 84.22855616003253
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "lazy_travel_distance_segment_p90": {
+          "a": 7.08284,
+          "b": 80.786,
+          "a_minus_b": -73.70316
+        },
+        "segment_max": {
+          "a": 35.414,
+          "b": 84.229,
+          "a_minus_b": -48.814
+        },
+        "window_slider_count": {
+          "a": 5,
+          "b": 3
+        },
+        "window_slider_pixel_lengths": {
+          "a": [
+            140,
+            70,
+            70,
+            70,
+            70
+          ],
+          "b": [
+            420,
+            140,
+            140
+          ]
+        },
+        "longest_follow_duration_ms": {
+          "a": 663.0,
+          "b": 2499.6
+        },
+        "bpm_max": {
+          "a": 181.0,
+          "b": 144.0
+        },
+        "note": "A's window is nearly slider-empty (p90 7.1); proposition abstention guidance: '有效滑条太少而无法判断通常'"
+      },
+      "visual_observation": "A window 110.92-119.42s: 5 small sliders (70-140 px) + 9 circles, 181 BPM; B window 112.11-120.61s: 3 sliders including a 420 px 2-span monster followed 2499.6 ms + 9 circles, 144 BPM. One side's slider domain is nearly empty. CANNOT_JUDGE was used 0/64 across the whole pilot. No persisted replay artifact.",
+      "primary_disposition": "PRESENTATION_DEFECT",
+      "secondary_disposition": null,
+      "confidence": "MEDIUM",
+      "evidence": [
+        "code abstained both sides (no code direction)",
+        "A's segment p90 7.1 vs B 80.8: near-empty slider domain on A",
+        "EQUAL vote plausibly a middle-button substitute for 'cannot judge' (CANNOT_JUDGE unused pilot-wide)",
+        "human-human gap is ordinal distance 1 (mildest conflict)"
+      ],
+      "notes": "The defect is in the presented comparison (near-empty domain on one side + unused abstention affordance), not in the code or the wording per se."
+    },
+    {
+      "case_id": "C3",
+      "task_id": "task-b863fbee3a4211e4b959054d",
+      "question_id": "ws01.provisional.movement_demand_high",
+      "question_text": "哪一侧整张谱面的光标移动通常更快、跨度也更大？",
+      "class": "conflict",
+      "selection_reason": "ABSTENTION_HEAVY",
+      "human": {
+        "responses": [
+          {
+            "annotator_id": "annotator_023",
+            "answer": "B_SLIGHTLY_HIGHER",
+            "canonical_ordinal": 1,
+            "latency_ms": 94169,
+            "confidence_band": null,
+            "presentation_order": "BA",
+            "canonical_answer": "A_SLIGHTLY_HIGHER"
+          },
+          {
+            "annotator_id": "annotator_026",
+            "answer": "A_SLIGHTLY_HIGHER",
+            "canonical_ordinal": -1,
+            "latency_ms": 88685,
+            "confidence_band": null,
+            "presentation_order": "BA",
+            "canonical_answer": "B_SLIGHTLY_HIGHER"
+          }
+        ],
+        "direction": "conflict (A_slight vs B_slight; one careful ~90 s voter per side)",
+        "repeat_inversion_extra_judgments": [],
+        "cannot_judge": false,
+        "abnormally_short_latency": null
+      },
+      "code": {
+        "expected_sign": null,
+        "selection": "A",
+        "selection_reason": "aggregated signal_position A 0.817425 vs B 0.817104 (margin 0.000321); both observable rows ABSTAINED (middle band), ppy nearly equal (2.393 vs 2.391)",
+        "raw_feature_direction": "p95 spacing B>A (0.592 vs 0.568); audit median/p90 velocity and spacing A>B; max velocity B>A",
+        "rules": [
+          {
+            "rule_id": "ws01.observable.movement_tail",
+            "side_a": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "distance_norm_p95": 0.568164,
+                "velocity_norm_per_s_p95": 2.3638
+              }
+            },
+            "side_b": {
+              "status": "ABSTAINED",
+              "strength": null,
+              "direction": null,
+              "diagnostics": {
+                "distance_norm_p95": 0.591826,
+                "velocity_norm_per_s_p95": 2.25528
+              }
+            }
+          },
+          {
+            "rule_id": "ws01.reference.ppy_snap_tail",
+            "side_a": {
+              "status": "EMITTED",
+              "strength": 0.269699,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "ref_ppy_snap_include_sliders_p90": 2.39334
+              }
+            },
+            "side_b": {
+              "status": "EMITTED",
+              "strength": 0.268415,
+              "direction": "POSITIVE",
+              "diagnostics": {
+                "ref_ppy_snap_include_sliders_p90": 2.39051
+              }
+            }
+          }
+        ]
+      },
+      "feature_delta": {
+        "distance_norm_p95": {
+          "a": 0.568164,
+          "b": 0.591826,
+          "a_minus_b": -0.023662
+        },
+        "velocity_norm_per_s_p95": {
+          "a": 2.3638,
+          "b": 2.25528,
+          "a_minus_b": 0.10852
+        },
+        "ref_ppy_snap_include_sliders_p90": {
+          "a": 2.39334,
+          "b": 2.39051,
+          "a_minus_b": 0.00283
+        },
+        "audit_median_spacing_norm": {
+          "a": 0.276518,
+          "b": 0.222809,
+          "a_minus_b": 0.053709
+        },
+        "audit_median_velocity_norm_per_s": {
+          "a": 1.13766,
+          "b": 1.069096,
+          "a_minus_b": 0.068564
+        },
+        "audit_max_velocity_norm_per_s": {
+          "a": 3.23451,
+          "b": 3.916701,
+          "a_minus_b": -0.682191
+        },
+        "bpm_max": {
+          "a": 145.0,
+          "b": 178.0
+        },
+        "object_count": {
+          "a": 827.0,
+          "b": 513.0
+        },
+        "note": "velocity axis favours A, span axis favours B at p95; audit median stats favour A on both; max velocity favours B"
+      },
+      "visual_observation": "A: 145 BPM, 827 objects, AR 9.0, slider-heavy (357 sliders); B: 178 BPM, 513 objects, AR 8.3 (209 sliders). Full-map playback. No persisted replay artifact.",
+      "primary_disposition": "MULTI_AXIS_TRADEOFF",
+      "secondary_disposition": null,
+      "confidence": "HIGH",
+      "evidence": [
+        "one careful ~90 s voter per side, both SLIGHTLY",
+        "machine p95 spacing favours B; audit median/p90 velocity and spacing favour A; max velocity favours B",
+        "both observable rows ABSTAINED in the exact middle band the humans argued about; ppy effectively equal",
+        "contract known_ambiguity '速度和跨度可能指向不同侧' empirically confirmed",
+        "AND-wording forces a single answer across the two axes"
+      ],
+      "notes": "The cleanest multi-axis case: each human picked the side favoured by one axis. The rule's middle-band abstention is behaving as designed; the gap is in the question definition, not the code."
+    }
+  ],
+  "cross_case_patterns": [
+    "all six boundary pairs have aggregated code margins <= 0.0003 (selection criterion, not a finding)",
+    "dense B2: 4/4 humans agree while code diagnostics are identical -> code blind spot",
+    "slider B4/B5/B6: human direction tracks per-slider follow DURATION; equal-pixel sliders follow ~2x longer on the winning side; rule consumes only path-distance p90",
+    "movement B3/C3: velocity-vs-span axis split reproduces the contract's own known ambiguity under an AND-wording",
+    "presentation shows object count and BPM while dense not-asking clauses exclude exactly those cues",
+    "CANNOT_JUDGE unused (0/64); EQUAL used as middle-button substitute in C2"
+  ],
+  "rushed_response_flags": [
+    {
+      "case_id": "B1",
+      "annotator_id": "annotator_002",
+      "latency_ms": 9693,
+      "basis": "fast but within personal norm (all five answers 7597-12489 ms)"
+    },
+    {
+      "case_id": "C1",
+      "annotator_id": "annotator_030",
+      "latency_ms": 6729,
+      "basis": "fastest in that annotator's session (median 22667 ms)"
+    }
+  ],
+  "low_confidence_conclusions": [
+    "B3 mechanism (2-2 human split; aggregation quirk; no visual artifact)",
+    "exact human-used slider observable (follow duration is strongest candidate but correlational, not causally identified; distance and duration not separated in the three pairs)",
+    "presentation degradation of legacy pairs C1/C2 (flags + AR missing, unverifiable without replay)"
+  ],
+  "p2_p3_recommendations_recorded_only": [
+    "P2: third judgment per conflict task on the existing review pages; require confidence; persist replay/screenshot capture; counterbalanced probe of the follow-duration hypothesis (P1.5: probe pairs identified in HUMAN_CODE_GAP_PROBES_V01.json; human answers still pending)",
+    "P3: split movement speed/span wording; disambiguate slider distance vs duration; widen dense burst window or add slider repeat/reversal structure (structural cue, not click count); neutralise visible object/BPM metadata for not-asking-controlled questions; require CANNOT_JUDGE before EQUAL on near-empty domains"
+  ],
+  "files_written_by_this_audit": [
+    "docs/HUMAN_CODE_GAP_AUDIT_V01.md",
+    "docs/HUMAN_CODE_GAP_DISPOSITION_V01.json",
+    "docs/archive/HUMAN_CODE_GAP_AUDIT_V01_HANDOVER_2026-08-14.md",
+    "tmp/gap_audit/ (ignored working directory: extraction scripts + intermediate JSON)"
+  ]
+}

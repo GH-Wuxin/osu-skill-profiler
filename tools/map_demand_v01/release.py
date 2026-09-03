@@ -8,10 +8,23 @@ import json
 import os
 from pathlib import Path
 
-from . import model_v010_beta1, model_v010_beta2, model_v010_beta3, model_v010_beta4, model_v010_beta5, model_v096
+from . import (
+    model_v010_beta1,
+    model_v010_beta2,
+    model_v010_beta3,
+    model_v010_beta4,
+    model_v010_beta5,
+    model_v010_beta6,
+    model_v010_beta7,
+    model_v010_beta8,
+    model_v096,
+)
 
 DEFAULT_ALGORITHM = "v010-beta5"
 RUNTIME_ALGORITHMS = {
+    "v010-beta8": model_v010_beta8,
+    "v010-beta7": model_v010_beta7,
+    "v010-beta6": model_v010_beta6,
     "v010-beta5": model_v010_beta5,
     "v010-beta4": model_v010_beta4,
     "v010-beta3": model_v010_beta3,

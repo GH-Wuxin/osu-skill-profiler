@@ -1,0 +1,968 @@
+{
+  "audit_id": "SKILL_PROFILER_LABEL_EFFICIENCY_AUDIT_V01",
+  "budgets": [
+    25,
+    50,
+    100,
+    200,
+    300,
+    500,
+    1000
+  ],
+  "deterministic": true,
+  "disclaimer": "This is an offline surrogate-oracle simulation. Reported AUC/accuracy are NOT human-label accuracy; they are relative label-efficiency signals only.",
+  "generated_by": "tmp/label_audit/sim_v01.py",
+  "initial_labeled": 8,
+  "model": "sklearn LogisticRegression(C=1.0, solver=lbfgs, max_iter=2000)",
+  "phase": "H",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "strategies": [
+    "random",
+    "uncertainty",
+    "disagreement",
+    "diversity",
+    "uncertainty+diversity",
+    "construct_targeted"
+  ],
+  "summary": {
+    "path_target_auc": 0.733091,
+    "path_task_full_auc": 0.75899,
+    "time_target_auc": 0.826194,
+    "time_task_full_auc": 0.862437
+  },
+  "tasks": [
+    {
+      "efficiency": {
+        "strategies": {
+          "construct_targeted": {
+            "first_reach_per_seed": [
+              200,
+              200,
+              200,
+              null,
+              200
+            ],
+            "labels_saved_vs_random_at_target": -100,
+            "median_budget_to_target_auc": 200
+          },
+          "disagreement": {
+            "first_reach_per_seed": [
+              100,
+              300,
+              300,
+              null,
+              200
+            ],
+            "labels_saved_vs_random_at_target": -150,
+            "median_budget_to_target_auc": 250
+          },
+          "diversity": {
+            "first_reach_per_seed": [
+              50,
+              100,
+              200,
+              null,
+              300
+            ],
+            "labels_saved_vs_random_at_target": -50,
+            "median_budget_to_target_auc": 150
+          },
+          "random": {
+            "first_reach_per_seed": [
+              300,
+              50,
+              100,
+              null,
+              100
+            ],
+            "labels_saved_vs_random_at_target": 0,
+            "median_budget_to_target_auc": 100
+          },
+          "uncertainty": {
+            "first_reach_per_seed": [
+              50,
+              500,
+              500,
+              null,
+              500
+            ],
+            "labels_saved_vs_random_at_target": -400,
+            "median_budget_to_target_auc": 500
+          },
+          "uncertainty+diversity": {
+            "first_reach_per_seed": [
+              500,
+              100,
+              200,
+              null,
+              300
+            ],
+            "labels_saved_vs_random_at_target": -150,
+            "median_budget_to_target_auc": 250
+          }
+        },
+        "target_auc": 0.733091
+      },
+      "feature_names": [
+        "bpm_max_diff",
+        "cs_diff",
+        "ar_diff",
+        "od_diff",
+        "log_duration_diff",
+        "log_object_diff",
+        "slider_ratio_diff",
+        "n_slider_rows_diff",
+        "segment_index_diff",
+        "time_p90_diff"
+      ],
+      "full_pool_logistic_baseline": {
+        "mean_test_acc": 0.684,
+        "mean_test_auc": 0.75899,
+        "std_test_auc": 0.033391
+      },
+      "learning_curves": [
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.608,
+              "mean_test_acc": 0.604,
+              "mean_test_auc": 0.621737,
+              "std_test_acc": 0.021307,
+              "std_test_auc": 0.040038
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.572,
+              "mean_test_acc": 0.653,
+              "mean_test_auc": 0.694444,
+              "std_test_acc": 0.0449,
+              "std_test_auc": 0.03843
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.55,
+              "mean_test_acc": 0.668,
+              "mean_test_auc": 0.716303,
+              "std_test_acc": 0.034871,
+              "std_test_auc": 0.042499
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.544,
+              "mean_test_acc": 0.667,
+              "mean_test_auc": 0.733636,
+              "std_test_acc": 0.020881,
+              "std_test_auc": 0.031632
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.546667,
+              "mean_test_acc": 0.67,
+              "mean_test_auc": 0.742525,
+              "std_test_acc": 0.037014,
+              "std_test_auc": 0.033356
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.5488,
+              "mean_test_acc": 0.683,
+              "mean_test_auc": 0.757737,
+              "std_test_acc": 0.03043,
+              "std_test_auc": 0.034621
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.55125,
+              "mean_test_acc": 0.684,
+              "mean_test_auc": 0.75899,
+              "std_test_acc": 0.042942,
+              "std_test_auc": 0.033391
+            }
+          ],
+          "strategy": "random"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.568,
+              "mean_test_acc": 0.579,
+              "mean_test_auc": 0.599737,
+              "std_test_acc": 0.043863,
+              "std_test_auc": 0.048632
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.536,
+              "mean_test_acc": 0.627,
+              "mean_test_auc": 0.634162,
+              "std_test_acc": 0.042497,
+              "std_test_auc": 0.071175
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.526,
+              "mean_test_acc": 0.61,
+              "mean_test_auc": 0.63796,
+              "std_test_acc": 0.035777,
+              "std_test_auc": 0.05483
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.503,
+              "mean_test_acc": 0.627,
+              "mean_test_auc": 0.675677,
+              "std_test_acc": 0.008718,
+              "std_test_auc": 0.029106
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.501333,
+              "mean_test_acc": 0.642,
+              "mean_test_auc": 0.70099,
+              "std_test_acc": 0.014353,
+              "std_test_auc": 0.023612
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.5308,
+              "mean_test_acc": 0.663,
+              "mean_test_auc": 0.737859,
+              "std_test_acc": 0.022494,
+              "std_test_auc": 0.022428
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.55125,
+              "mean_test_acc": 0.684,
+              "mean_test_auc": 0.75899,
+              "std_test_acc": 0.042942,
+              "std_test_auc": 0.033391
+            }
+          ],
+          "strategy": "uncertainty"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.568,
+              "mean_test_acc": 0.579,
+              "mean_test_auc": 0.599737,
+              "std_test_acc": 0.043863,
+              "std_test_auc": 0.048632
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.536,
+              "mean_test_acc": 0.624,
+              "mean_test_auc": 0.65301,
+              "std_test_acc": 0.04005,
+              "std_test_auc": 0.042869
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.514,
+              "mean_test_acc": 0.641,
+              "mean_test_auc": 0.689556,
+              "std_test_acc": 0.049639,
+              "std_test_auc": 0.055674
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.507,
+              "mean_test_acc": 0.657,
+              "mean_test_auc": 0.72202,
+              "std_test_acc": 0.044113,
+              "std_test_auc": 0.054503
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.516667,
+              "mean_test_acc": 0.682,
+              "mean_test_auc": 0.755111,
+              "std_test_acc": 0.031718,
+              "std_test_auc": 0.040619
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.5344,
+              "mean_test_acc": 0.686,
+              "mean_test_auc": 0.759798,
+              "std_test_acc": 0.029052,
+              "std_test_auc": 0.032947
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.55125,
+              "mean_test_acc": 0.684,
+              "mean_test_auc": 0.75899,
+              "std_test_acc": 0.042942,
+              "std_test_auc": 0.033391
+            }
+          ],
+          "strategy": "disagreement"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.488,
+              "mean_test_acc": 0.56,
+              "mean_test_auc": 0.628667,
+              "std_test_acc": 0.050794,
+              "std_test_auc": 0.062402
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.484,
+              "mean_test_acc": 0.576,
+              "mean_test_auc": 0.66097,
+              "std_test_acc": 0.059195,
+              "std_test_auc": 0.080818
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.506,
+              "mean_test_acc": 0.623,
+              "mean_test_auc": 0.703677,
+              "std_test_acc": 0.041665,
+              "std_test_auc": 0.048877
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.512,
+              "mean_test_acc": 0.639,
+              "mean_test_auc": 0.728566,
+              "std_test_acc": 0.050239,
+              "std_test_auc": 0.044996
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.492667,
+              "mean_test_acc": 0.661,
+              "mean_test_auc": 0.741313,
+              "std_test_acc": 0.04684,
+              "std_test_auc": 0.042286
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.516,
+              "mean_test_acc": 0.692,
+              "mean_test_auc": 0.755535,
+              "std_test_acc": 0.041785,
+              "std_test_auc": 0.042692
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.55125,
+              "mean_test_acc": 0.684,
+              "mean_test_auc": 0.75899,
+              "std_test_acc": 0.042942,
+              "std_test_auc": 0.033391
+            }
+          ],
+          "strategy": "diversity"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.536,
+              "mean_test_acc": 0.548,
+              "mean_test_auc": 0.56602,
+              "std_test_acc": 0.055281,
+              "std_test_auc": 0.072576
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.54,
+              "mean_test_acc": 0.582,
+              "mean_test_auc": 0.615637,
+              "std_test_acc": 0.041061,
+              "std_test_auc": 0.04893
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.5,
+              "mean_test_acc": 0.616,
+              "mean_test_auc": 0.671859,
+              "std_test_acc": 0.0451,
+              "std_test_auc": 0.052383
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.503,
+              "mean_test_acc": 0.647,
+              "mean_test_auc": 0.712525,
+              "std_test_acc": 0.045011,
+              "std_test_auc": 0.048624
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.525333,
+              "mean_test_acc": 0.663,
+              "mean_test_auc": 0.73596,
+              "std_test_acc": 0.056089,
+              "std_test_auc": 0.052746
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.514,
+              "mean_test_acc": 0.686,
+              "mean_test_auc": 0.754081,
+              "std_test_acc": 0.040915,
+              "std_test_auc": 0.04008
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.55125,
+              "mean_test_acc": 0.684,
+              "mean_test_auc": 0.75899,
+              "std_test_acc": 0.042942,
+              "std_test_auc": 0.033391
+            }
+          ],
+          "strategy": "uncertainty+diversity"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.552,
+              "mean_test_acc": 0.551,
+              "mean_test_auc": 0.574606,
+              "std_test_acc": 0.044989,
+              "std_test_auc": 0.072497
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.556,
+              "mean_test_acc": 0.561,
+              "mean_test_auc": 0.621232,
+              "std_test_acc": 0.036524,
+              "std_test_auc": 0.060221
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.394,
+              "mean_test_acc": 0.569,
+              "mean_test_auc": 0.641212,
+              "std_test_acc": 0.039925,
+              "std_test_auc": 0.059785
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.65,
+              "mean_test_acc": 0.663,
+              "mean_test_auc": 0.739636,
+              "std_test_acc": 0.028213,
+              "std_test_auc": 0.048232
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.756,
+              "mean_test_acc": 0.653,
+              "mean_test_auc": 0.756667,
+              "std_test_acc": 0.023367,
+              "std_test_auc": 0.046035
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.7004,
+              "mean_test_acc": 0.65,
+              "mean_test_auc": 0.75699,
+              "std_test_acc": 0.021679,
+              "std_test_auc": 0.03732
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.55125,
+              "mean_test_acc": 0.684,
+              "mean_test_auc": 0.75899,
+              "std_test_acc": 0.042942,
+              "std_test_auc": 0.033391
+            }
+          ],
+          "strategy": "construct_targeted"
+        }
+      ],
+      "n_candidates": 1000,
+      "n_positive": 551,
+      "positive_prevalence": 0.551,
+      "surrogate_oracle": "direction of slider-only PATH p90 difference between side_a and side_b; 1 = side_a higher, 0 otherwise. Surrogate only; NOT human accuracy.",
+      "task": "PATH"
+    },
+    {
+      "efficiency": {
+        "strategies": {
+          "construct_targeted": {
+            "first_reach_per_seed": [
+              200,
+              25,
+              25,
+              100,
+              300
+            ],
+            "labels_saved_vs_random_at_target": 0,
+            "median_budget_to_target_auc": 100
+          },
+          "disagreement": {
+            "first_reach_per_seed": [
+              200,
+              50,
+              25,
+              50,
+              100
+            ],
+            "labels_saved_vs_random_at_target": 50,
+            "median_budget_to_target_auc": 50
+          },
+          "diversity": {
+            "first_reach_per_seed": [
+              300,
+              300,
+              100,
+              100,
+              300
+            ],
+            "labels_saved_vs_random_at_target": -200,
+            "median_budget_to_target_auc": 300
+          },
+          "random": {
+            "first_reach_per_seed": [
+              200,
+              100,
+              50,
+              50,
+              100
+            ],
+            "labels_saved_vs_random_at_target": 0,
+            "median_budget_to_target_auc": 100
+          },
+          "uncertainty": {
+            "first_reach_per_seed": [
+              100,
+              50,
+              25,
+              50,
+              100
+            ],
+            "labels_saved_vs_random_at_target": 50,
+            "median_budget_to_target_auc": 50
+          },
+          "uncertainty+diversity": {
+            "first_reach_per_seed": [
+              200,
+              200,
+              25,
+              50,
+              300
+            ],
+            "labels_saved_vs_random_at_target": -100,
+            "median_budget_to_target_auc": 200
+          }
+        },
+        "target_auc": 0.826194
+      },
+      "feature_names": [
+        "bpm_max_diff",
+        "cs_diff",
+        "ar_diff",
+        "od_diff",
+        "log_duration_diff",
+        "log_object_diff",
+        "slider_ratio_diff",
+        "n_slider_rows_diff",
+        "segment_index_diff",
+        "path_p90_diff"
+      ],
+      "full_pool_logistic_baseline": {
+        "mean_test_acc": 0.812,
+        "mean_test_auc": 0.862437,
+        "std_test_auc": 0.017268
+      },
+      "learning_curves": [
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.352,
+              "mean_test_acc": 0.66,
+              "mean_test_auc": 0.725625,
+              "std_test_acc": 0.063403,
+              "std_test_auc": 0.058677
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.364,
+              "mean_test_acc": 0.738,
+              "mean_test_auc": 0.803563,
+              "std_test_acc": 0.036688,
+              "std_test_auc": 0.034977
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.364,
+              "mean_test_acc": 0.788,
+              "mean_test_auc": 0.847146,
+              "std_test_acc": 0.026944,
+              "std_test_auc": 0.021008
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.376,
+              "mean_test_acc": 0.808,
+              "mean_test_auc": 0.861042,
+              "std_test_acc": 0.02839,
+              "std_test_auc": 0.021966
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.384,
+              "mean_test_acc": 0.811,
+              "mean_test_auc": 0.8595,
+              "std_test_acc": 0.019079,
+              "std_test_auc": 0.01738
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.3896,
+              "mean_test_acc": 0.804,
+              "mean_test_auc": 0.861146,
+              "std_test_acc": 0.016852,
+              "std_test_auc": 0.016231
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.40125,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.862438,
+              "std_test_acc": 0.022045,
+              "std_test_auc": 0.017268
+            }
+          ],
+          "strategy": "random"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.392,
+              "mean_test_acc": 0.75,
+              "mean_test_auc": 0.792709,
+              "std_test_acc": 0.029665,
+              "std_test_auc": 0.025574
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.408,
+              "mean_test_acc": 0.759,
+              "mean_test_auc": 0.820104,
+              "std_test_acc": 0.030232,
+              "std_test_auc": 0.03223
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.46,
+              "mean_test_acc": 0.79,
+              "mean_test_auc": 0.849,
+              "std_test_acc": 0.022136,
+              "std_test_auc": 0.014525
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.454,
+              "mean_test_acc": 0.817,
+              "mean_test_auc": 0.861979,
+              "std_test_acc": 0.020881,
+              "std_test_auc": 0.012929
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.449333,
+              "mean_test_acc": 0.822,
+              "mean_test_auc": 0.866333,
+              "std_test_acc": 0.019391,
+              "std_test_auc": 0.014168
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.4752,
+              "mean_test_acc": 0.814,
+              "mean_test_auc": 0.869417,
+              "std_test_acc": 0.014629,
+              "std_test_auc": 0.017006
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.40125,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.862438,
+              "std_test_acc": 0.022045,
+              "std_test_auc": 0.017268
+            }
+          ],
+          "strategy": "uncertainty"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.392,
+              "mean_test_acc": 0.75,
+              "mean_test_auc": 0.792709,
+              "std_test_acc": 0.029665,
+              "std_test_auc": 0.025574
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.428,
+              "mean_test_acc": 0.762,
+              "mean_test_auc": 0.826979,
+              "std_test_acc": 0.026,
+              "std_test_auc": 0.024598
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.444,
+              "mean_test_acc": 0.797,
+              "mean_test_auc": 0.846792,
+              "std_test_acc": 0.016912,
+              "std_test_auc": 0.019372
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.428,
+              "mean_test_acc": 0.797,
+              "mean_test_auc": 0.855375,
+              "std_test_acc": 0.031875,
+              "std_test_auc": 0.020377
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.416667,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.863042,
+              "std_test_acc": 0.015033,
+              "std_test_auc": 0.013477
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.4084,
+              "mean_test_acc": 0.813,
+              "mean_test_auc": 0.863208,
+              "std_test_acc": 0.014,
+              "std_test_auc": 0.014634
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.40125,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.862438,
+              "std_test_acc": 0.022045,
+              "std_test_auc": 0.017268
+            }
+          ],
+          "strategy": "disagreement"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.344,
+              "mean_test_acc": 0.672,
+              "mean_test_auc": 0.734313,
+              "std_test_acc": 0.052783,
+              "std_test_auc": 0.045846
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.348,
+              "mean_test_acc": 0.698,
+              "mean_test_auc": 0.758042,
+              "std_test_acc": 0.058275,
+              "std_test_auc": 0.05172
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.354,
+              "mean_test_acc": 0.731,
+              "mean_test_auc": 0.795438,
+              "std_test_acc": 0.04005,
+              "std_test_auc": 0.043296
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.359,
+              "mean_test_acc": 0.753,
+              "mean_test_auc": 0.819958,
+              "std_test_acc": 0.025612,
+              "std_test_auc": 0.029578
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.350667,
+              "mean_test_acc": 0.764,
+              "mean_test_auc": 0.842771,
+              "std_test_acc": 0.010198,
+              "std_test_auc": 0.00934
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.3776,
+              "mean_test_acc": 0.807,
+              "mean_test_auc": 0.857146,
+              "std_test_acc": 0.022271,
+              "std_test_auc": 0.017232
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.40125,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.862438,
+              "std_test_acc": 0.022045,
+              "std_test_auc": 0.017268
+            }
+          ],
+          "strategy": "diversity"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.368,
+              "mean_test_acc": 0.676,
+              "mean_test_auc": 0.744313,
+              "std_test_acc": 0.059532,
+              "std_test_auc": 0.060865
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.416,
+              "mean_test_acc": 0.694,
+              "mean_test_auc": 0.769479,
+              "std_test_acc": 0.041037,
+              "std_test_auc": 0.048313
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.39,
+              "mean_test_acc": 0.726,
+              "mean_test_auc": 0.809937,
+              "std_test_acc": 0.039294,
+              "std_test_auc": 0.038949
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.445,
+              "mean_test_acc": 0.776,
+              "mean_test_auc": 0.848979,
+              "std_test_acc": 0.01241,
+              "std_test_auc": 0.020484
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.458667,
+              "mean_test_acc": 0.811,
+              "mean_test_auc": 0.86475,
+              "std_test_acc": 0.014967,
+              "std_test_auc": 0.016116
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.4624,
+              "mean_test_acc": 0.817,
+              "mean_test_auc": 0.868188,
+              "std_test_acc": 0.01631,
+              "std_test_auc": 0.014377
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.40125,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.862438,
+              "std_test_acc": 0.022045,
+              "std_test_auc": 0.017268
+            }
+          ],
+          "strategy": "uncertainty+diversity"
+        },
+        {
+          "curve": [
+            {
+              "budget": 25,
+              "mean_positive_yield": 0.48,
+              "mean_test_acc": 0.731,
+              "mean_test_auc": 0.786563,
+              "std_test_acc": 0.0586,
+              "std_test_auc": 0.071789
+            },
+            {
+              "budget": 50,
+              "mean_positive_yield": 0.46,
+              "mean_test_acc": 0.687,
+              "mean_test_auc": 0.757917,
+              "std_test_acc": 0.036959,
+              "std_test_auc": 0.043639
+            },
+            {
+              "budget": 100,
+              "mean_positive_yield": 0.414,
+              "mean_test_acc": 0.762,
+              "mean_test_auc": 0.822667,
+              "std_test_acc": 0.015362,
+              "std_test_auc": 0.02123
+            },
+            {
+              "budget": 200,
+              "mean_positive_yield": 0.261,
+              "mean_test_acc": 0.78,
+              "mean_test_auc": 0.837771,
+              "std_test_acc": 0.012649,
+              "std_test_auc": 0.020632
+            },
+            {
+              "budget": 300,
+              "mean_positive_yield": 0.44,
+              "mean_test_acc": 0.797,
+              "mean_test_auc": 0.854562,
+              "std_test_acc": 0.013266,
+              "std_test_auc": 0.013415
+            },
+            {
+              "budget": 500,
+              "mean_positive_yield": 0.484,
+              "mean_test_acc": 0.799,
+              "mean_test_auc": 0.863208,
+              "std_test_acc": 0.015937,
+              "std_test_auc": 0.012881
+            },
+            {
+              "budget": 1000,
+              "mean_positive_yield": 0.40125,
+              "mean_test_acc": 0.812,
+              "mean_test_auc": 0.862438,
+              "std_test_acc": 0.022045,
+              "std_test_auc": 0.017268
+            }
+          ],
+          "strategy": "construct_targeted"
+        }
+      ],
+      "n_candidates": 1000,
+      "n_positive": 401,
+      "positive_prevalence": 0.401,
+      "surrogate_oracle": "direction of slider-only TIME p90 difference between side_a and side_b; 1 = side_a higher, 0 otherwise. Surrogate only; NOT human accuracy.",
+      "task": "TIME"
+    }
+  ],
+  "test_size": 0.2
+}

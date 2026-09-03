@@ -36,7 +36,7 @@ from osu_skill_profiler.signals.contract import (
 )
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_v03"
+OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_v04"
 
 
 def _fmt(value: float) -> str:
@@ -190,6 +190,17 @@ def fixtures() -> dict[str, dict]:
             ["64,64,1000,2,0,B|64:192|192:192|192:320,1,240,0:0:0:0:"],
         ),
         "exact": {"slider_span_count": [1]},
+        "tolerance": 1e-6,
+    }
+    f["g_slider_compound_bezier"] = {
+        "description": "compound bezier slider split at a duplicate red anchor",
+        "map": _map(
+            "g_slider_compound_bezier",
+            "HPDrainRate:5\nCircleSize:4\nOverallDifficulty:8\nApproachRate:9\nSliderMultiplier:1\nSliderTickRate:1",
+            "1000,500,4,2,1,60,1,0",
+            ["64,64,1000,2,0,B|164:64|164:64|164:164,1"],
+        ),
+        "exact": {"slider_path_distance": [200.0]},
         "tolerance": 1e-6,
     }
     f["g_slider_perfect"] = {
@@ -439,6 +450,7 @@ def _verify_fixture(sample_id: str, fixture: dict) -> dict:
         "slider_tick_count": "ls.slider_tick_count",
         "slider_nested_object_count": "ls.slider_nested_object_count",
         "slider_span_count": "ls.slider_span_count",
+        "slider_path_distance": "ls.slider_path_distance_px",
         "lazy_end_position_x": "ls.lazy_end_position_x_px",
         "lazy_end_position_y": "ls.lazy_end_position_y_px",
         "lazy_travel_distance": "ls.lazy_travel_distance_cs_normalised",

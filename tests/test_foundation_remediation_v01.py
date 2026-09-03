@@ -21,8 +21,13 @@ from osu_skill_profiler.reference.ppy.contract import (
 )
 from osu_skill_profiler.reference.ppy.preprocess import RefObject, build_ref_objects
 from osu_skill_profiler.reference.ppy.extractor import ReferenceSignalExtractor
-from osu_skill_profiler.signals.contract import LEGACY_SIGNAL_VERSION, SIGNAL_VERSION
+from osu_skill_profiler.signals.contract import (
+    LEGACY_SIGNAL_VERSION,
+    PREVIOUS_SIGNAL_VERSION,
+    SIGNAL_VERSION,
+)
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor
+from osu_skill_profiler.signals.path import build_slider_path
 
 
 def _map(
@@ -197,16 +202,124 @@ class VersionBoundaryAndMutationTests(unittest.TestCase):
         self.assertEqual(current["slider.span_count_total"], 4.0)
         self.assertNotIn("slider.repeats_total", current)
 
-    def test_local_v02_replay_and_v03_corrected_timing(self):
+    def test_local_v02_v03_replay_and_v04_corrected_geometry(self):
         beatmap = parse_osu(_map([_slider(1000, 2)]))
         legacy = LocalSignalExtractor(LEGACY_SIGNAL_VERSION).extract(beatmap)
+        previous = LocalSignalExtractor(PREVIOUS_SIGNAL_VERSION).extract(beatmap)
         current = LocalSignalExtractor(SIGNAL_VERSION).extract(beatmap)
         self.assertEqual(legacy["signal_version"], "0.2.0")
-        self.assertEqual(current["signal_version"], "0.3.0")
+        self.assertEqual(previous["signal_version"], "0.3.0")
+        self.assertEqual(current["signal_version"], "0.4.0")
         self.assertEqual(legacy["objects"][0]["ls.slider_duration_ms"], 1000.0)
         self.assertNotIn("ls.slider_repeat_count", legacy["objects"][0])
+        self.assertEqual(previous["objects"][0]["ls.slider_duration_ms"], 2000.0)
         self.assertEqual(current["objects"][0]["ls.slider_duration_ms"], 2000.0)
         self.assertEqual(current["objects"][0]["ls.slider_repeat_count"], 1)
+
+    def test_local_v04_splits_compound_bezier_at_duplicate_anchor(self):
+        points = ((0.0, 0.0), (31.0, 24.0), (31.0, 24.0), (-188.0, -16.0))
+        previous = build_slider_path(
+            "B",
+            points,
+            240.0,
+            split_bezier_segments=False,
+        )
+        current = build_slider_path(
+            "B",
+            points,
+            240.0,
+            split_bezier_segments=True,
+        )
+
+        first_length = math.hypot(31.0, 24.0)
+        second_dx, second_dy = -219.0, -40.0
+        second_length = math.hypot(second_dx, second_dy)
+        progress = (240.0 - first_length) / second_length
+        expected_tail = (
+            31.0 + second_dx * progress,
+            24.0 + second_dy * progress,
+        )
+
+        self.assertAlmostEqual(current.position_at(1.0)[0], expected_tail[0], places=6)
+        self.assertAlmostEqual(current.position_at(1.0)[1], expected_tail[1], places=6)
+        self.assertGreater(
+            math.dist(previous.position_at(1.0), current.position_at(1.0)),
+            30.0,
+        )
+
+    def test_local_v04_does_not_split_terminal_bezier_duplicate(self):
+        points = ((0.0, 0.0), (0.0, 100.0), (100.0, 100.0), (100.0, 100.0))
+        current = build_slider_path("B", points, None)
+        historical_single_segment = build_slider_path(
+            "B",
+            points,
+            None,
+            split_bezier_segments=False,
+        )
+        self.assertEqual(
+            current.calculated_path,
+            historical_single_segment.calculated_path,
+        )
+
+    def test_local_version_selects_compound_bezier_semantics(self):
+        beatmap = parse_osu(
+            _map(
+                [
+                    "64,64,1000,2,0,"
+                    "B|164:64|164:64|164:164,1,200,0:0:0:0:"
+                ]
+            )
+        )
+        previous_geometries = []
+        current_geometries = []
+        LocalSignalExtractor(PREVIOUS_SIGNAL_VERSION)._extract_rows(
+            beatmap,
+            _geometries_out=previous_geometries,
+        )
+        LocalSignalExtractor(SIGNAL_VERSION)._extract_rows(
+            beatmap,
+            _geometries_out=current_geometries,
+        )
+        previous_tail = previous_geometries[0].tail_position
+        current_tail = current_geometries[0].tail_position
+        self.assertAlmostEqual(current_tail[0], 164.0, places=6)
+        self.assertAlmostEqual(current_tail[1], 164.0, places=6)
+        self.assertGreater(math.dist(previous_tail, current_tail), 10.0)
+
+    def test_local_v04_duplicate_free_bezier_is_unchanged(self):
+        points = ((0.0, 0.0), (0.0, 100.0), (100.0, 100.0))
+        current = build_slider_path("B", points, None)
+        previous = build_slider_path(
+            "B",
+            points,
+            None,
+            split_bezier_segments=False,
+        )
+        self.assertEqual(current.calculated_path, previous.calculated_path)
+
+    def test_local_v04_flattens_each_compound_bezier_segment_independently(self):
+        points = (
+            (0.0, 0.0),
+            (0.0, 100.0),
+            (100.0, 100.0),
+            (100.0, 100.0),
+            (200.0, 100.0),
+            (200.0, 0.0),
+        )
+        current = build_slider_path("B", points, None)
+        historical_single_segment = build_slider_path(
+            "B",
+            points,
+            None,
+            split_bezier_segments=False,
+        )
+        self.assertAlmostEqual(current.calculated_distance, 324.6369098333715, places=6)
+        self.assertAlmostEqual(current.position_at(0.5)[0], 100.0, places=6)
+        self.assertAlmostEqual(current.position_at(0.5)[1], 100.0, places=6)
+        self.assertGreater(
+            abs(current.calculated_distance - historical_single_segment.calculated_distance),
+            10.0,
+        )
 
     def test_historical_duration_and_span_bonus_mutations_are_detected(self):
         beatmap = parse_osu(_map([_slider(1000, 2)]))

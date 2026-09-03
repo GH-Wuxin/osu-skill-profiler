@@ -1,0 +1,20 @@
+{
+  "annotator_id": "annotator_001",
+  "artifact": "training/datasets/active_learning_v01/human_pilot_v01/responses/annotator_001/pilot_session_001.jsonl",
+  "disposition_id": "human-pilot-session-001-disposition-v01",
+  "immutable": true,
+  "pilot_id": "al01-human-pilot-001",
+  "reasons": [
+    "single-annotator usability pilot",
+    "presentation eligibility defects were observed",
+    "human proposition wording required remediation",
+    "0 of 2 exact repeats were strictly or directionally consistent",
+    "the pilot was not designed or accepted as training supervision"
+  ],
+  "response_count": 40,
+  "response_sha256": "e366289f6dd18264e9c1f1ac1fbcb731553448b120abdee14fa04dc2c75e046b",
+  "schema_version": "0.1.0",
+  "session_id": "pilot_session_001",
+  "training_eligible": false,
+  "usability_evidence": true
+}

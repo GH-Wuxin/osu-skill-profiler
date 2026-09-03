@@ -68,8 +68,8 @@ from osu_skill_profiler.reference.ppy.contract import (  # noqa: E402
 )
 from osu_skill_profiler.reference.ppy.extractor import ReferenceSignalExtractor, segment_reference_signals  # noqa: E402
 from osu_skill_profiler.signals.contract import (  # noqa: E402
-    NUMERIC_SIGNALS as LS_NUMERIC_SIGNALS,
-    SIGNAL_VERSION,
+    NUMERIC_SIGNALS_V03 as LS_NUMERIC_SIGNALS,
+    PREVIOUS_SIGNAL_VERSION as REFERENCE_LOCAL_SIGNAL_VERSION,
 )
 from osu_skill_profiler.signals.extractor import LocalSignalExtractor  # noqa: E402
 
@@ -358,7 +358,7 @@ def _process_map(rec: dict, store_objects: bool, seed: int) -> dict:
         "timing_count": rec["timing_count"],
         "green_count": rec["green_count"],
         "reference_version": REFERENCE_VERSION,
-        "local_signal_version": SIGNAL_VERSION,
+        "local_signal_version": REFERENCE_LOCAL_SIGNAL_VERSION,
         "feature_version": FEATURE_VERSION,
         "objects": None,
         "ls_objects": None,
@@ -396,7 +396,7 @@ def _process_map(rec: dict, store_objects: bool, seed: int) -> dict:
             out["feature_serializable"] = False
 
         t2 = time.perf_counter()
-        ls_out = LocalSignalExtractor().extract(beatmap)
+        ls_out = LocalSignalExtractor(REFERENCE_LOCAL_SIGNAL_VERSION).extract(beatmap)
         ls_rows = ls_out["objects"]
         out["ls_latency_ms"] = round((time.perf_counter() - t2) * 1000, 3)
 
@@ -466,7 +466,7 @@ def _resume_record_complete(rec: dict, store_objects: bool) -> bool:
     return (
         rec.get("ok") is True
         and rec.get("feature_version") == FEATURE_VERSION
-        and rec.get("local_signal_version") == SIGNAL_VERSION
+        and rec.get("local_signal_version") == REFERENCE_LOCAL_SIGNAL_VERSION
         and rec.get("reference_version") == REFERENCE_VERSION
         and rec.get("feature_count") == EXPECTED_FEATURE_COUNT
         and rec.get("feature_serializable") is True
@@ -724,7 +724,7 @@ def _stats_pass(jsonl: Path, phase: str, exact: bool, seed: int) -> dict:
     return {
         "phase": phase,
         "feature_version": FEATURE_VERSION,
-        "local_signal_version": SIGNAL_VERSION,
+        "local_signal_version": REFERENCE_LOCAL_SIGNAL_VERSION,
         "reference_version": REFERENCE_VERSION,
         "records": records,
         "ok": ok_records,
@@ -841,7 +841,7 @@ def main(argv: list[str] | None = None) -> int:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stats_all: dict[str, Any] = {
         "feature_version": FEATURE_VERSION,
-        "local_signal_version": SIGNAL_VERSION,
+        "local_signal_version": REFERENCE_LOCAL_SIGNAL_VERSION,
         "reference_version": REFERENCE_VERSION,
         "selection": selection_meta,
         "phases": {},
@@ -1356,7 +1356,7 @@ def _write_report(args, stats_all: dict) -> None:
     lines = ["# Reference Signal QA Report", ""]
     lines.append(f"- verdict: {stats_all.get('verdict')}")
     lines.append(f"- feature_version: {FEATURE_VERSION}")
-    lines.append(f"- local_signal_version: {SIGNAL_VERSION}")
+    lines.append(f"- local_signal_version: {REFERENCE_LOCAL_SIGNAL_VERSION}")
     lines.append(f"- reference_version: {REFERENCE_VERSION}")
     for phase, stats in stats_all.get("phases", {}).items():
         lines.append(f"## Phase {phase}")

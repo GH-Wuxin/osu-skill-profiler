@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "collection_id": "collection_001",
+  "snapshot_id": "snapshot-dcb68f7c644b4527dba02381",
+  "snapshot_manifest_sha256": "7f6c168e9c58ad2ac4269baa3ac37933c8eba081717371977dabec7ff125485e",
+  "response_count": 59,
+  "responded_participant_count": 14,
+  "covered_task_count": 40,
+  "task_pool_count": 40,
+  "disposition": "INTERIM_MULTI_ANNOTATOR_USABILITY_EVIDENCE",
+  "immutable_snapshot": true,
+  "raw_human_evidence_validated": true,
+  "human_evidence_is_ground_truth": false,
+  "training_eligible": false,
+  "taxonomy_frozen": false,
+  "majority_vote_labels_created": false,
+  "recommended_next_evidence_milestone": {
+    "kind": "UNIFORM_SECOND_COVERAGE",
+    "target_response_count": 80,
+    "remaining_at_snapshot": 21
+  }
+}

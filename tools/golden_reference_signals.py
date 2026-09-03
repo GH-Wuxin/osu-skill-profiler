@@ -38,7 +38,7 @@ from osu_skill_profiler.reference.ppy.contract import (  # noqa: E402
     UPSTREAM_DIFFICULTY_VERSION,
 )
 from osu_skill_profiler.reference.ppy.extractor import ReferenceSignalExtractor  # noqa: E402
-from osu_skill_profiler.signals.contract import SIGNAL_VERSION  # noqa: E402
+from osu_skill_profiler.signals.contract import PREVIOUS_SIGNAL_VERSION  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "training" / "datasets" / "golden_reference_v02"
 
@@ -494,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
             failures.extend([r for r in records if r["verdict"] == "FAIL"])
     summary = {
         "contract_version": REFERENCE_VERSION,
-        "local_signal_version": SIGNAL_VERSION,
+        "local_signal_version": PREVIOUS_SIGNAL_VERSION,
         "upstream_commit": UPSTREAM_COMMIT,
         "upstream_difficulty_version": UPSTREAM_DIFFICULTY_VERSION,
         "fixture_count": len(fixtures()),

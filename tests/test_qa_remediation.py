@@ -121,16 +121,18 @@ class FoundationDeltaQaInfrastructureTests(unittest.TestCase):
             "reference_changed_object_count": 0,
             "reference_reading_only_object_count": 0,
             "local_geometry_blocked_old": 0,
+            "local_geometry_blocked_previous": 0,
             "local_geometry_blocked_new": 0,
             "reference_geometry_blocked_old": 0,
             "reference_geometry_blocked_new": 0,
             "timing_ms": {
                 "feature_both": 1.0,
                 "local_old": 1.0,
+                "local_previous": 1.0,
                 "local_new": 1.0,
                 "reference_old": 1.0,
                 "reference_new": 1.0,
-                "total": 5.0,
+                "total": 6.0,
             },
         }
 

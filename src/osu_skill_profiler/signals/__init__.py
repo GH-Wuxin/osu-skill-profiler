@@ -15,6 +15,11 @@ Layers used by this package:
 from __future__ import annotations
 
 LEGACY_SIGNAL_VERSION = "0.2.0"
-SIGNAL_VERSION = "0.3.0"
+PREVIOUS_SIGNAL_VERSION = "0.3.0"
+SIGNAL_VERSION = "0.4.0"
 
-__all__ = ["LEGACY_SIGNAL_VERSION", "SIGNAL_VERSION"]
+__all__ = [
+    "LEGACY_SIGNAL_VERSION",
+    "PREVIOUS_SIGNAL_VERSION",
+    "SIGNAL_VERSION",
+]
