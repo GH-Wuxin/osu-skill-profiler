@@ -1,7 +1,11 @@
-"""Read-only beta.7/beta.8 nine-axis corpus comparison.
+"""Read-only adjacent-release nine-axis corpus comparison.
 
 Only ignored artifacts below ``tmp`` are written.  Source beatmaps,
 calibration data, runtime selection, and model files are never mutated.
+
+The default replay remains beta.7/beta.8.  Setting
+``MAP_DEMAND_AUDIT_PAIR=beta8-beta9`` reuses the same frozen audit contract for
+the beta.8/beta.9 release comparison, including in spawned worker processes.
 """
 
 from __future__ import annotations
@@ -28,11 +32,16 @@ for path in (TOOLS, TMP):
 
 from map_demand_v01 import model_v010_beta7 as BETA7  # noqa: E402
 from map_demand_v01 import model_v010_beta8 as BETA8  # noqa: E402
+from map_demand_v01 import model_v010_beta9 as BETA9  # noqa: E402
 from map_demand_v01.calibration import load_calibration  # noqa: E402
 from map_demand_v01.osu_db_star_scale import (  # noqa: E402
     read_nm_star_distribution,
 )
 import profile_audit_v01 as selection_basis  # noqa: E402
+
+
+if os.environ.get("MAP_DEMAND_AUDIT_PAIR") == "beta8-beta9":
+    BETA7, BETA8 = BETA8, BETA9
 
 
 CALIBRATION: dict[str, Any] | None = None
