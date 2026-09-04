@@ -1,5 +1,9 @@
 # Map Demand 0.10.0-beta.9 — Raw Speed 与 Micro Precision 重标定
 
+> 历史回放说明：beta.9 的 powered support 是在线性 winner 选定后进行后处理，
+> 混合速率段可能错过新目标函数下的最佳阈值。该行为为精确回放而保留；修复版本为
+> `0.10.0-beta.9.1`，新结果不应再标记成 beta.9。
+
 beta.9 只改变 `raw_speed` 与 `spatial_precision`。Jump、Flow、Control、Stamina、
 Endurance、Finger Control、Reading 逐项继承 beta.8；beta.8 及更早版本保持可重放。
 本轮没有使用玩家名、BID 特判、人工标签或 ppy 总星作为任一轴的公式输入。
@@ -33,7 +37,8 @@ beta.8 将 200 BPM 1/4 的完整段换算为 7.681。beta.9 将独立速率标�
 physical_star = max(0, (tap_rate_per_s - 5.0) / 1.30)
 ```
 
-因此同一完整 200 BPM 1/4 段为 6.410。物理峰仍单调且无上限，不裁掉合法极端。
+因此同一完整 200 BPM 1/4 段为 6.410。物理峰不在 10★裁尾；在正常端到端
+Local Signal 管线中受 25ms execution-time floor 限制，理论最高约为 26.923★。
 
 beta.8 对不足目标支撑的前沿使用线性插值。beta.9 只在支撑不足时改为：
 

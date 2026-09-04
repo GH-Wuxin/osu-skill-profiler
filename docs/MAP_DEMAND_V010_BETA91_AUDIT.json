@@ -1,0 +1,88 @@
+{
+  "schema": "map_demand_beta91_release_audit_v01",
+  "baseline_commit": "5dcaf40390d805b101c397c2a6f765dc7d046ddb",
+  "comparison": {
+    "before": "0.10.0-beta.9",
+    "after": "0.10.0-beta.9.1",
+    "changed_axes": [
+      "raw_speed"
+    ]
+  },
+  "frozen_tasks": {
+    "count": 1567,
+    "file_sha256": "8d8c1033daecbb90c4315f90010cbaa51fcf9d0e9e99906f885958e26b60786d",
+    "canonical_tasks_sha256": "29ca2d9a6b59f3e316aacaed03cc9143192164af44ce851ec8c9d88e20abb28d"
+  },
+  "execution": {
+    "ok_count": 1567,
+    "failure_count": 0,
+    "source_checksum_drift_count": 2,
+    "invariant_violation_count": 0,
+    "unchanged_axis_full_payload_drift_count": 0
+  },
+  "canonical_replay": {
+    "beta8_9a1d104_sha256": "3ac89bb4edb1ea096f808eae0425ca85a8c6c7403db752adae8ad065226924b6",
+    "beta9_5dcaf40_sha256": "bcce2f7320e6aa345f043524de1eefed715e7d3c4294c1254c4723e947d9675c"
+  },
+  "raw_speed_changes": {
+    "changed_map_count": 105,
+    "increased_count": 105,
+    "decreased_count": 0,
+    "by_cohort": {
+      "ordinary": 77,
+      "legal_extreme": 5,
+      "non_aspire_pathological": 12,
+      "aspire": 2,
+      "alternative_mechanism": 3,
+      "auxiliary_input_layer": 6
+    },
+    "ordinary": {
+      "count": 968,
+      "before_p50": 0.5818781986269357,
+      "after_p50": 0.6780821151877576,
+      "before_p90": 4.0840602696272805,
+      "after_p90": 4.0840602696272805,
+      "before_p99": 6.837606837606837,
+      "after_p99": 6.837606837606837,
+      "before_max": 8.363858363858364,
+      "after_max": 8.363858363858364,
+      "mean_delta": 0.015312269651156039,
+      "max_delta": 0.675530801763722
+    },
+    "all": {
+      "before_p50": 1.086848845060638,
+      "after_p50": 1.0895362530181263,
+      "before_p90": 6.410256410256411,
+      "after_p90": 6.410256410256411,
+      "before_p99": 10.398860398860398,
+      "after_p99": 10.398860398860398,
+      "before_max": 20.19230769230769,
+      "after_max": 20.19230769230769,
+      "mean_delta": 0.014398791205828976,
+      "max_delta": 1.1441026369777285
+    }
+  },
+  "ordinary_after_tail": {
+    "jump_aim": {"p99": 6.624694500085052, "max": 8.200012919156459},
+    "flow_aim": {"p99": 7.149766539841113, "max": 8.840841446478448},
+    "aim_control": {"p99": 7.227705215952243, "max": 7.686991741440011},
+    "spatial_precision": {"p99": 5.884142198285504, "max": 8.2160237103999},
+    "raw_speed": {"p99": 6.837606837606837, "max": 8.363858363858364},
+    "stamina": {"p99": 4.629059174180522, "max": 6.757784382283928},
+    "endurance": {"p99": 6.171716246240482, "max": 7.323713348654501},
+    "finger_control": {"p99": 6.282718239106757, "max": 8.535665624973497},
+    "reading": {"p99": 6.5572104233248885, "max": 7.568865184147453}
+  },
+  "target_2719427_hdhr": {
+    "flow_aim": 6.576520955312219,
+    "jump_aim": 3.719615714983451,
+    "spatial_precision": 6.317597041525386,
+    "raw_speed_before": 4.251012145748988,
+    "raw_speed_after": 4.251012145748988
+  },
+  "scope_notes": [
+    "CS greater than 12 adversarial input is outside this release scope.",
+    "Aspire is audited as a separate cohort and is not used to calibrate ordinary tails.",
+    "The two source checksum drifts are preserved as provenance warnings rather than hidden."
+  ]
+}

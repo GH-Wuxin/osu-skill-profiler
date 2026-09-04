@@ -193,7 +193,7 @@ class Beta8IntegrationTests(unittest.TestCase):
         json.dumps(beta8_output, allow_nan=False)
 
     def test_beta8_is_explicitly_selectable_without_changing_default(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v010-beta5")
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
         self.assertIs(release.runtime_model("v010-beta8"), beta8)
         calibration_dir = Path(self.temp.name) / "calibration"
         calibration_dir.mkdir()
@@ -229,7 +229,7 @@ class Beta8IntegrationTests(unittest.TestCase):
         )
         self.assertIn("'v010-beta8'", restart)
         self.assertIn("'v010-beta8' = '0.10.0-beta.8'", restart)
-        self.assertIn("$Algorithm = 'v010-beta5'", restart)
+        self.assertIn("$Algorithm = 'v100'", restart)
 
 
 @unittest.skipUnless(TARGET_2719427.is_file(), "target map is unavailable")

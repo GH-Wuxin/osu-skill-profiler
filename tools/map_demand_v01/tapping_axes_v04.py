@@ -13,6 +13,8 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 from . import tapping_axes_v03 as previous
+from . import axis_support_frontier_v01 as linear_frontier
+from . import raw_speed_frontier_v01 as raw_core
 
 
 SCHEMA_VERSION = "tapping_axes_v0.6.0"
@@ -57,12 +59,26 @@ def extract_tapping_measures(
 
     bundle = build_event_bundle(rows)
     measures = {
-        "raw_speed": previous._raw_speed_measure(  # noqa: SLF001
+        "raw_speed": raw_core.raw_speed_measure(
             bundle,
             rate_baseline_per_s=RAW_RATE_BASELINE_PER_S,
             rate_per_star=RAW_RATE_PER_STAR,
             partial_support_exponent=RAW_PARTIAL_SUPPORT_EXPONENT,
             scale=RAW_SPEED_SCALE,
+            output_schema_version=SCHEMA_VERSION,
+            event_bundle_basis_schema_version=(
+                EVENT_BUNDLE_BASIS_SCHEMA_VERSION
+            ),
+            frontier_engine_schema_version=linear_frontier.SCHEMA_VERSION,
+            frontier_evaluator=lambda samples, confidence: (
+                raw_core.legacy_powered_frontier(
+                    samples,
+                    confidence,
+                    partial_support_exponent=RAW_PARTIAL_SUPPORT_EXPONENT,
+                )
+            ),
+            frontier_selector=linear_frontier.select_public_frontier,
+            public_frontier_policy_id=RAW_SPEED_PUBLIC_FRONTIER_POLICY_ID,
         ),
         "stamina": previous._stamina_measure(bundle),  # noqa: SLF001
         "finger_control": previous._finger_measure(bundle),  # noqa: SLF001

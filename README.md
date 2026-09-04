@@ -7,22 +7,22 @@
 **为 osu!standard 谱面建立可解释、可回放的技能需求画像。**
 
 项目从 `.osu` 文件提取谱面结构与逐物件信号，并通过当前默认的
-**Map Demand 0.10.0-beta.5（Reading 顺序与遮挡试用版）**，把谱面描述为九个相互区分的需求维度。它既提供适合下游程序消费的
+**Map Demand 1.0.0（冻结 Beta 9.2 的正式版）**，把谱面描述为九个相互区分的需求维度。它既提供适合下游程序消费的
 版本化 JSON，也包含本地 BID/Mod 评审台，用于让算法结果持续接受真人校验。
 
 > [!IMPORTANT]
-> 0.10.0-beta.5 是确定性的**启发式试用模型**，不是 osu! 官方难度系统，也不是已经训练完成的真值分类器。
+> 1.0.0 是确定性的**启发式模型正式版**，不是 osu! 官方难度系统，也不是真值分类器。正式版冻结行为，不表示消除了所有算法偏差。
 > 分数用于表达“这张谱面在哪些方面难”，不能替代总星数、pp 或实际游玩体验。
 
-本次在 beta.4 的 Aim Control 基础上只重构 Reading：以局部顺序冲突、可见信息率、低 AR 保留负担、快速解码与 HD 消失记忆为主体，避免把规则密集串或高 AR 本身直接算成高 Reading；其余八维保持 beta.4 原样。beta.4、beta.3、beta.2、beta.1 和 V0.96 仍可回放与回滚。
-参见 [试用版发布说明、已知限制与回滚命令](docs/MAP_DEMAND_V010_BETA5.md)。
+本次正式化不改变 Beta 9.2 的任何九维数值、证据或分类：保留 Raw 的支撑阈值修复、Micro Precision 目标容差，以及 Flow 的 CS4 基准尺寸重标定。历史 beta 和 V0.96 仍可显式回放。
+参见 [1.0.0 发布说明、冻结合同与回放命令](docs/MAP_DEMAND_V100.md)。
 
 ### 现在能做什么
 
 - 解析 osu!standard `.osu`，生成规范化物件、整图特征、逐物件 Local Signal 与分段摘要；
-- 输出 0.10.0-beta.5 九维 Map Demand 画像，并保留算法、校准、Mod 与输入校验和身份；
+- 输出 1.0.0 九维 Map Demand 画像，并保留算法、校准、Mod 与输入校验和身份；
 - 支持 NM、EZ、HD、HR、HT、DT 及其有效组合，NC/DC 分别折叠为 DT/HT；
-- 五个修正维度（含 beta.5 Reading）不依赖总 SR，其余四维保留本地 `osu!.db` NM 星数作为上下文软标尺；
+- 九维使用本地物件证据计算；总 SR 仅作诊断参考，不作为当前九维的输入；
 - 通过本地网页按 BID 找到 `.osu`、切换 Mod、查看机器结果并追加真人评价；
 - 冻结回放 V0.95.3、V0.92.2、V0.91、V0.9、V0.8、V0.7、V0.6，避免算法升级后篡改旧结果；
 - 为机器人、网页或图片卡片提供结构化结果，但核心仓库不耦合任何具体 Bot。
@@ -32,9 +32,9 @@
 | 分组 | 维度 | 当前含义 | 量表 |
 | --- | --- | --- | --- |
 | Aim | **Aim Control** | 在实际可用时间内连续完成变距、变向、速度调整及滑条衔接的控制需求 | 星级等价值 |
-| Aim | **Jump Aim** | 以跳跃距离和可用移动时间为主体，保留较弱的 CS 影响 | 星级等价值 |
+| Aim | **Jump Aim** | 物理移动距离与时间构成难度，支撑前沿与瞬时峰值分开；CS 主要通过 slider 几何间接影响 | 星级等价值 |
 | Aim | **Micro Precision**（键：`spatial_precision`） | 小目标容错、落点稳定与大位移后的微小修正；长跳距离本身不加分 | 星级等价值 |
-| Aim | **Flow Aim** | 快速、平滑、方向连续且能维持成链的移动 | 星级等价值 |
+| Aim | **Flow Aim** | 方向连续且能维持成链的移动，保留 CS4 基准的尺寸负荷重标定 | 星级等价值 |
 | Tapping | **Raw Speed** | 快速点击/交互所需的基础速度 | 星级等价值 |
 | Tapping | **Finger Control** | 快速局部段中的非平凡节奏切换与手指协调 | 星级等价值 |
 | Tapping | **Stamina** | 在高强度段内维持执行质量 | `0–10` |
@@ -63,11 +63,11 @@ V0.96 在冻结 V0.95.3 之上引入**双向证据**。维度不仅能因机制�
 公开、零运行时依赖的基础层
 .osu → parser → normalized map → features / local signals / segments
                                       ↓
-实验 Map Demand 层
-local calibration + Mod transform → V0.96 nine-axis profile → review / downstream UI
+Map Demand 层
+local calibration + Mod transform → 1.0.0 nine-axis profile → review / downstream UI
 ```
 
-基础层可以在全新 clone 后直接运行。实验层需要本地校准产物；训练语料、osu! Songs、
+基础层可以在全新 clone 后直接运行。Map Demand 层需要本地校准产物；训练语料、osu! Songs、
 `osu!.db` 和真人反馈均不会提交到公开仓库。
 
 ### 快速开始：公开基础层
@@ -100,7 +100,7 @@ osu-skill-profiler profile-map "path\to\map.osu" --out profile.json
 | `validate-profile PROFILE` | 根据公开 Schema 校验画像 JSON |
 | `taxonomy` | 输出暂定技能分类体系 |
 
-### 运行 V0.96
+### 运行 Map Demand 1.0.0
 
 Map Demand 需要一个本地校准目录。公开仓库故意不携带语料和派生校准文件；如果你已有校准产物，
 可以直接分析：
@@ -110,11 +110,11 @@ python -m tools.map_demand_v01.cli analyze `
   --map "path\to\map.osu" `
   --calibration-dir "path\to\calibration" `
   --mods HD DT `
-  --star-anchor 7.18 `
+  --algorithm v100 `
   --out demand.json
 ```
 
-`--star-anchor` 是可选的本地 NM 星数软锚点。旧版结果可明确回放：
+`--algorithm v100` 显式选择正式版。旧版本的 `--star-anchor` 在当前版仅作诊断上下文，不影响九维。旧版结果可明确回放：
 
 ```powershell
 python -m tools.map_demand_v01.cli analyze --map "map.osu" --algorithm v09
@@ -183,7 +183,7 @@ python -m tools.map_demand_v01.cli bid-review-ui `
 - **可审计**：输出携带输入 checksum、算法、Schema、校准与 Mod 身份。
 - **不把参考当真值**：`ref.ppy.*` 只用于参考和一致性检查，不直接充当人工标签。
 - **不发布私人数据**：训练语料、Songs、`osu!.db`、缓存与真人反馈默认留在本地。
-- **仍需真人验证**：V0.96 已加入双向证据与显著特征增益，但极端谱、特殊 pattern、低 AR + HD 与玩家画像聚合仍可能暴露偏差。
+- **仍需真人验证**：正式版冻结了经测试选定的 Beta 9.2 行为，但极端谱、特殊 pattern、低 AR + HD 与玩家画像聚合仍可能暴露偏差。
 - **只分析谱面需求**：当前不是玩家能力画像、成绩预测器、pp 计算器或推荐系统。
 
 ### 测试
@@ -204,7 +204,7 @@ python -m unittest tests.test_map_demand_v096 tests.test_map_demand_v095 tests.t
 
 ```text
 src/osu_skill_profiler/     公开基础层：解析、信号、特征、分段、Schema
-tools/map_demand_v01/       V0.96、历史回放、Mod 变换与本地评审工具
+tools/map_demand_v01/       1.0.0、历史回放、Mod 变换与本地评审工具
 tests/                      单元测试与合成样本
 docs/                       算法、数据、标注与契约文档
 training/                   本地数据目录骨架；实际语料与派生产物不发布
@@ -212,6 +212,8 @@ training/                   本地数据目录骨架；实际语料与派生产�
 
 ### 关键文档
 
+- [Map Demand 1.0.0 正式版](docs/MAP_DEMAND_V100.md)
+- [Beta 9.2 冻结数值审计](docs/MAP_DEMAND_V010_BETA92_AUDIT.json)
 - [Map Demand Atomic V0.91 基线](docs/MAP_DEMAND_ATOMIC_V091.md)
 - [Map Demand V0.96 设计](docs/MAP_DEMAND_ATOMIC_V096.md)
 - [Map Demand V0.96 实现](tools/map_demand_v01/model_v096.py)
@@ -228,7 +230,7 @@ training/                   本地数据目录骨架；实际语料与派生产�
 
 ### 版本说明
 
-Python 包版本（当前 `0.1.0`）、Map Demand 算法版本（当前 `0.10.0-beta.5`）和输出 Schema 版本是三个独立身份。
+Python 基础包版本（当前 `0.1.0`）、Map Demand 算法版本（当前 `1.0.0`）和输出 Schema 版本是三个独立身份。
 算法升级不会伪装成旧算法结果，也不会要求同时修改稳定的基础包接口。
 
 ### 许可证
@@ -244,13 +246,13 @@ MIT。项目与 osu!、ppy Pty Ltd 或 osu! 开发团队没有隶属关系。
 The repository contains two deliberately separated layers:
 
 1. a dependency-free public foundation for parsing `.osu` files and extracting normalized maps, features, local signals, segments, and versioned JSON;
-2. the public-trial **Map Demand 0.10.0-beta.5** heuristic, which keeps beta.4 Aim Control and replaces only Reading with a local order, information-rate, retention, rapid-decoding, and approximate HD-memory model. Algorithm, calibration and Mod identities remain separate. Beta.4, beta.3, beta.2, beta.1 and V0.96 remain available for rollback.
+2. the stable **Map Demand 1.0.0** heuristic, freezing Beta 9.2 computation without changing any axis values, evidence, summaries, or archetypes. It retains powered Raw support selection, Micro Precision tolerance, and the CS4-relative Flow load rebase. Historical betas remain replayable. See the [1.0.0 release contract](docs/MAP_DEMAND_V100.md).
 
 The nine axes are Aim Control, Jump Aim, Micro Precision (`spatial_precision`), Flow Aim, Raw Speed,
 Finger Control, Stamina, Endurance, and Reading. Stamina and Endurance use bounded
 `0–10` scales; the other axes use osu!-familiar star-equivalent scales.
 
-The beta is deterministic but **not ground truth**, not an official osu! difficulty
+The stable release is deterministic but **not ground truth**, not an official osu! difficulty
 calculator, and not a player-skill model. Human review remains part of the design.
 
 ### Quick start
@@ -271,7 +273,7 @@ python -m tools.map_demand_v01.cli analyze `
   --map "path\to\map.osu" `
   --calibration-dir "path\to\calibration" `
   --mods HD DT `
-  --star-anchor 7.18
+  --algorithm v100
 ```
 
 Supported transforms are EZ, HD, HR, HT, and DT. NC/DC fold to DT/HT; NF/SD/PF

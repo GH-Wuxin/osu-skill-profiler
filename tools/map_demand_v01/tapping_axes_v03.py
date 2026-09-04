@@ -22,7 +22,6 @@ second frontier formula in this module.
 
 from __future__ import annotations
 
-import copy
 import math
 from typing import Any, Iterable, Mapping
 
@@ -129,10 +128,7 @@ def _validate_frontier(raw: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _frontier(
-    samples: Iterable[Mapping[str, Any]],
-    *,
-    evidence_confidence: float,
-    partial_support_exponent: float = 1.0,
+    samples: Iterable[Mapping[str, Any]], *, evidence_confidence: float
 ) -> dict[str, Any]:
     """Evaluate Raw support through the shared API behind a narrow adapter."""
 
@@ -150,49 +146,10 @@ def _frontier(
         policy=RAW_SPEED_SUPPORT_POLICY,
         evidence_confidence=confidence,
     )
-    result = _validate_frontier(raw)
-    exponent = float(partial_support_exponent)
-    if not math.isfinite(exponent) or exponent < 1.0:
-        raise ValueError("partial_support_exponent must be finite and at least 1")
-    if exponent == 1.0:
-        return result
-
-    # Beta.8 keeps the historical linear frontier.  Later releases may ask
-    # this adapter to make incomplete evidence genuinely sub-linear without
-    # changing the shared Jump policy or clipping an established extreme.
-    adjusted = copy.deepcopy(result)
-    target = RAW_SPEED_SUPPORT_POLICY.frontier_support_target
-    for name in ("establishment", "sustain", "recurrence"):
-        component = adjusted[name]
-        threshold = _finite_nonnegative(component.get("winning_threshold_star"))
-        support = _clamp(_finite_nonnegative(component.get("support")))
-        support_ratio = min(1.0, support / target)
-        component["frontier_star"] = threshold * support_ratio**exponent
-    combined_support = _clamp(
-        _finite_nonnegative(adjusted.get("combined_support"))
-    )
-    combined_threshold = _finite_nonnegative(
-        adjusted.get("combined_winning_threshold_star")
-    )
-    adjusted["combined_frontier_star"] = (
-        combined_threshold
-        * min(1.0, combined_support / target) ** exponent
-    )
-    adjusted.setdefault("diagnostics", {})[
-        "partial_support_exponent"
-    ] = exponent
-    adjusted["diagnostics"]["partial_support_mapping"] = (
-        "THRESHOLD_TIMES_SUPPORT_RATIO_POWER"
-    )
-    return adjusted
+    return _validate_frontier(raw)
 
 
-def _raw_records(
-    bundle: Mapping[str, Any],
-    *,
-    rate_baseline_per_s: float = RAW_RATE_BASELINE_PER_S,
-    rate_per_star: float = RAW_RATE_PER_STAR,
-) -> list[dict[str, Any]]:
+def _raw_records(bundle: Mapping[str, Any]) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for block in previous._tap_blocks(dict(bundle)):  # noqa: SLF001 - frozen adapter
         for event in block:
@@ -202,7 +159,7 @@ def _raw_records(
             rate = 1000.0 / execution_dt
             physical_star = max(
                 0.0,
-                (rate - rate_baseline_per_s) / rate_per_star,
+                (rate - RAW_RATE_BASELINE_PER_S) / RAW_RATE_PER_STAR,
             )
             feasibility_raw = event.get("double_tap_feasibility")
             feasibility = (
@@ -228,11 +185,7 @@ def _raw_records(
 
 
 def _winning_run(
-    records: list[Mapping[str, Any]],
-    frontier: Mapping[str, Any],
-    *,
-    rate_baseline_per_s: float = RAW_RATE_BASELINE_PER_S,
-    rate_per_star: float = RAW_RATE_PER_STAR,
+    records: list[Mapping[str, Any]], frontier: Mapping[str, Any]
 ) -> dict[str, Any] | None:
     if not records:
         return None
@@ -300,7 +253,7 @@ def _winning_run(
         "observed_pairs": len(winner),
         "rate_per_s": weighted_rate / total_weight if total_weight > 0.0 else 0.0,
         "rate_band_per_s": (
-            rate_baseline_per_s + threshold * rate_per_star
+            RAW_RATE_BASELINE_PER_S + threshold * RAW_RATE_PER_STAR
         ),
         "double_tap_feasibility_mean": (
             sum(valid_feasibilities) / len(valid_feasibilities)
@@ -311,14 +264,7 @@ def _winning_run(
     }
 
 
-def _raw_speed_measure(
-    bundle: Mapping[str, Any],
-    *,
-    rate_baseline_per_s: float = RAW_RATE_BASELINE_PER_S,
-    rate_per_star: float = RAW_RATE_PER_STAR,
-    partial_support_exponent: float = 1.0,
-    scale: str = RAW_SPEED_SCALE,
-) -> dict[str, Any]:
+def _raw_speed_measure(bundle: Mapping[str, Any]) -> dict[str, Any]:
     coverage = previous._coverage_view(  # noqa: SLF001 - frozen adapter
         dict(bundle),
         include_double_tap=True,
@@ -326,18 +272,8 @@ def _raw_speed_measure(
     evidence_confidence = _clamp(
         _finite_nonnegative(coverage.get("ratio"))
     )
-    if rate_per_star <= 0.0:
-        raise ValueError("rate_per_star must be positive")
-    records = _raw_records(
-        bundle,
-        rate_baseline_per_s=rate_baseline_per_s,
-        rate_per_star=rate_per_star,
-    )
-    frontier = _frontier(
-        records,
-        evidence_confidence=evidence_confidence,
-        partial_support_exponent=partial_support_exponent,
-    )
+    records = _raw_records(bundle)
+    frontier = _frontier(records, evidence_confidence=evidence_confidence)
     public_frontier = select_public_frontier(
         frontier,
         components=("establishment", "sustain"),
@@ -380,7 +316,7 @@ def _raw_speed_measure(
     physical_peak_details = {
         "star": frontier["physical_peak"],
         "unit": "star_equivalent",
-        "scale_method": scale,
+        "scale_method": RAW_SPEED_SCALE,
         "atomic_window": (
             None
             if peak_record is None
@@ -431,17 +367,12 @@ def _raw_speed_measure(
         "activation": support,
         "evidence_count": len(records),
         "coverage": coverage,
-        "winning_run": _winning_run(
-            records,
-            frontier,
-            rate_baseline_per_s=rate_baseline_per_s,
-            rate_per_star=rate_per_star,
-        ),
+        "winning_run": _winning_run(records, frontier),
         "winning_window": None,
         "total_sr_used": False,
-        "scale": scale,
+        "scale": RAW_SPEED_SCALE,
         "signals": {
-            "scale": scale,
+            "scale": RAW_SPEED_SCALE,
             "physical_peak_unit": "star_equivalent",
             "physical_peak_rate_per_s": peak_rate,
             "sample_count": len(records),
@@ -452,9 +383,6 @@ def _raw_speed_measure(
             "frontier_policy": frontier.get("policy"),
             "public_value_policy": "SELECTED_SUPPORT_FRONTIER_STAR",
             "public_frontier_policy": RAW_SPEED_PUBLIC_FRONTIER_POLICY_ID,
-            "rate_baseline_per_s": rate_baseline_per_s,
-            "rate_per_star": rate_per_star,
-            "partial_support_exponent": partial_support_exponent,
             "confidence_not_applied_to_value": True,
             "event_bundle_basis_schema_version": EVENT_BUNDLE_BASIS_SCHEMA_VERSION,
         },

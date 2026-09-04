@@ -18,11 +18,17 @@ from . import (
     model_v010_beta7,
     model_v010_beta8,
     model_v010_beta9,
+    model_v010_beta91,
+    model_v010_beta92,
     model_v096,
+    model_v100,
 )
 
-DEFAULT_ALGORITHM = "v010-beta5"
+DEFAULT_ALGORITHM = "v100"
 RUNTIME_ALGORITHMS = {
+    "v100": model_v100,
+    "v010-beta9.2": model_v010_beta92,
+    "v010-beta9.1": model_v010_beta91,
     "v010-beta9": model_v010_beta9,
     "v010-beta8": model_v010_beta8,
     "v010-beta7": model_v010_beta7,

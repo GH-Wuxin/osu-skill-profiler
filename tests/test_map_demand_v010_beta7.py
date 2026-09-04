@@ -442,8 +442,8 @@ class Beta7IntegrationTests(unittest.TestCase):
                 self.assertEqual(first["status"], "OK")
                 self.assertEqual(first["axes"], second["axes"])
 
-    def test_beta7_is_selectable_while_beta5_remains_the_default(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v010-beta5")
+    def test_beta7_is_selectable_with_stable_default(self):
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
         self.assertIs(release.runtime_model("v010-beta7"), beta7)
 
         calibration_dir = Path(self.temp.name) / "calibration"
@@ -489,7 +489,7 @@ class Beta7IntegrationTests(unittest.TestCase):
         )
         self.assertIn("'v010-beta7'", restart)
         self.assertIn("'v010-beta7' = '0.10.0-beta.7'", restart)
-        self.assertIn("$Algorithm = 'v010-beta5'", restart)
+        self.assertIn("$Algorithm = 'v100'", restart)
 
 
 @unittest.skipUnless(

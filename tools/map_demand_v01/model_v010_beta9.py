@@ -72,6 +72,17 @@ def extract_components(
         effective_mods,
         source_local_signal_version=source_local_signal_version,
     )
+    # Beta.9 was released while beta.8's Raw helper temporarily exposed these
+    # three calibration fields.  Preserve that beta.9 payload explicitly while
+    # allowing the standalone beta.8 implementation to replay 9a1d104 exactly.
+    beta8_raw_signals = components["beta8_tapping_axes"]["raw_speed"]["signals"]
+    beta8_raw_signals.update(
+        {
+            "rate_baseline_per_s": tapping.previous.RAW_RATE_BASELINE_PER_S,
+            "rate_per_star": tapping.previous.RAW_RATE_PER_STAR,
+            "partial_support_exponent": 1.0,
+        }
+    )
     # Keep the provenance-carrying beta.7 row container intact until the
     # inherited validator has accepted it.  Extraction returns a replayable
     # list subclass, so materialising after validation is safe.

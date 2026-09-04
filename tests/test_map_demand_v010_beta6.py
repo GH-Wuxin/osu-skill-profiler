@@ -516,8 +516,8 @@ class PublicBeta6Tests(unittest.TestCase):
                         calibration=mini_calibration(),
                     )
 
-    def test_beta6_is_opt_in_and_default_remains_beta5(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v010-beta5")
+    def test_beta6_is_opt_in_and_stable_default_remains_selected(self):
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
         self.assertIs(release.runtime_model("v010-beta5"), previous)
         self.assertIs(release.runtime_model("v010-beta6"), beta)
 
@@ -531,7 +531,7 @@ class PublicBeta6Tests(unittest.TestCase):
             os.environ,
             {"SKILL_PROFILER_ALGORITHM": ""},
         ):
-            self.assertEqual(release.default_algorithm(), "v010-beta5")
+            self.assertEqual(release.default_algorithm(), "v100")
             with mock.patch.dict(
                 os.environ,
                 {"SKILL_PROFILER_ALGORITHM": "v010-beta6"},
@@ -576,14 +576,14 @@ class PublicBeta6Tests(unittest.TestCase):
             self.assertEqual(payload["identity"]["map_demand_version"], "0.10.0-beta.6")
             self.assertEqual(payload["identity"]["local_signal_version"], "0.4.0")
 
-    def test_restart_entrypoint_knows_beta6_but_keeps_beta5_default(self):
+    def test_restart_entrypoint_knows_beta6_but_keeps_stable_default(self):
         script = (ROOT / "tools" / "restart-skill-profiler.ps1").read_text(
             encoding="utf-8"
         )
         self.assertIn("'v010-beta6'", script)
         self.assertIn("'v010-beta6' = '0.10.0-beta.6'", script)
-        self.assertIn("$Algorithm = 'v010-beta5'", script)
-        self.assertIn("$previousAlgorithm = 'v010-beta5'", script)
+        self.assertIn("$Algorithm = 'v100'", script)
+        self.assertIn("$previousAlgorithm = 'v100'", script)
         self.assertIn("Start-Profiler $previousAlgorithm | Out-Null", script)
 
 

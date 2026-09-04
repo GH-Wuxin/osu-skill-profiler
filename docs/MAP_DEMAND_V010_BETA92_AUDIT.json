@@ -1,0 +1,70 @@
+{
+  "schema": "map_demand_beta92_release_audit_v01",
+  "audit_pair": "beta91-beta92",
+  "task_count": 1567,
+  "ok_count": 1567,
+  "failure_count": 0,
+  "changed_axes": [
+    "flow_aim"
+  ],
+  "unchanged_axis_full_payload_drift_count": 0,
+  "invariant_violation_count": 0,
+  "source_drift_count": 2,
+  "source_drift_paths": [
+    "2523898 SHK - Couple Breaking/SHK - Couple Breaking (Wispy) [ktgster's SHD].osu",
+    "2546424 Tsunamaru - Daidai Genome/Tsunamaru - Daidai Genome (App) [Murderous].osu"
+  ],
+  "ordinary": {
+    "count": 968,
+    "flow_beta91_mean": 3.0317674929676697,
+    "flow_beta92_mean": 3.0341050950227935,
+    "flow_beta91_p90": 5.206395489077033,
+    "flow_beta92_p90": 5.2433924365343065,
+    "flow_beta91_p99": 7.149766539841113,
+    "flow_beta92_p99": 7.307555225824581,
+    "flow_beta91_max": 8.840841446478448,
+    "flow_beta92_max": 8.840841446478448,
+    "flow_delta_mean": 0.0023376020551238823,
+    "flow_delta_min": -0.5215155728203298,
+    "flow_delta_max": 0.9730083224351986
+  },
+  "legal_extreme": {
+    "count": 254,
+    "flow_beta91_p99": 9.380849544020364,
+    "flow_beta92_p99": 9.40465298633416,
+    "flow_beta91_max": 10.66060755462075,
+    "flow_beta92_max": 11.298374518012267,
+    "flow_delta_max": 1.6160146789870218
+  },
+  "aspire": {
+    "count": 14,
+    "flow_beta91_p99": 7.2891455489972,
+    "flow_beta92_p99": 7.2891455489972,
+    "flow_beta91_max": 7.29273303185303,
+    "flow_beta92_max": 7.29273303185303,
+    "flow_delta_max": 0.246575130936194
+  },
+  "non_aspire_pathological": {
+    "count": 301,
+    "flow_beta91_p99": 10.5448163057902,
+    "flow_beta92_p99": 10.5477089482192,
+    "flow_beta91_max": 10.8214608304059,
+    "flow_beta92_max": 10.8958767895164,
+    "flow_delta_max": 0.908821567703747
+  },
+  "bid_2719427": {
+    "hd": {
+      "effective_cs": 4.0,
+      "flow_beta91": 6.606242390923565,
+      "flow_beta92": 6.606242390923565
+    },
+    "hdhr": {
+      "effective_cs": 5.2,
+      "flow_beta91": 6.576520955312219,
+      "flow_beta92": 6.992949438231958,
+      "unchanged_other_axis_count": 8
+    }
+  },
+  "tasks_sha256": "29ca2d9a6b59f3e316aacaed03cc9143192164af44ce851ec8c9d88e20abb28d",
+  "frozen_task_file_sha256": "8d8c1033daecbb90c4315f90010cbaa51fcf9d0e9e99906f885958e26b60786d"
+}

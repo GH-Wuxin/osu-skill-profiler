@@ -3,9 +3,9 @@
 Only ignored artifacts below ``tmp`` are written.  Source beatmaps,
 calibration data, runtime selection, and model files are never mutated.
 
-The default replay remains beta.7/beta.8.  Setting
-``MAP_DEMAND_AUDIT_PAIR=beta8-beta9`` reuses the same frozen audit contract for
-the beta.8/beta.9 release comparison, including in spawned worker processes.
+The default replay remains beta.7/beta.8.  ``MAP_DEMAND_AUDIT_PAIR`` can select
+``beta8-beta9``, ``beta9-beta91``, or ``beta91-beta92``; spawned workers
+inherit the same pair.
 """
 
 from __future__ import annotations
@@ -33,6 +33,8 @@ for path in (TOOLS, TMP):
 from map_demand_v01 import model_v010_beta7 as BETA7  # noqa: E402
 from map_demand_v01 import model_v010_beta8 as BETA8  # noqa: E402
 from map_demand_v01 import model_v010_beta9 as BETA9  # noqa: E402
+from map_demand_v01 import model_v010_beta91 as BETA91  # noqa: E402
+from map_demand_v01 import model_v010_beta92 as BETA92  # noqa: E402
 from map_demand_v01.calibration import load_calibration  # noqa: E402
 from map_demand_v01.osu_db_star_scale import (  # noqa: E402
     read_nm_star_distribution,
@@ -40,8 +42,19 @@ from map_demand_v01.osu_db_star_scale import (  # noqa: E402
 import profile_audit_v01 as selection_basis  # noqa: E402
 
 
-if os.environ.get("MAP_DEMAND_AUDIT_PAIR") == "beta8-beta9":
+AUDIT_PAIR = os.environ.get("MAP_DEMAND_AUDIT_PAIR", "beta7-beta8")
+CHANGED_FROM_PREVIOUS: frozenset[str] | None = None
+if AUDIT_PAIR == "beta8-beta9":
     BETA7, BETA8 = BETA8, BETA9
+    CHANGED_FROM_PREVIOUS = frozenset({"raw_speed", "spatial_precision"})
+elif AUDIT_PAIR == "beta9-beta91":
+    BETA7, BETA8 = BETA9, BETA91
+    CHANGED_FROM_PREVIOUS = BETA91.CHANGED_FROM_PREVIOUS
+elif AUDIT_PAIR == "beta91-beta92":
+    BETA7, BETA8 = BETA91, BETA92
+    CHANGED_FROM_PREVIOUS = BETA92.CHANGED_FROM_PREVIOUS
+elif AUDIT_PAIR != "beta7-beta8":
+    raise ValueError(f"unsupported MAP_DEMAND_AUDIT_PAIR: {AUDIT_PAIR}")
 
 
 CALIBRATION: dict[str, Any] | None = None
@@ -183,6 +196,15 @@ def _analyse(task: dict[str, Any]) -> dict[str, Any]:
         }
         old = BETA7.analyze_components(**kwargs)
         new = BETA8.analyze_components(**kwargs)
+        unchanged_axis_payload_drift = []
+        if CHANGED_FROM_PREVIOUS is not None:
+            unchanged_axis_payload_drift = [
+                axis
+                for axis in BETA8.AXIS_ORDER
+                if axis not in CHANGED_FROM_PREVIOUS
+                and old.get("axes", {}).get(axis)
+                != new.get("axes", {}).get(axis)
+            ]
         alternative_mechanism = (
             components.get("beta8_spatial_axes", {})
             .get("jump_aim", {})
@@ -212,6 +234,7 @@ def _analyse(task: dict[str, Any]) -> dict[str, Any]:
             "model_warnings": new.get("warnings", []),
             "input_role": input_role_payload,
             "alternative_mechanism": alternative_mechanism,
+            "unchanged_axis_payload_drift": unchanged_axis_payload_drift,
             "beta7": {
                 axis: _axis_view(item)
                 for axis, item in old.get("axes", {}).items()
@@ -403,6 +426,15 @@ def _summarise(results: list[dict[str, Any]]) -> dict[str, Any]:
 
     invariant_violations: list[dict[str, Any]] = []
     for row in ok:
+        for axis in row.get("unchanged_axis_payload_drift", []):
+            invariant_violations.append(
+                {
+                    "relative_path": row["relative_path"],
+                    "axis": axis,
+                    "code": "UNCHANGED_AXIS_FULL_PAYLOAD_DRIFT",
+                    "audit_pair": AUDIT_PAIR,
+                }
+            )
         for axis in BETA8.AXIS_ORDER:
             before = row["beta7"][axis].get("value")
             after = row["beta8"][axis].get("value")
@@ -534,7 +566,13 @@ def _summarise(results: list[dict[str, Any]]) -> dict[str, Any]:
                     }
                 )
     return {
-        "schema": "map_demand_beta8_nine_axis_audit_v01",
+        "schema": "map_demand_adjacent_release_nine_axis_audit_v02",
+        "audit_pair": AUDIT_PAIR,
+        "changed_from_previous": (
+            sorted(CHANGED_FROM_PREVIOUS)
+            if CHANGED_FROM_PREVIOUS is not None
+            else None
+        ),
         "beta7": BETA7.MAP_DEMAND_VERSION,
         "beta8": BETA8.MAP_DEMAND_VERSION,
         "map_count": len(results),
