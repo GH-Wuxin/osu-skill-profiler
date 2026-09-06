@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,7 +73,7 @@ class BidReviewWorkbenchTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def workbench(self) -> BidReviewWorkbench:
+    def workbench(self, analysis_workers: int = 0) -> BidReviewWorkbench:
         return BidReviewWorkbench(
             manifest_path=self.manifest,
             songs_root=self.songs,
@@ -80,7 +82,27 @@ class BidReviewWorkbenchTests(unittest.TestCase):
             reviewer_id="tester",
             cache_root=self.cache,
             algorithm="v096",
+            analysis_workers=analysis_workers,
         )
+
+    def test_process_workers_preserve_results_and_review_identity(self):
+        serial = self.workbench()
+        parallel = self.workbench(analysis_workers=2)
+        mods = [[], ["HD"], ["HR"]]
+        expected = [serial.analyze_bid(123456, mod) for mod in mods]
+        try:
+            with ThreadPoolExecutor(max_workers=3) as callers:
+                futures = [callers.submit(parallel.analyze_bid, 123456, mod) for mod in mods]
+                actual = [future.result(timeout=30) for future in futures]
+            self.assertEqual(actual, expected)
+            self.assertEqual(parallel.state()["analysis_workers"], 2)
+            saved = parallel.save_response({
+                "analysis_id": actual[0]["analysis_id"],
+                "ratings": {"aim_control": {"qualifier": "APPROXIMATE", "value": 3.0}},
+            })
+            self.assertEqual(saved["status"], "SAVED")
+        finally:
+            parallel.close()
 
     def test_bid_index_resolves_only_manifest_paths(self):
         index = BidMapIndex(manifest_path=self.manifest, songs_root=self.songs)
@@ -141,6 +163,30 @@ class BidReviewWorkbenchTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             BidMapIndex(manifest_path=self.manifest, songs_root=self.songs)
+
+    def test_legacy_import_requires_checksum_preserves_bytes_and_survives_restart(self):
+        workbench = self.workbench()
+        original = (ROOT / "tests" / "fixtures" / "minimal.osu").read_text(encoding="utf-8")
+        legacy = "\ufeff" + original.replace("BeatmapID:1000001", "// legacy file has no ID").replace("\n", "\r\n")
+        checksum = hashlib.md5(legacy.encode("utf-8")).hexdigest()
+        with self.assertRaises(BidReviewError) as missing:
+            workbench.import_osu(999999, legacy)
+        self.assertEqual(missing.exception.code, "BID_MISMATCH")
+        for invalid_checksum in ["0" * 32, {}, ""]:
+            with self.assertRaises(BidReviewError) as mismatch:
+                workbench.import_osu(999999, legacy, invalid_checksum)
+            self.assertEqual(mismatch.exception.code, "CHECKSUM_MISMATCH")
+        workbench.import_osu(999999, legacy, checksum)
+        self.assertEqual((self.cache / "999999.osu").read_bytes(), legacy.encode("utf-8"))
+        self.assertEqual(self.workbench().index.lookup(999999)["beatmap_id"], 999999)
+        # Even a matching digest cannot override a conflicting declared ID.
+        with self.assertRaises(BidReviewError) as conflicting:
+            workbench.import_osu(999999, original, hashlib.md5(original.encode("utf-8")).hexdigest())
+        self.assertEqual(conflicting.exception.code, "BID_MISMATCH")
+        (self.cache / "999999.osu").write_bytes(legacy.encode("utf-8") + b"\n// tampered")
+        with self.assertRaises(BidReviewError) as tampered:
+            self.workbench().index.lookup(999999)
+        self.assertEqual(tampered.exception.code, "BID_NOT_FOUND")
 
     def test_identical_duplicate_bid_paths_are_collapsed(self):
         duplicate_folder = self.songs / "2 duplicate fixture"

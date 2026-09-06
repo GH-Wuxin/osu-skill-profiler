@@ -37,6 +37,7 @@ from map_demand_v01 import model_v010_beta9  # noqa: E402
 from map_demand_v01 import model_v010_beta91  # noqa: E402
 from map_demand_v01 import model_v010_beta92  # noqa: E402
 from map_demand_v01 import model_v100  # noqa: E402
+from map_demand_v01 import model_v101_experimental  # noqa: E402
 from map_demand_v01.release import default_algorithm  # noqa: E402
 from map_demand_v01.calibration import (  # noqa: E402
     CALIBRATION_ARTIFACT_DIRNAME,
@@ -86,6 +87,7 @@ def cmd_build_calibration(args: argparse.Namespace) -> int:
 def cmd_analyze(args: argparse.Namespace) -> int:
     model = {
         "v100": model_v100,
+        "v101-experimental": model_v101_experimental,
         "v010-beta9.2": model_v010_beta92,
         "v010-beta9.1": model_v010_beta91,
         "v010-beta9": model_v010_beta9,
@@ -294,6 +296,7 @@ def cmd_bid_review_ui(args: argparse.Namespace) -> int:
         port=args.port,
         open_browser=not args.no_open,
         algorithm=args.algorithm,
+        analysis_workers=args.analysis_workers,
     )
     return 0
 
@@ -348,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--mods", nargs="*", default=[])
     analyze.add_argument(
         "--algorithm",
-        choices=("v100", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "decoupled-v01", "v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
+        choices=("v100", "v101-experimental", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "decoupled-v01", "v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
         default=default_algorithm(),
         help="active runtime release by default; older releases remain replayable",
     )
@@ -436,7 +439,8 @@ def main(argv: list[str] | None = None) -> int:
     bid_ui.add_argument("--host", default="127.0.0.1", choices=("127.0.0.1", "localhost"))
     bid_ui.add_argument("--port", type=int, default=8767)
     bid_ui.add_argument("--no-open", action="store_true")
-    bid_ui.add_argument("--algorithm", choices=("v100", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "v096"), default=default_algorithm())
+    bid_ui.add_argument("--analysis-workers", type=int, choices=range(9), default=3)
+    bid_ui.add_argument("--algorithm", choices=("v100", "v101-experimental", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "v096"), default=default_algorithm())
     bid_ui.set_defaults(func=cmd_bid_review_ui)
 
     type_ui = sub.add_parser(

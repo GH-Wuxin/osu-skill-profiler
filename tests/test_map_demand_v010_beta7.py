@@ -489,7 +489,8 @@ class Beta7IntegrationTests(unittest.TestCase):
         )
         self.assertIn("'v010-beta7'", restart)
         self.assertIn("'v010-beta7' = '0.10.0-beta.7'", restart)
-        self.assertIn("$Algorithm = 'v100'", restart)
+        self.assertIn(f"'v010-beta7' = '{beta7.ALGORITHM_ID}'", restart)
+        # Selection precedence is exercised by test_restart_skill_profiler.py.
 
 
 @unittest.skipUnless(

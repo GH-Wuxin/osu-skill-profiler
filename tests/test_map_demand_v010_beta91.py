@@ -80,7 +80,8 @@ class Beta91IntegrationTests(unittest.TestCase):
         )
         self.assertIn("'v010-beta9.1'", restart)
         self.assertIn("'v010-beta9.1' = '0.10.0-beta.9.1'", restart)
-        self.assertIn("$Algorithm = 'v100'", restart)
+        self.assertIn(f"'v010-beta9.1' = '{beta91.ALGORITHM_ID}'", restart)
+        # Selection precedence is exercised by test_restart_skill_profiler.py.
         json.dumps(output, allow_nan=False)
 
     def test_only_raw_axis_changes_from_beta9(self):

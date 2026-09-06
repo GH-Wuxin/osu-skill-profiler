@@ -22,11 +22,13 @@ from . import (
     model_v010_beta92,
     model_v096,
     model_v100,
+    model_v101_experimental,
 )
 
 DEFAULT_ALGORITHM = "v100"
 RUNTIME_ALGORITHMS = {
     "v100": model_v100,
+    "v101-experimental": model_v101_experimental,
     "v010-beta9.2": model_v010_beta92,
     "v010-beta9.1": model_v010_beta91,
     "v010-beta9": model_v010_beta9,

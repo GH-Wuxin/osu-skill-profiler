@@ -576,15 +576,14 @@ class PublicBeta6Tests(unittest.TestCase):
             self.assertEqual(payload["identity"]["map_demand_version"], "0.10.0-beta.6")
             self.assertEqual(payload["identity"]["local_signal_version"], "0.4.0")
 
-    def test_restart_entrypoint_knows_beta6_but_keeps_stable_default(self):
+    def test_restart_entrypoint_registers_beta6_identity(self):
         script = (ROOT / "tools" / "restart-skill-profiler.ps1").read_text(
             encoding="utf-8"
         )
         self.assertIn("'v010-beta6'", script)
         self.assertIn("'v010-beta6' = '0.10.0-beta.6'", script)
-        self.assertIn("$Algorithm = 'v100'", script)
-        self.assertIn("$previousAlgorithm = 'v100'", script)
-        self.assertIn("Start-Profiler $previousAlgorithm | Out-Null", script)
+        self.assertIn(f"'v010-beta6' = '{beta.ALGORITHM_ID}'", script)
+        # Selection precedence is exercised by test_restart_skill_profiler.py.
 
 
 if __name__ == "__main__":

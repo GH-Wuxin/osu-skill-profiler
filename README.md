@@ -120,6 +120,44 @@ python -m tools.map_demand_v01.cli analyze `
 python -m tools.map_demand_v01.cli analyze --map "map.osu" --algorithm v09
 ```
 
+Flow 与 Aim Control 开发候选 `1.0.1-experimental.11` 可显式选择 `--algorithm v101-experimental`。
+修订 .11 撤销重复转向减免，按实际夹角区分锐角需求，保留 CS/时限公式及 .9 Flow；仍有未通过的人工约束，本次未重载线上 .5。
+不传算法参数时，CLI 与评审台遵循本地保存的运行版本；没有本地选择时使用 `v100`。
+它替换 Flow 与 Aim Control；其余七轴继承冻结的 1.0.0，汇总与类型随新结果重新计算。
+修订 .5 修正 Control 的完整移动阶段、绝对调整时限和 CS 响应，移除独立重复相加的间距与节奏负荷；滑条内部方向仍未覆盖。
+Control 主值评价有证据成立的最难局部，采用至多 8 个机会、3 秒的分层支持。详见
+[Control 修复与联合验证](docs/FLOW_CONTROL_JOINT_SCALE_AUDIT_2026-09-05.md)。
+本次加入有局部证据约束的转向调整项，并识别“连续 circle 点按、无滑条过渡、空间换段”的重接结构。
+重接使用同一事件的局部负担和有界支撑，不能借用全图分数；星数标尺仍待独立验证。
+实验结果用于机制验证，正式版仍为 `v100`；本地可以启用 Exp，尚未建立新的正式标尺。详见
+[实验说明](docs/MAP_DEMAND_V101_EXPERIMENTAL.md)、[联合审查](docs/FLOW_CONTROL_JOINT_SCALE_AUDIT_2026-09-05.md)与[空间分离实现说明](docs/FLOW_SPATIAL_REENTRY_EXPERIMENT_2026-09-05.md)：
+
+```powershell
+python -m tools.map_demand_v01.cli analyze `
+  --map "path\to\map.osu" `
+  --calibration-dir "path\to\calibration" `
+  --mods HD HR `
+  --algorithm v101-experimental `
+  --out demand-experimental.json
+```
+
+可另开实验评审台，而不修改已持久化的运行版本；状态栏会显示当前版本：
+
+```powershell
+python -m tools.map_demand_v01.cli bid-review-ui `
+  --algorithm v101-experimental --port 8768 --no-open `
+--responses tmp/flow-experimental-responses.jsonl
+```
+
+将现有本地评审服务切换到 Exp，并保存为后续启动版本：
+
+```powershell
+.\tools\restart-skill-profiler.ps1 -Algorithm v101-experimental
+```
+
+普通重启不传 `-Algorithm` 时保留已保存的版本。当前机器的
+[2026-09-05 启用记录](docs/MAP_DEMAND_V101_EXP3_LOCAL_DEPLOY_2026-09-05.md)包含服务与实际分析验证。
+
 如果要从自己的 QA 语料构建校准：
 
 ```powershell
@@ -172,10 +210,16 @@ python -m tools.map_demand_v01.cli bid-review-ui `
 
 ```text
 /w skill <BID> +HDDT
+/w skill profile
 /w cd <BID> <具体维度、预期难度和理由>
 ```
 
 这些命令属于下游集成，不是本仓库安装后自动提供的 CLI。
+
+BID HTTP 服务默认使用三个计算子进程处理 BP 批量请求，可用
+`bid-review-ui --analysis-workers 0` 切回同步调试。WuxinBot 画像追踪显示逐张进度，
+失败后重试复用已完成的单谱缓存；运行验证见
+[Flow / Control 联合审查记录](docs/FLOW_CONTROL_JOINT_SCALE_AUDIT_2026-09-05.md)。
 
 ### 可靠性与边界
 
@@ -275,6 +319,23 @@ python -m tools.map_demand_v01.cli analyze `
   --mods HD DT `
   --algorithm v100
 ```
+
+The opt-in `--algorithm v101-experimental` selects development candidate `1.0.1-experimental.11`.
+Revision .11 uses actual turn sharpness and removes the rejected repetition discount;
+CS/deadline formulas and .9 Flow are unchanged. The live .5 service is not reloaded.
+Without this argument, CLI/workbench startup follows the saved local runtime
+selection, falling back to `v100` when no override exists.
+It replaces Flow and Aim Control, preserves seven other 1.0.0 axis payloads, and
+recomputes summaries and archetypes. This experimental mechanism check does
+not change the stable default or establish a new calibrated scale. Revision .5
+uses full-transition Control vectors/averages and target-relative adjustment deadlines,
+with explicit partial slider coverage and locally supported peak semantics. Sustained
+Flow growth remains unresolved. Local turn
+adjustment requires evidence within its candidate. Circle-only spatial phrase
+reentry is modelled as a bounded additional local load, with continuous
+tapping and no intervening slider; its absolute scale remains uncalibrated. An isolated
+workbench can use `bid-review-ui --algorithm v101-experimental --port 8768
+--no-open --responses tmp/flow-experimental-responses.jsonl`.
 
 Supported transforms are EZ, HD, HR, HT, and DT. NC/DC fold to DT/HT; NF/SD/PF
 are recorded as demand-neutral. FL is deliberately deferred, and unsupported or

@@ -229,7 +229,8 @@ class Beta8IntegrationTests(unittest.TestCase):
         )
         self.assertIn("'v010-beta8'", restart)
         self.assertIn("'v010-beta8' = '0.10.0-beta.8'", restart)
-        self.assertIn("$Algorithm = 'v100'", restart)
+        self.assertIn(f"'v010-beta8' = '{beta8.ALGORITHM_ID}'", restart)
+        # Selection precedence is exercised by test_restart_skill_profiler.py.
 
 
 @unittest.skipUnless(TARGET_2719427.is_file(), "target map is unavailable")

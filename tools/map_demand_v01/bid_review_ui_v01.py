@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import importlib
+import multiprocessing
 import json
+import math
 import os
 import threading
 import uuid
 import webbrowser
+from concurrent.futures import ProcessPoolExecutor
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -195,9 +199,16 @@ class BidMapIndex:
         return candidates[0]
 
     @staticmethod
-    def _parse_imported_metadata(text: str, expected_beatmap_id: int) -> dict[str, Any]:
-        if not text.startswith("osu file format v"):
+    def _parse_imported_metadata(
+        text: str, expected_beatmap_id: int, expected_md5: str | None = None
+    ) -> dict[str, Any]:
+        if not text.removeprefix("\ufeff").startswith("osu file format v"):
             raise BidReviewError("INVALID_OSU_FILE", "missing osu file format header")
+        if expected_md5 is not None and (
+            not isinstance(expected_md5, str)
+            or hashlib.md5(text.encode("utf-8")).hexdigest() != expected_md5.lower()
+        ):
+            raise BidReviewError("CHECKSUM_MISMATCH", "osu file does not match the supplied official checksum")
         section = ""
         values: dict[str, str] = {}
         difficulty: dict[str, float] = {}
@@ -222,7 +233,10 @@ class BidMapIndex:
             embedded_bid = int(values.get("BeatmapID", "0"))
         except ValueError as exc:
             raise BidReviewError("INVALID_OSU_FILE", "BeatmapID is not an integer") from exc
-        if embedded_bid != expected_beatmap_id:
+        # Old official files can omit BeatmapID. The trusted API client must
+        # attest their original bytes with the requested map's official MD5.
+        # A conflicting positive ID is never repaired or ignored.
+        if embedded_bid != expected_beatmap_id and not (embedded_bid == 0 and expected_md5):
             raise BidReviewError(
                 "BID_MISMATCH",
                 f"requested BID {expected_beatmap_id} but file declares {embedded_bid}",
@@ -232,7 +246,7 @@ class BidMapIndex:
         except ValueError:
             beatmapset_id = None
         return {
-            "beatmap_id": embedded_bid,
+            "beatmap_id": expected_beatmap_id,
             "beatmapset_id": beatmapset_id,
             "artist": values.get("ArtistUnicode") or values.get("Artist"),
             "title": values.get("TitleUnicode") or values.get("Title"),
@@ -242,11 +256,11 @@ class BidMapIndex:
         }
 
     def _imported_record(
-        self, beatmap_id: int, content: str, cache_path: Path
+        self, beatmap_id: int, content: str, cache_path: Path, expected_md5: str | None = None
     ) -> dict[str, Any]:
         encoded = content.encode("utf-8")
         return {
-            **self._parse_imported_metadata(content, beatmap_id),
+            **self._parse_imported_metadata(content, beatmap_id, expected_md5),
             "relative_path": f"cache/{beatmap_id}.osu",
             "path_abs": str(cache_path),
             "sha256": "sha256:" + hashlib.sha256(encoded).hexdigest(),
@@ -262,14 +276,18 @@ class BidMapIndex:
                 encoded = cache_path.read_bytes()
                 if not encoded or len(encoded) > MAX_IMPORTED_OSU_BYTES:
                     continue
-                content = encoded.decode("utf-8-sig")
-                enriched = self._imported_record(beatmap_id, content, cache_path.resolve())
+                content = encoded.decode("utf-8")
+                proof_path = cache_path.with_suffix(".json")
+                proof = json.loads(proof_path.read_text(encoding="utf-8")) if proof_path.is_file() else {}
+                if not isinstance(proof, dict) or proof.get("beatmap_id", beatmap_id) != beatmap_id:
+                    continue
+                enriched = self._imported_record(beatmap_id, content, cache_path.resolve(), proof.get("expected_md5"))
             except (ValueError, OSError, UnicodeDecodeError, BidReviewError):
                 # Invalid cache entries never make the service unavailable.
                 continue
             self._records.setdefault(beatmap_id, []).append(enriched)
 
-    def import_osu(self, beatmap_id: int, content: str) -> dict[str, Any]:
+    def import_osu(self, beatmap_id: int, content: str, expected_md5: str | None = None) -> dict[str, Any]:
         if self.cache_root is None:
             raise BidReviewError("IMPORT_DISABLED", "BID cache is not configured")
         if isinstance(beatmap_id, bool) or not isinstance(beatmap_id, int) or beatmap_id <= 0:
@@ -277,17 +295,25 @@ class BidMapIndex:
         encoded = content.encode("utf-8")
         if not encoded or len(encoded) > MAX_IMPORTED_OSU_BYTES:
             raise BidReviewError("INVALID_OSU_FILE", "osu file is empty or too large")
-        self._parse_imported_metadata(content, beatmap_id)
+        self._parse_imported_metadata(content, beatmap_id, expected_md5)
         cache_path = (self.cache_root / f"{beatmap_id}.osu").resolve()
         if cache_path.parent != self.cache_root:
             raise BidReviewError("INVALID_BID", "cache path escaped its root")
         temp_path = self.cache_root / f".{beatmap_id}.{uuid.uuid4().hex}.tmp"
+        proof_path = cache_path.with_suffix(".json")
+        proof_temp = temp_path.with_suffix(".json.tmp")
         try:
             temp_path.write_bytes(encoded)
+            if expected_md5:
+                proof_temp.write_text(json.dumps({"beatmap_id": beatmap_id, "expected_md5": expected_md5.lower()}), encoding="utf-8")
+                os.replace(proof_temp, proof_path)
+            else:
+                proof_path.unlink(missing_ok=True)
             os.replace(temp_path, cache_path)
         finally:
             temp_path.unlink(missing_ok=True)
-        enriched = self._imported_record(beatmap_id, content, cache_path)
+            proof_temp.unlink(missing_ok=True)
+        enriched = self._imported_record(beatmap_id, content, cache_path, expected_md5)
         with self._lock:
             existing = [
                 item for item in self._records.get(beatmap_id, [])
@@ -299,6 +325,229 @@ class BidMapIndex:
             "beatmap_id": beatmap_id,
             "sha256": enriched["sha256"],
         }
+
+
+def _watch_analysis_parent() -> None:
+    # A Windows service can be stopped without running Python's finally blocks.
+    # Workers only compute read-only map results; never leave them orphaned.
+    parent = multiprocessing.parent_process()
+    if parent is not None:
+        def stop_with_parent() -> None:
+            parent.join()
+            os._exit(0)
+        threading.Thread(target=stop_with_parent, daemon=True).start()
+
+
+def _card_key_sections(output: dict[str, Any]) -> list[dict[str, Any]]:
+    """Export only the winning evidence used by the public axes, in played time."""
+    diagnostics = output.get("diagnostics", {})
+    paths = {
+        "flow_aim": ("v101_flow_execution",),
+        "jump_aim": ("beta8_spatial_axes", "jump_aim"),
+        "aim_control": ("v101_control_vector",),
+        "spatial_precision": ("beta92_spatial_axes", "spatial_precision"),
+        "raw_speed": ("beta91_tapping_axes", "raw_speed"),
+        "finger_control": ("beta8_tapping_axes", "finger_control"),
+        "reading": ("beta7_reading",),
+        "stamina": ("beta8_tapping_axes", "stamina"),
+        "endurance": ("beta8_tapping_axes", "endurance"),
+    }
+    sections = []
+    for key, keys in paths.items():
+        measure = diagnostics
+        for part in keys:
+            measure = measure.get(part, {}) if isinstance(measure, dict) else {}
+        kind = "持续区间" if key in {"stamina", "endurance"} else "局部证据"
+        window = measure.get("winning_section") or measure.get("winning_window") or measure.get("winning_run")
+        extra = ""
+        if key == "jump_aim":
+            established = measure.get("establishment") or {}
+            window = {"start_ms": established.get("winning_episode_start_ms"), "end_ms": established.get("winning_episode_end_ms")}
+            kind = "连续跳跃支撑"
+            if measure.get("public_frontier", {}).get("selected_component") == "recurrence":
+                extra = f"全图另含 {measure.get('recurrence', {}).get('episode_count', 0)} 个重复支撑段"
+        elif key == "raw_speed":
+            kind = "速度支撑段"
+        item = {"key": key, "available": False, "kind": kind}
+        public_axis = output.get("axes", {}).get(key, {})
+        public_value = public_axis.get("demand_star_equivalent", public_axis.get("stars"))
+        values = [window.get("start_ms"), window.get("end_ms")] if isinstance(window, dict) else []
+        same_value = isinstance(public_value, (int, float)) and isinstance(measure.get("value"), (int, float)) and math.isclose(public_value, measure["value"], abs_tol=1e-8)
+        if same_value and len(values) == 2 and all(isinstance(v, (int, float)) and math.isfinite(v) for v in values) and 0 <= values[0] <= values[1]:
+            item.update(available=True, start=values[0], end=values[1], extra=extra)
+        sections.append(item)
+    return sections
+
+
+def _analyze_record(model, calibration, record, mod_context, local_stars):
+    if isinstance(model, str):
+        model = importlib.import_module(model)
+    map_path = Path(record["path_abs"])
+    relative = str(record.get("relative_path") or record.get("reference") or "")
+    beatmap_id = int(record["beatmap_id"])
+    local_rows, features, metadata = model.extract_from_path(
+        str(map_path), requested_mods=mod_context["requested_mods"]
+    )
+    applied_mod_context = metadata.get("mod_transform_context", {})
+    applied_mods = metadata.get("mod_context", {})
+    checksum = model.sha256_file_bytes(map_path.read_bytes())
+    component_kwargs = {
+        "difficulty": metadata.get("difficulty"),
+        "clock_rate": applied_mod_context.get("clock_rate", 1.0),
+        "effective_mods": applied_mods.get("effective_mods", []),
+    }
+    if hasattr(model, "EXPECTED_LOCAL_SIGNAL_VERSION"):
+        component_kwargs["source_local_signal_version"] = metadata.get(
+            "local_signal_version"
+        )
+    components, warnings = model.extract_components(
+        local_rows,
+        features,
+        **component_kwargs,
+    )
+    if local_stars is not None and float(local_stars) > 0.0:
+        components["v091_nm_star_anchor"] = float(local_stars)
+    output = model.analyze_components(
+        checksum=checksum,
+        requested_mods=mod_context["requested_mods"],
+        components=components,
+        calibration=calibration,
+        applied_mod_context=applied_mod_context,
+    )
+    output["diagnostics"]["component_warnings"] = warnings
+    analysis_id = C.identity_cache_key(output["identity"])
+    rate = float(applied_mod_context.get("clock_rate", 1.0))
+    source_metadata = record.get("metadata", {})
+    source_bpm = source_metadata.get("bpm_max")
+    source_duration = source_metadata.get("duration_ms")
+    computed_bpm = features.get("temporal.bpm_max")
+    computed_duration = features.get("temporal.map_duration_ms")
+    axes: dict[str, Any] = {}
+    for axis in model.AXIS_ORDER:
+        axis_obj = output["axes"].get(axis, {})
+        raw = axis_obj.get("demand_star_equivalent")
+        if raw is None:
+            display = "—"
+        elif float(raw) >= HUMAN_DISPLAY_CEILING_STARS:
+            display = f"{HUMAN_DISPLAY_CEILING_STARS:g}+"
+        else:
+            display = f"{float(raw):.1f}"
+        axes[axis] = {
+            "status": axis_obj.get("status"),
+            "stars": raw,
+            "display": display,
+            "percentile_rank": axis_obj.get("percentile_rank"),
+            "confidence": axis_obj.get("confidence"),
+            "unit": "bounded_0_10"
+            if axis in {"stamina", "endurance"}
+            else "star_equivalent",
+        }
+        if axis_obj.get("public_value_semantics") == "EXPERIMENTAL_ESTABLISHED_LOCAL_CONTROL_EXECUTION":
+            signals = axis_obj.get("signals", {})
+            peak = output.get("diagnostics", {}).get("v101_control_vector", {}).get("winning_section")
+            axes[axis].update(
+                public_value_semantics=axis_obj["public_value_semantics"],
+                evidence_quality=axis_obj.get("evidence_quality"),
+                mechanism_coverage=signals.get("mechanism_coverage", {}),
+                winning_direction_coverage=signals.get("winning_direction_coverage"),
+                warnings=list(axis_obj.get("warnings", [])),
+                peak_window={key: peak[key] for key in ("start_ms", "end_ms")} if peak else None,
+            )
+    try:
+        source_beatmap = parse_osu_file(map_path)
+        transformed_beatmap, type_transform = transform_beatmap(
+            source_beatmap, mod_context
+        )
+        if type_transform.get("analysis_ready") is not True:
+            raise ValueError("type transform is not analysis-ready")
+        type_objects = normalize(transformed_beatmap).objects
+        type_sections = suggest_sections(type_objects)
+        type_sections, type_summary = propose_type_annotations(
+            type_objects,
+            type_sections,
+            dict(
+                type_transform.get(
+                    "effective_difficulty", transformed_beatmap.difficulty
+                )
+            ),
+            applied_mods.get("effective_mods", []),
+        )
+        experimental_type = {
+            "stage": "EXPERIMENTAL",
+            "status": type_summary.get("status", "ABSTAINED"),
+            "classifier_version": TYPE_CLASSIFIER_VERSION,
+            "summary": type_summary,
+            "sections": [
+                {
+                    "section_id": section.get("section_id"),
+                    "start_ms": section.get("start_ms"),
+                    "end_ms": section.get("end_ms"),
+                    "stats": section.get("stats", {}),
+                    "machine_proposal": section.get("machine_proposal", {}),
+                }
+                for section in type_sections
+            ],
+        }
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        # Type classification is explicitly experimental. A classifier
+        # failure must not make the stable nine-axis analysis unavailable.
+        experimental_type = {
+            "stage": "EXPERIMENTAL",
+            "status": "UNAVAILABLE",
+            "classifier_version": TYPE_CLASSIFIER_VERSION,
+            "reason": type(exc).__name__,
+            "summary": None,
+            "sections": [],
+        }
+    result = {
+        "release": output.get("release"),
+        "schema_version": "map_demand_bid_analysis_v0.1.0",
+        "analysis_id": analysis_id,
+        "mod_context": output.get("diagnostics", {}).get(
+            "mod_context", mod_context
+        ),
+        "analysis_context": {
+            "clock_rate": rate,
+            "difficulty": metadata.get("difficulty", {}),
+            "effective_difficulty": metadata.get(
+                "effective_difficulty", metadata.get("difficulty", {})
+            ),
+            "bpm_max": (
+                float(computed_bpm)
+                if source_bpm is None and computed_bpm is not None
+                else None if source_bpm is None
+                else float(source_bpm) * rate
+            ),
+            "duration_ms": (
+                float(computed_duration)
+                if source_duration is None and computed_duration is not None
+                else None if source_duration is None
+                else float(source_duration) / rate
+            ),
+        },
+        "beatmap": {
+            "beatmap_id": beatmap_id,
+            "beatmapset_id": record.get("beatmapset_id"),
+            "artist": record.get("artist"),
+            "title": record.get("title"),
+            "version": record.get("version"),
+            "creator": record.get("creator") or record.get("mapper"),
+            "relative_path": relative,
+            "path_abs": str(map_path),
+            "duplicate_local_paths": record.get("duplicate_local_paths", []),
+            "local_nm_stars": local_stars,
+            "metadata": record.get("metadata", {}),
+        },
+        "identity": output["identity"],
+        "status": output["status"],
+        "axes": axes,
+        "key_sections": _card_key_sections(output),
+        "archetype": output.get("archetype"),
+        "experimental_type": experimental_type,
+        "context": output.get("context"),
+        "warnings": output.get("warnings", []),
+    }
+    return result
 
 
 class BidReviewWorkbench:
@@ -313,8 +562,18 @@ class BidReviewWorkbench:
         osu_db_path: Path | None = None,
         cache_root: Path | None = None,
         algorithm: str | None = None,
+        analysis_workers: int = 0,
     ) -> None:
         self.model = runtime_model(algorithm)
+        if not 0 <= analysis_workers <= 8:
+            raise ValueError("analysis_workers must be between 0 and 8")
+        self.analysis_workers = analysis_workers
+        self._analysis_executor = (
+            ProcessPoolExecutor(max_workers=analysis_workers,
+                                mp_context=multiprocessing.get_context("spawn"),
+                                initializer=_watch_analysis_parent)
+            if analysis_workers else None
+        )
         self.reviewer_id = reviewer_id.strip()
         if not self.reviewer_id:
             raise ValueError("reviewer_id is required")
@@ -336,8 +595,12 @@ class BidReviewWorkbench:
             star_info = read_nm_star_distribution(osu_db_path)
             self._stars_by_relative_path = dict(star_info["relative_path_to_nm_stars"])
 
-    def import_osu(self, beatmap_id: int, content: str) -> dict[str, Any]:
-        return self.index.import_osu(beatmap_id, content)
+    def close(self) -> None:
+        if self._analysis_executor is not None:
+            self._analysis_executor.shutdown(wait=True, cancel_futures=True)
+
+    def import_osu(self, beatmap_id: int, content: str, expected_md5: str | None = None) -> dict[str, Any]:
+        return self.index.import_osu(beatmap_id, content, expected_md5)
 
     def _load_response_index(self) -> int:
         count = 0
@@ -385,6 +648,7 @@ class BidReviewWorkbench:
             "axis_schema_version": model.AXIS_SCHEMA_VERSION,
             "reviewer_id": self.reviewer_id,
             "indexed_beatmaps": self.index.beatmap_count,
+            "analysis_workers": self.analysis_workers,
             "saved_responses": self._response_count,
             "active_responses": self._response_count
             - len(self._superseded_response_ids),
@@ -441,161 +705,18 @@ class BidReviewWorkbench:
                 f"Map Demand cannot score these mods yet: {', '.join(blocked)}",
             )
         record = self.index.lookup(beatmap_id)
-        map_path = Path(record["path_abs"])
         relative = str(record.get("relative_path") or record.get("reference") or "")
         local_stars = self._stars_by_relative_path.get(
             relative.replace("\\", "/").casefold()
         )
-        local_rows, features, metadata = model.extract_from_path(
-            str(map_path), requested_mods=mod_context["requested_mods"]
-        )
-        applied_mod_context = metadata.get("mod_transform_context", {})
-        applied_mods = metadata.get("mod_context", {})
-        checksum = model.sha256_file_bytes(map_path.read_bytes())
-        component_kwargs = {
-            "difficulty": metadata.get("difficulty"),
-            "clock_rate": applied_mod_context.get("clock_rate", 1.0),
-            "effective_mods": applied_mods.get("effective_mods", []),
-        }
-        if hasattr(model, "EXPECTED_LOCAL_SIGNAL_VERSION"):
-            component_kwargs["source_local_signal_version"] = metadata.get(
-                "local_signal_version"
-            )
-        components, warnings = model.extract_components(
-            local_rows,
-            features,
-            **component_kwargs,
-        )
-        if local_stars is not None and float(local_stars) > 0.0:
-            components["v091_nm_star_anchor"] = float(local_stars)
-        output = model.analyze_components(
-            checksum=checksum,
-            requested_mods=mod_context["requested_mods"],
-            components=components,
-            calibration=self.calibration,
-            applied_mod_context=applied_mod_context,
-        )
-        output["diagnostics"]["component_warnings"] = warnings
-        analysis_id = C.identity_cache_key(output["identity"])
-        rate = float(applied_mod_context.get("clock_rate", 1.0))
-        source_metadata = record.get("metadata", {})
-        source_bpm = source_metadata.get("bpm_max")
-        source_duration = source_metadata.get("duration_ms")
-        computed_bpm = features.get("temporal.bpm_max")
-        computed_duration = features.get("temporal.map_duration_ms")
-        axes: dict[str, Any] = {}
-        for axis in model.AXIS_ORDER:
-            axis_obj = output["axes"].get(axis, {})
-            raw = axis_obj.get("demand_star_equivalent")
-            if raw is None:
-                display = "—"
-            elif float(raw) >= HUMAN_DISPLAY_CEILING_STARS:
-                display = f"{HUMAN_DISPLAY_CEILING_STARS:g}+"
-            else:
-                display = f"{float(raw):.1f}"
-            axes[axis] = {
-                "status": axis_obj.get("status"),
-                "stars": raw,
-                "display": display,
-                "percentile_rank": axis_obj.get("percentile_rank"),
-                "confidence": axis_obj.get("confidence"),
-                "unit": "bounded_0_10"
-                if axis in {"stamina", "endurance"}
-                else "star_equivalent",
-            }
-        try:
-            source_beatmap = parse_osu_file(map_path)
-            transformed_beatmap, type_transform = transform_beatmap(
-                source_beatmap, mod_context
-            )
-            if type_transform.get("analysis_ready") is not True:
-                raise ValueError("type transform is not analysis-ready")
-            type_objects = normalize(transformed_beatmap).objects
-            type_sections = suggest_sections(type_objects)
-            type_sections, type_summary = propose_type_annotations(
-                type_objects,
-                type_sections,
-                dict(
-                    type_transform.get(
-                        "effective_difficulty", transformed_beatmap.difficulty
-                    )
-                ),
-                applied_mods.get("effective_mods", []),
-            )
-            experimental_type = {
-                "stage": "EXPERIMENTAL",
-                "status": type_summary.get("status", "ABSTAINED"),
-                "classifier_version": TYPE_CLASSIFIER_VERSION,
-                "summary": type_summary,
-                "sections": [
-                    {
-                        "section_id": section.get("section_id"),
-                        "start_ms": section.get("start_ms"),
-                        "end_ms": section.get("end_ms"),
-                        "stats": section.get("stats", {}),
-                        "machine_proposal": section.get("machine_proposal", {}),
-                    }
-                    for section in type_sections
-                ],
-            }
-        except (AttributeError, KeyError, TypeError, ValueError) as exc:
-            # Type classification is explicitly experimental. A classifier
-            # failure must not make the stable nine-axis analysis unavailable.
-            experimental_type = {
-                "stage": "EXPERIMENTAL",
-                "status": "UNAVAILABLE",
-                "classifier_version": TYPE_CLASSIFIER_VERSION,
-                "reason": type(exc).__name__,
-                "summary": None,
-                "sections": [],
-            }
-        result = {
-            "release": output.get("release"),
-            "schema_version": "map_demand_bid_analysis_v0.1.0",
-            "analysis_id": analysis_id,
-            "mod_context": output.get("diagnostics", {}).get(
-                "mod_context", mod_context
-            ),
-            "analysis_context": {
-                "clock_rate": rate,
-                "difficulty": metadata.get("difficulty", {}),
-                "effective_difficulty": metadata.get(
-                    "effective_difficulty", metadata.get("difficulty", {})
-                ),
-                "bpm_max": (
-                    float(computed_bpm)
-                    if source_bpm is None and computed_bpm is not None
-                    else None if source_bpm is None
-                    else float(source_bpm) * rate
-                ),
-                "duration_ms": (
-                    float(computed_duration)
-                    if source_duration is None and computed_duration is not None
-                    else None if source_duration is None
-                    else float(source_duration) / rate
-                ),
-            },
-            "beatmap": {
-                "beatmap_id": beatmap_id,
-                "beatmapset_id": record.get("beatmapset_id"),
-                "artist": record.get("artist"),
-                "title": record.get("title"),
-                "version": record.get("version"),
-                "creator": record.get("creator") or record.get("mapper"),
-                "relative_path": relative,
-                "path_abs": str(map_path),
-                "duplicate_local_paths": record.get("duplicate_local_paths", []),
-                "local_nm_stars": local_stars,
-                "metadata": record.get("metadata", {}),
-            },
-            "identity": output["identity"],
-            "status": output["status"],
-            "axes": axes,
-            "archetype": output.get("archetype"),
-            "experimental_type": experimental_type,
-            "context": output.get("context"),
-            "warnings": output.get("warnings", []),
-        }
+        if self._analysis_executor is None:
+            result = _analyze_record(model, self.calibration, record, mod_context, local_stars)
+        else:
+            result = self._analysis_executor.submit(
+                _analyze_record, model.__name__, self.calibration,
+                record, mod_context, local_stars,
+            ).result()
+        analysis_id = result["analysis_id"]
         self._analyses[analysis_id] = result
         return result
 
@@ -776,7 +897,7 @@ def make_bid_review_handler(workbench: BidReviewWorkbench, html_path: Path):
                         raise BidReviewError(
                             "INVALID_OSU_FILE", "content must be an osu file string"
                         )
-                    result = workbench.import_osu(beatmap_id, content)
+                    result = workbench.import_osu(beatmap_id, content, payload.get("expected_md5"))
                 elif path == "/api/response":
                     result = workbench.save_response(payload)
                 else:
@@ -815,6 +936,7 @@ def serve_bid_review_ui(
     port: int,
     open_browser: bool,
     algorithm: str | None = None,
+    analysis_workers: int = 3,
 ) -> None:
     workbench = BidReviewWorkbench(
         manifest_path=manifest_path,
@@ -825,6 +947,7 @@ def serve_bid_review_ui(
         osu_db_path=osu_db_path,
         cache_root=cache_root,
         algorithm=algorithm,
+        analysis_workers=analysis_workers,
     )
     html_path = Path(__file__).with_name("bid_review_ui_v01.html")
     server = ThreadingHTTPServer((host, port), make_bid_review_handler(workbench, html_path))
@@ -850,3 +973,4 @@ def serve_bid_review_ui(
         pass
     finally:
         server.server_close()
+        workbench.close()

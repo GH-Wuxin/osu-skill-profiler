@@ -1,0 +1,40 @@
+{
+  "schema": "flow_control_joint_constraints_v1",
+  "scope": "Human development feedback; not held-out validation or scorer inputs",
+  "numeric": [
+    {"key":"4410462-HD","axis":"aim_control","kind":"upper","upper":5.8},
+    {"key":"845391-HD-HR","axis":"aim_control","kind":"interval","lower":6.4,"upper":6.7},
+    {"key":"657916-HD-HR","axis":"aim_control","kind":"interval","lower":5.8,"upper":6.5},
+    {"key":"657916-HD-HR","axis":"flow_aim","kind":"interval","lower":6.0,"upper":7.0},
+    {"key":"4007768-NM","axis":"aim_control","kind":"approximate","reference":7.5},
+    {"key":"2809623-NM","axis":"aim_control","kind":"approximate","reference":8.2}
+  ],
+  "relations": [
+    {"id":"affection_flow_over_control","left":{"key":"2719427-HD-HR","axis":"flow_aim"},"right":{"key":"2719427-HD-HR","axis":"aim_control"},"relation":"greater","strength":"clearly_higher_without_numeric_margin"},
+    {"id":"affection_flow_over_tower_acme","left":{"key":"2719427-HD-HR","axis":"flow_aim"},"right":{"key":"4137259-HD-HR","axis":"flow_aim"},"relation":"greater","strength":"clearly_higher_without_numeric_margin"}
+  ],
+  "qualitative": [
+    {"key":"4572837-HD","axis":"aim_control","label":"upper_limit_low_fives","numeric_cutoff":null},
+    {"key":"2719427-HD-HR","axis":"aim_control","label":"not_low_despite_flow_dominance","numeric_cutoff":null},
+    {"key":"2719427-HD-HR","axis":"aim_control","label":"personal_tentative_order_jungle_higher_both_high","comparison_key":"4007768-NM","confidence":"tentative","numeric_cutoff":null,"does_not_define_numeric_margin":true},
+    {"key":"657916-HD-HR","label":"stamina_primary_with_speed_flow_and_some_jump_burst_transitions"}
+  ],
+  "local_labels": [
+    {"key":"4410462-HD","start_ms":259206,"end_ms":260124,"label":"jump_cut","constraint":"reject_as_evidence_for_high_control","local_numeric_target":null},
+    {"key":"4007768-NM","start_ms":55747,"end_ms":56711,"label":"spatial_separation","local_numeric_target":null},
+    {"key":"2809623-NM","start_ms":103743,"end_ms":104537,"label":"spatial_separation","local_numeric_target":null},
+    {"key":"2719427-HD-HR","start_ms":150240,"end_ms":156410,"label":"representative_flow_turns_and_separation","local_numeric_target":null,"does_not_label_every_object":true},
+    {"key":"657916-HD-HR","start_ms":128835,"end_ms":136560,"label":"representative_flow_passage","local_numeric_target":null,"does_not_label_every_object":true},
+    {"key":"1451703-NM","start_ms":38367,"end_ms":40186,"label":"expanding_square_jumps","constraint":"reject_as_evidence_for_high_flow","local_numeric_target":null}
+  ],
+  "rules": [
+    "Do not infer a strict Flow > Control relation for Blue Zenith; provided ranges overlap.",
+    "Approximate points have no invented pass tolerance.",
+    "Jungle/Affection personal comparison is qualitative review only: avoid gross deviation, do not fit a strict order or numeric gap to these two maps.",
+    "Missing predictions are unknown, not zero.",
+    "Official total SR is sampling metadata only, never a score cap or per-axis target.",
+    "Do not transfer score between axes or force an axis below another.",
+    "Unlabelled low/mid/high cohort entries remain unlabelled.",
+    "With spacing, rhythm and pattern fixed, smaller circles substantially increase Aim Control; no numeric exponent or margin was supplied."
+  ]
+}

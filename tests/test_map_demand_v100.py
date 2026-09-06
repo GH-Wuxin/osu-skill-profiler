@@ -99,7 +99,8 @@ class Stable100Tests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue())["release"]["version"], "1.0.0")
         script = (ROOT / "tools/restart-skill-profiler.ps1").read_text(encoding="utf-8")
         self.assertIn("'v100' = '1.0.0'", script)
-        self.assertIn("$Algorithm = 'v100'", script)
+        self.assertIn(f"'v100' = '{stable.ALGORITHM_ID}'", script)
+        # Selection precedence is exercised by test_restart_skill_profiler.py.
 
 
 if __name__ == "__main__":
