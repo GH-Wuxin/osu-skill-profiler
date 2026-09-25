@@ -35,6 +35,14 @@ from .calibration import load_calibration
 from .mod_context_v01 import normalize_mods
 from .mod_transform_v01 import transform_beatmap
 from .osu_db_star_scale import read_nm_star_distribution
+from .unified_star_scale_v01 import (
+    MAPPING_METHOD as UNIFIED_STAR_MAPPING_METHOD,
+    SCALE_ID as UNIFIED_STAR_SCALE_ID,
+    SCHEMA_VERSION as UNIFIED_STAR_SCHEMA_VERSION,
+    apply_unified_star_scale,
+    canonical_mod_context,
+    load_calibration as load_unified_calibration,
+)
 from .type_classifier_v01 import (
     CLASSIFIER_VERSION as TYPE_CLASSIFIER_VERSION,
     propose_type_annotations,
@@ -380,7 +388,14 @@ def _card_key_sections(output: dict[str, Any]) -> list[dict[str, Any]]:
     return sections
 
 
-def _analyze_record(model, calibration, record, mod_context, local_stars):
+def _analyze_record(
+    model,
+    calibration,
+    record,
+    mod_context,
+    local_stars,
+    unified_calibration=None,
+):
     if isinstance(model, str):
         model = importlib.import_module(model)
     map_path = Path(record["path_abs"])
@@ -515,6 +530,73 @@ def _analyze_record(model, calibration, record, mod_context, local_stars):
                 "evidence_quality": axis_obj.get("evidence_quality"),
                 "formal_release_id": formal_map_demand.get("release_id"),
             }
+    unified_measurements: dict[str, Any] = {
+        "schema_version": UNIFIED_STAR_SCHEMA_VERSION,
+        "scale_id": UNIFIED_STAR_SCALE_ID,
+        "mapping_method": UNIFIED_STAR_MAPPING_METHOD,
+        "mod_context": canonical_mod_context(
+            "".join(mod_context.get("effective_mods", []))
+        ),
+        "status": "NOT_CONFIGURED",
+        "calibration_id": None,
+        "axes": {},
+        "reason": "no_unified_star_calibration_for_mod_context",
+    }
+    if formal_map_demand is not None and unified_calibration is not None:
+        try:
+            overlay = {
+                "axes": {
+                    axis: {
+                        "demand_star_equivalent": (
+                            formal_map_demand.get("axes", {}).get(axis, {}).get("value")
+                        )
+                    }
+                    for axis in model.AXIS_ORDER
+                }
+            }
+            enriched = apply_unified_star_scale(overlay, unified_calibration)
+            unified_scale = dict(enriched.get("unified_star_scale") or {})
+            unified_axes = {
+                axis: {
+                    "unified_star_equivalent": enriched["axes"].get(axis, {}).get(
+                        "unified_star_equivalent"
+                    ),
+                    "unified_star_status": enriched["axes"].get(axis, {}).get(
+                        "unified_star_status"
+                    ),
+                    "unified_star_percentile": enriched["axes"].get(axis, {}).get(
+                        "unified_star_percentile"
+                    ),
+                    "unified_star_coverage": enriched["axes"].get(axis, {}).get(
+                        "unified_star_coverage"
+                    ),
+                }
+                for axis in model.AXIS_ORDER
+            }
+            unified_measurements.update(
+                {
+                    "status": "ATTACHED",
+                    "calibration_id": unified_calibration.get("calibration_id"),
+                    "calibration_status": unified_calibration.get("status"),
+                    "axes": unified_axes,
+                    "scale": unified_scale,
+                    "reason": None,
+                }
+            )
+            for axis, values in unified_axes.items():
+                axes.setdefault(axis, {}).update(values)
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            # The independent layer is additive.  A stale or incomplete
+            # candidate artifact must never take down the frozen v0.40 lane.
+            unified_measurements.update(
+                {
+                    "status": "UNAVAILABLE",
+                    "reason": f"{type(exc).__name__}:unified_calibration_rejected",
+                }
+            )
+    elif formal_map_demand is None:
+        unified_measurements["reason"] = "formal_v040_map_demand_not_available"
+
     try:
         source_beatmap = parse_osu_file(map_path)
         transformed_beatmap, type_transform = transform_beatmap(
@@ -608,6 +690,7 @@ def _analyze_record(model, calibration, record, mod_context, local_stars):
         "experimental_type": experimental_type,
         "context": output.get("context"),
         "warnings": output.get("warnings", []),
+        "unified_measurements": unified_measurements,
     }
     if formal_map_demand is not None:
         result.update(
@@ -633,6 +716,7 @@ class BidReviewWorkbench:
         cache_root: Path | None = None,
         algorithm: str | None = None,
         analysis_workers: int = 0,
+        unified_calibration_dir: Path | None = None,
     ) -> None:
         self.model = runtime_model(algorithm)
         if not 0 <= analysis_workers <= 8:
@@ -651,6 +735,14 @@ class BidReviewWorkbench:
             manifest_path=manifest_path, songs_root=songs_root, cache_root=cache_root
         )
         self.calibration = load_calibration(calibration_path.resolve())
+        self.unified_calibration_dir = (
+            unified_calibration_dir.resolve()
+            if unified_calibration_dir is not None
+            else None
+        )
+        self._unified_calibrations: dict[str, dict[str, Any]] = {}
+        self._unified_calibration_errors: list[dict[str, str]] = []
+        self._load_unified_calibrations()
         self.responses_path = responses_path.resolve()
         self.responses_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.responses_path.exists():
@@ -664,6 +756,33 @@ class BidReviewWorkbench:
         if osu_db_path is not None and osu_db_path.is_file():
             star_info = read_nm_star_distribution(osu_db_path)
             self._stars_by_relative_path = dict(star_info["relative_path_to_nm_stars"])
+
+    def _load_unified_calibrations(self) -> None:
+        """Load one independent candidate artifact per effective mod context."""
+
+        root = self.unified_calibration_dir
+        if root is None or not root.exists():
+            return
+        candidates: list[Path]
+        if root.is_file():
+            candidates = [root]
+        elif (root / "calibration.json").is_file():
+            candidates = [root / "calibration.json"]
+        else:
+            candidates = sorted(root.glob("*/calibration.json"), key=lambda path: path.as_posix().casefold())
+        for artifact in candidates:
+            try:
+                payload = load_unified_calibration(artifact)
+                context = canonical_mod_context(payload.get("mod_context"))
+                if "FL" in context:
+                    raise ValueError("FL calibration is outside the current axis contract")
+                if context in self._unified_calibrations:
+                    raise ValueError(f"duplicate unified calibration context: {context}")
+                self._unified_calibrations[context] = payload
+            except (OSError, TypeError, ValueError) as exc:
+                self._unified_calibration_errors.append(
+                    {"path": str(artifact), "reason": f"{type(exc).__name__}:{exc}"}
+                )
 
     def close(self) -> None:
         if self._analysis_executor is not None:
@@ -725,6 +844,26 @@ class BidReviewWorkbench:
             "superseded_responses": len(self._superseded_response_ids),
             "display_ceiling_stars": HUMAN_DISPLAY_CEILING_STARS,
             "supported_review_mods": ["EZ", "HD", "HR", "HT", "DT"],
+            "unified_measurements": {
+                "schema_version": UNIFIED_STAR_SCHEMA_VERSION,
+                "scale_id": UNIFIED_STAR_SCALE_ID,
+                "mapping_method": UNIFIED_STAR_MAPPING_METHOD,
+                "calibration_source": (
+                    str(self.unified_calibration_dir)
+                    if self.unified_calibration_dir is not None
+                    else None
+                ),
+                "contexts": {
+                    context: {
+                        "status": payload.get("status"),
+                        "calibration_id": payload.get("calibration_id"),
+                        "map_count": payload.get("map_count"),
+                        "breadth_ready": payload.get("breadth_ready"),
+                    }
+                    for context, payload in sorted(self._unified_calibrations.items())
+                },
+                "load_errors": list(self._unified_calibration_errors),
+            },
             "calibration_id": model.calibration_id(
                 str(self.calibration.get("calibration_id", ""))
             ),
@@ -779,12 +918,23 @@ class BidReviewWorkbench:
         local_stars = self._stars_by_relative_path.get(
             relative.replace("\\", "/").casefold()
         )
+        unified_context = canonical_mod_context(
+            "".join(mod_context.get("effective_mods", []))
+        )
+        unified_calibration = self._unified_calibrations.get(unified_context)
         if self._analysis_executor is None:
-            result = _analyze_record(model, self.calibration, record, mod_context, local_stars)
+            result = _analyze_record(
+                model,
+                self.calibration,
+                record,
+                mod_context,
+                local_stars,
+                unified_calibration,
+            )
         else:
             result = self._analysis_executor.submit(
                 _analyze_record, model.__name__, self.calibration,
-                record, mod_context, local_stars,
+                record, mod_context, local_stars, unified_calibration,
             ).result()
         analysis_id = result["analysis_id"]
         self._analyses[analysis_id] = result
@@ -1007,6 +1157,7 @@ def serve_bid_review_ui(
     open_browser: bool,
     algorithm: str | None = None,
     analysis_workers: int = 3,
+    unified_calibration_dir: Path | None = None,
 ) -> None:
     workbench = BidReviewWorkbench(
         manifest_path=manifest_path,
@@ -1018,6 +1169,7 @@ def serve_bid_review_ui(
         cache_root=cache_root,
         algorithm=algorithm,
         analysis_workers=analysis_workers,
+        unified_calibration_dir=unified_calibration_dir,
     )
     html_path = Path(__file__).with_name("bid_review_ui_v01.html")
     server = ThreadingHTTPServer((host, port), make_bid_review_handler(workbench, html_path))

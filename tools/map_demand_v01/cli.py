@@ -318,6 +318,11 @@ def cmd_bid_review_ui(args: argparse.Namespace) -> int:
     calibration_path = (root / args.calibration_dir).resolve()
     responses_path = (root / args.responses).resolve()
     cache_root = (root / args.cache_dir).resolve()
+    unified_calibration_dir = (
+        (root / args.unified_calibration_dir).resolve()
+        if args.unified_calibration_dir
+        else None
+    )
     osu_db_path = (
         Path(args.osu_db).resolve()
         if args.osu_db
@@ -340,6 +345,7 @@ def cmd_bid_review_ui(args: argparse.Namespace) -> int:
         open_browser=not args.no_open,
         algorithm=args.algorithm,
         analysis_workers=args.analysis_workers,
+        unified_calibration_dir=unified_calibration_dir,
     )
     return 0
 
@@ -474,6 +480,11 @@ def main(argv: list[str] | None = None) -> int:
         "--cache-dir", default="training/datasets/map_demand_bid_cache"
     )
     bid_ui.add_argument("--calibration-dir", default=str(DEFAULT_CALIBRATION_DIR))
+    bid_ui.add_argument(
+        "--unified-calibration-dir",
+        default=os.environ.get("SKILL_PROFILER_UNIFIED_CALIBRATION_DIR"),
+        help="optional directory or calibration.json for the independent unified-star layer",
+    )
     bid_ui.add_argument(
         "--responses",
         default="training/datasets/map_demand_bid_review_v01/human_responses.jsonl",
