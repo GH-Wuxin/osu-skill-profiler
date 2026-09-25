@@ -351,9 +351,11 @@ def _card_key_sections(output: dict[str, Any]) -> list[dict[str, Any]]:
     """Export only the winning evidence used by the public axes, in played time."""
     diagnostics = output.get("diagnostics", {})
     paths = {
-        "flow_aim": ("v101_flow_execution",),
+        # v0.40 is based on the frozen beta.9.2 chain.  The v1.01
+        # experimental namespaces are not present in its diagnostics.
+        "flow_aim": ("beta92_spatial_axes", "flow_aim"),
         "jump_aim": ("beta8_spatial_axes", "jump_aim"),
-        "aim_control": ("v101_control_vector",),
+        "aim_control": ("beta7_spatial_axes", "aim_control"),
         "spatial_precision": ("beta92_spatial_axes", "spatial_precision"),
         "raw_speed": ("beta91_tapping_axes", "raw_speed"),
         "finger_control": ("beta8_tapping_axes", "finger_control"),
