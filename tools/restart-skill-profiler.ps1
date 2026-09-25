@@ -7,6 +7,7 @@ $repoRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $runtimeDir = Join-Path $repoRoot 'tmp\runtime'
 $selectionFile = Join-Path $repoRoot 'tmp\runtime-release.json'
 $cliPath = Join-Path $repoRoot 'tools\map_demand_v01\cli.py'
+$defaultUnifiedCalibrationDir = Join-Path $repoRoot 'tmp\unified_star_calibration_v02_nm'
 $Python = [IO.Path]::GetFullPath($Python)
 $versionByAlgorithm = @{ 'v040-formal' = '0.40.0'; 'v100' = '1.0.0'; 'v101-experimental' = '1.0.1-experimental.11'; 'v010-beta9.2' = '0.10.0-beta.9.2'; 'v010-beta9.1' = '0.10.0-beta.9.1'; 'v010-beta9' = '0.10.0-beta.9'; 'v010-beta8' = '0.10.0-beta.8'; 'v010-beta7' = '0.10.0-beta.7'; 'v010-beta6' = '0.10.0-beta.6'; 'v010-beta5' = '0.10.0-beta.5'; 'v010-beta4' = '0.10.0-beta.4'; 'v010-beta3' = '0.10.0-beta.3'; 'v010-beta2' = '0.10.0-beta.2'; 'v010-beta1' = '0.10.0-beta.1'; 'v096' = '0.9.6' }
 $idByAlgorithm = @{ 'v040-formal' = 'FORMAL_MAP_DEMAND_V040'; 'v100' = 'MAP_DEMAND_V100'; 'v101-experimental' = 'MAP_DEMAND_V101_EXPERIMENTAL'; 'v010-beta9.2' = 'MAP_DEMAND_FLOW_TARGET_SIZE_V010_BETA92'; 'v010-beta9.1' = 'MAP_DEMAND_RAW_POWERED_FRONTIER_V010_BETA91'; 'v010-beta9' = 'MAP_DEMAND_RATE_PRECISION_AREA_V010_BETA9'; 'v010-beta8' = 'MAP_DEMAND_SUPPORT_FRONTIER_V010_BETA8'; 'v010-beta7' = 'MAP_DEMAND_FULL_EVIDENCE_V010_BETA7'; 'v010-beta6' = 'MAP_DEMAND_AIM_ROUTING_V010_BETA6'; 'v010-beta5' = 'MAP_DEMAND_READING_ORDER_V010_BETA5'; 'v010-beta4' = 'MAP_DEMAND_CONTROL_EXECUTION_V010_BETA4'; 'v010-beta3' = 'MAP_DEMAND_PRECISION_BALANCE_V010_BETA3'; 'v010-beta2' = 'MAP_DEMAND_TOLERANCE_RHYTHM_V010_BETA2'; 'v010-beta1' = 'MAP_DEMAND_DECOUPLED_V010_BETA1'; 'v096' = 'MAP_DEMAND_ATOMIC_V096' }
@@ -48,6 +49,13 @@ function Save-ProfilerSelection([string]$Selected) {
 
 if (-not (Test-Path -LiteralPath $Python)) { throw "Python missing: $Python" }
 if (-not (Test-Path -LiteralPath $cliPath)) { throw "Profiler CLI missing: $cliPath" }
+# Preserve an explicitly supplied calibration directory.  Otherwise make the
+# local candidate artifact available to every managed restart, so the client
+# does not silently fall back to an unconfigured unified layer.
+if ([string]::IsNullOrWhiteSpace($env:SKILL_PROFILER_UNIFIED_CALIBRATION_DIR) -and
+    (Test-Path -LiteralPath $defaultUnifiedCalibrationDir)) {
+    $env:SKILL_PROFILER_UNIFIED_CALIBRATION_DIR = $defaultUnifiedCalibrationDir
+}
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 $previousAlgorithm = 'v040-formal'
 if (Test-Path -LiteralPath $selectionFile) {
