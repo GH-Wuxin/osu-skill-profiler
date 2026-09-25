@@ -22,6 +22,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 from map_demand_v01.unified_star_scale_v01 import (  # noqa: E402
+    canonical_mod_context,
     fit_calibration,
     save_calibration,
 )
@@ -51,6 +52,7 @@ def _load_records(path: Path) -> list[dict[str, Any]]:
 
 
 def _reference_stars(path: Path, mod_context: str) -> list[float]:
+    mod_context = canonical_mod_context(mod_context)
     if path.is_dir():
         path = path / "calibration.json"
     if path.suffix.lower() == ".db":
@@ -68,25 +70,30 @@ def _reference_stars(path: Path, mod_context: str) -> list[float]:
         (payload.get("stars_by_mod") or {}).get(str(mod_context).upper()),
         (payload.get("mod_stars") or {}).get(str(mod_context).upper()),
         payload.get("nm_stars") if str(mod_context).upper() == "NM" else None,
-        (payload.get("demand_scale") or {}).get("nm_stars"),
-        (payload.get("reference_distribution") or {}).get("stars"),
-        (payload.get("reference_distribution") or {}).get("nm_stars"),
+        (payload.get("demand_scale") or {}).get("nm_stars")
+        if str(mod_context).upper() == "NM" else None,
+        (payload.get("reference_distribution") or {}).get("stars")
+        if str(payload.get("mod_context") or "NM").upper() == str(mod_context).upper()
+        else None,
+        (payload.get("reference_distribution") or {}).get("nm_stars")
+        if str(mod_context).upper() == "NM" else None,
     ]
     for candidate in candidates:
         if isinstance(candidate, list) and candidate:
             return [float(value) for value in candidate]
-    raise ValueError("reference artifact has no NM star distribution")
+    raise ValueError(f"reference artifact has no star distribution for {mod_context}")
 
 
 def build(args: argparse.Namespace) -> Path:
     records = _load_records(Path(args.records))
-    reference = _reference_stars(Path(args.reference), args.mod_context)
+    mod_context = canonical_mod_context(args.mod_context)
+    reference = _reference_stars(Path(args.reference), mod_context)
     calibration = fit_calibration(
         records,
         reference,
         source_scope=args.source_scope,
         corpus_id=args.corpus_id,
-        mod_context=args.mod_context,
+        mod_context=mod_context,
         min_formal_maps=args.min_formal_maps,
         min_formal_axis_samples=args.min_formal_axis_samples,
         min_formal_strata=args.min_formal_strata,

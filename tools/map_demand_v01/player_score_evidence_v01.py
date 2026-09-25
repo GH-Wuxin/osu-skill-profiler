@@ -86,14 +86,10 @@ def _mods(value: Any) -> list[str]:
 
 
 def _canonical_mod_context(value: Any) -> str:
-    if isinstance(value, list):
-        raw = value
-    else:
-        raw = value
-    normalized = normalize_mods(raw)
-    requested = normalized.get("requested_mods") if isinstance(normalized, Mapping) else None
-    if isinstance(requested, list) and requested:
-        return "".join(str(item) for item in requested)
+    normalized = normalize_mods(value)
+    effective = normalized.get("effective_mods") if isinstance(normalized, Mapping) else None
+    if normalized.get("status") == "NORMALIZED" and isinstance(effective, list):
+        return "".join(str(item) for item in effective) or "NM"
     text = "" if value is None else str(value).strip().upper()
     if not text or text in {"NM", "NOMOD", "NONE", "[]"}:
         return "NM"
@@ -109,7 +105,9 @@ def _map_key(value: Any, mod_context: str) -> str | None:
 
 def _lookup_keys(raw: Mapping[str, Any]) -> list[str]:
     keys: list[str] = []
-    for field in ("map_id", "beatmap_id", "id", "map_md5", "md5"):
+    # Prefer content identity over BID, which can name multiple local copies.
+    # ``id`` is commonly the score id and must never be used as a map key.
+    for field in ("map_md5", "md5", "map_id", "beatmap_id"):
         value = _text(raw.get(field))
         if value:
             keys.append(value)
@@ -121,6 +119,20 @@ def load_map_index(path: str | Path) -> dict[str, dict[str, Any]]:
     """Load JSONL map rows indexed by map id, beatmap id, and osu! MD5."""
 
     result: dict[str, dict[str, Any]] = {}
+
+    def put(key: str, row: Mapping[str, Any]) -> None:
+        existing = result.get(key)
+        if existing is None:
+            result[key] = dict(row)
+            return
+        if str(existing.get("osu_md5")) == str(row.get("osu_md5")):
+            # Duplicate copies of the same content are one map identity.
+            return
+        result[key] = {
+            "index_status": "AMBIGUOUS",
+            "mod_context": row.get("mod_context"),
+            "lookup_key": key,
+        }
     with Path(path).open(encoding="utf-8") as handle:
         for line in handle:
             if not line.strip():
@@ -139,11 +151,11 @@ def load_map_index(path: str | Path) -> dict[str, dict[str, Any]]:
                 if text:
                     scoped = _map_key(text, context)
                     if scoped:
-                        result[scoped] = dict(row)
-                        result[scoped.lower()] = dict(row)
+                        put(scoped, row)
+                        put(scoped.lower(), row)
                     if context == "NM":
-                        result[text] = dict(row)
-                        result[text.lower()] = dict(row)
+                        put(text, row)
+                        put(text.lower(), row)
     return result
 
 
@@ -170,6 +182,8 @@ def _unified_map_demand(
     mod_context: str,
 ) -> dict[str, dict[str, Any]]:
     if not isinstance(map_row, Mapping):
+        return {}
+    if map_row.get("index_status") == "AMBIGUOUS":
         return {}
     if _canonical_mod_context(map_row.get("mod_context")) != mod_context:
         return {}
@@ -267,7 +281,11 @@ def ingest_score_record(
         skill_reason = "map_demand_not_indexed_or_not_on_unified_scale"
 
     map_reference = {
-        "status": "RESOLVED" if map_row is not None else "UNRESOLVED",
+        "status": (
+            "AMBIGUOUS" if (map_row or {}).get("index_status") == "AMBIGUOUS"
+            else "RESOLVED" if map_row is not None
+            else "UNRESOLVED"
+        ),
         "map_id": (map_row or {}).get("map_id"),
         "osu_md5": (map_row or {}).get("osu_md5"),
         "beatmap_id": (map_row or {}).get("beatmap_id"),

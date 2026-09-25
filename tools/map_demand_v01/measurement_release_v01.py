@@ -16,6 +16,7 @@ from .player_score_evidence_v01 import (
     skill_evidence_records,
 )
 from .unified_star_scale_v01 import (
+    SCALE_ID,
     apply_unified_star_scale,
     load_calibration,
 )
@@ -112,11 +113,86 @@ def estimate_player_from_scores(
     resolved_player_id = player_id
     if resolved_player_id is None and ingested:
         resolved_player_id = str(ingested[0].get("player_id"))
-    result = estimate_player_measurements(
-        ready_records,
-        player_id=resolved_player_id,
-        **kwargs,
-    )
+    requested_context = kwargs.get("mod_context")
+    if requested_context is not None:
+        result = estimate_player_measurements(
+            ready_records,
+            player_id=resolved_player_id,
+            **kwargs,
+        )
+    else:
+        contexts = sorted(
+            {
+                str(record.get("mod_context") or "NM").upper()
+                for record in ready_records
+            }
+        )
+        if len(contexts) <= 1:
+            result = estimate_player_measurements(
+                ready_records,
+                player_id=resolved_player_id,
+                **kwargs,
+            )
+        else:
+            # Each context has its own ppy ruler.  Partitioning here keeps a
+            # caller with mixed-mod score history useful without averaging
+            # incompatible stars into one profile.
+            estimator_kwargs = dict(kwargs)
+            estimator_kwargs.pop("mod_context", None)
+            profiles = {
+                context: estimate_player_measurements(
+                    [
+                        record
+                        for record in ready_records
+                        if str(record.get("mod_context") or "NM").upper() == context
+                    ],
+                    player_id=resolved_player_id,
+                    mod_context=context,
+                    **estimator_kwargs,
+                )
+                for context in contexts
+            }
+            statuses = {profile.get("status") for profile in profiles.values()}
+            profile_status = (
+                "ADMITTED"
+                if statuses == {"ADMITTED"}
+                else "CANDIDATE"
+                if statuses - {"UNKNOWN"}
+                else "UNKNOWN"
+            )
+            timestamps = sorted(
+                str(record.get("timestamp"))
+                for record in ready_records
+                if record.get("timestamp")
+            )
+            result = {
+                "schema_version": "player_skill_rating_v0.1",
+                "rating_id": "player-skill-rating-v0.1",
+                "player_id": str(resolved_player_id),
+                "status": profile_status,
+                "scale_id": SCALE_ID,
+                "mod_context": None,
+                "profiles_by_mod_context": profiles,
+                "overall": {
+                    "status": "NOT_EMITTED",
+                    "rating": None,
+                    "reason": "cross_context_and_cross_axis_aggregation_not_defined",
+                },
+                "source_window": {
+                    "from": timestamps[0] if timestamps else None,
+                    "to": timestamps[-1] if timestamps else None,
+                },
+                "evidence_count": len(ready_records),
+                "coverage": {
+                    context: profile.get("coverage")
+                    for context, profile in profiles.items()
+                },
+                "provenance": [
+                    "context_partitioned_multi_map_player_evidence",
+                    "one_ppy_ruler_per_non_flashlight_mod_context",
+                    "no_cross_context_aggregation",
+                ],
+            }
     ready = sum(
         isinstance(item.get("skill_evidence"), Mapping)
         and item["skill_evidence"].get("status") == "READY_FOR_SKILL_RATING"

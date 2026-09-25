@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from . import contract as C
+from .mod_context_v01 import normalize_mods
 from osu_skill_profiler.formal_release import AXES
 
 
@@ -37,6 +38,25 @@ DEFAULT_MOD_CONTEXT = "NM"
 
 class CalibrationError(ValueError):
     """Raised when a common-scale artifact violates its data contract."""
+
+
+def canonical_mod_context(value: Any) -> str:
+    """Return the effective non-FL map-demand context label.
+
+    The same folds used by the map index are applied at calibration time so
+    an NC request joins the DT ruler and a DC request joins the HT ruler.
+    Unsupported mechanics remain explicit labels instead of being silently
+    treated as NM.
+    """
+
+    text = "" if value is None else str(value).strip().upper()
+    if not text or text in {"NM", "NOMOD", "NONE"}:
+        return DEFAULT_MOD_CONTEXT
+    normalized = normalize_mods(text)
+    effective = normalized.get("effective_mods") if isinstance(normalized, Mapping) else None
+    if normalized.get("status") == "NORMALIZED" and isinstance(effective, list):
+        return "".join(str(item) for item in effective) or DEFAULT_MOD_CONTEXT
+    return "".join(ch for ch in text if ch.isalnum()) or DEFAULT_MOD_CONTEXT
 
 
 def _finite_nonnegative(value: Any, label: str) -> float:
@@ -87,7 +107,7 @@ def _record_ppy_star(record: Mapping[str, Any], index: int) -> float:
     ):
         if key in record:
             return _finite_nonnegative(record[key], f"records[{index}].{key}")
-    raise CalibrationError(f"records[{index}] requires ppy_nm_star")
+    raise CalibrationError(f"records[{index}] requires a ppy star value for its mod_context")
 
 
 def _axis_raw(record: Mapping[str, Any], axis: str, index: int) -> float | None:
@@ -131,17 +151,20 @@ def fit_calibration(
 ) -> dict[str, Any]:
     """Fit a rank-preserving common ruler from an external map corpus.
 
-    ``ppy_nm_star`` is retained for corpus coverage diagnostics.  It is not
+    The ppy star value is retained for corpus coverage diagnostics.  It is not
     used as a per-axis regression target.  The mapping itself uses each axis'
     raw empirical CDF and the shared reference CDF.
     """
 
     if not isinstance(source_scope, str) or not source_scope.strip():
         raise CalibrationError("source_scope is required")
+    mod_context = canonical_mod_context(mod_context)
+    if not mod_context or "FL" in mod_context:
+        raise CalibrationError("mod_context must be a non-FL standard context")
     if min_formal_maps <= 0 or min_formal_axis_samples <= 0 or min_formal_strata <= 0:
         raise CalibrationError("formal admission gates must be positive")
 
-    stars = _sorted_finite(reference_nm_stars, "reference_nm_stars")
+    stars = _sorted_finite(reference_nm_stars, "reference_stars")
     parsed: list[dict[str, Any]] = []
     seen_map_ids: set[str] = set()
     axis_values: dict[str, list[float]] = {axis: [] for axis in AXIS_ORDER}
@@ -157,7 +180,9 @@ def fit_calibration(
             raise CalibrationError(f"duplicate map_id: {map_id}")
         seen_map_ids.add(map_id)
         ppy_star = _record_ppy_star(incoming, index)
-        record_context = str(incoming.get("mod_context") or mod_context or DEFAULT_MOD_CONTEXT).upper()
+        record_context = canonical_mod_context(
+            incoming.get("mod_context") or mod_context or DEFAULT_MOD_CONTEXT
+        )
         contexts.add(record_context)
         stratum = incoming.get("stratum", incoming.get("map_family"))
         if stratum is not None and str(stratum).strip():
@@ -173,7 +198,7 @@ def fit_calibration(
         parsed.append(
             {
                 "map_id": map_id,
-                "ppy_nm_star": ppy_star,
+                "ppy_nm_star": ppy_star if record_context == "NM" else None,
                 "ppy_star": ppy_star,
                 "mod_context": record_context,
                 "stratum": None if stratum is None else str(stratum),
@@ -183,10 +208,9 @@ def fit_calibration(
 
     if not parsed:
         raise CalibrationError("records must not be empty")
-    if len(contexts) != 1:
+    if len(contexts) != 1 or contexts != {mod_context}:
         raise CalibrationError(
-            "a unified-star artifact must contain exactly one mod_context; "
-            "build one calibration per non-FL context"
+            "all corpus rows must match the requested non-FL mod_context"
         )
     resolved_mod_context = next(iter(contexts))
     for axis in AXIS_ORDER:
@@ -212,7 +236,7 @@ def fit_calibration(
             "source_scope": source_scope,
             "corpus_id": corpus_id,
             "mod_context": resolved_mod_context,
-            "reference_nm_stars": stars,
+            "reference_stars": stars,
             "axis_values": axis_values,
             "map_ids": [item["map_id"] for item in parsed],
         }
@@ -221,7 +245,12 @@ def fit_calibration(
         "schema_version": SCHEMA_VERSION,
         "scale_id": SCALE_ID,
         "calibration_id": f"unified-star-v02:{calibration_id[7:27]}",
-        "status": "FORMAL_READY" if formal_ready else "CANDIDATE",
+        # Breadth is necessary but cannot itself prove axis semantics or
+        # population validity.  Formal admission needs separate held-out
+        # matched evidence and a versioned review artifact.
+        "status": "CANDIDATE",
+        "breadth_ready": formal_ready,
+        "formal_admission_status": "PENDING_HELD_OUT_MATCHED_EVIDENCE",
         "mapping_method": MAPPING_METHOD,
         "source_scope": source_scope,
         "corpus_id": corpus_id,
@@ -245,7 +274,7 @@ def fit_calibration(
         "corpus_rows": parsed,
         "provenance": [
             "axis_specific_empirical_cdf",
-            "shared_ppy_nm_reference_distribution",
+            "shared_ppy_mod_context_reference_distribution",
             "no_cross_axis_weights",
             "ppy_total_sr_not_used_as_axis_ground_truth",
         ],
@@ -257,16 +286,23 @@ def _validate_calibration(calibration: Mapping[str, Any]) -> None:
         raise CalibrationError("unsupported unified-star calibration schema")
     if calibration.get("mapping_method") != MAPPING_METHOD:
         raise CalibrationError("unsupported unified-star mapping method")
+    if calibration.get("status") != "CANDIDATE":
+        raise CalibrationError(
+            "v0.2 calibration cannot claim formal admission without a held-out evidence contract"
+        )
     mod_context = calibration.get("mod_context", DEFAULT_MOD_CONTEXT)
     if not isinstance(mod_context, str) or not mod_context.strip():
         raise CalibrationError("mod_context is required")
+    resolved_context = canonical_mod_context(mod_context)
+    if "FL" in resolved_context:
+        raise CalibrationError("unified-star calibration cannot include FL")
     reference = calibration.get("reference_distribution")
     if not isinstance(reference, Mapping):
         raise CalibrationError("reference_distribution is required")
     stars = reference.get("stars", reference.get("nm_stars"))
     if not isinstance(stars, list) or not stars:
-        raise CalibrationError("reference_distribution.nm_stars is required")
-    _sorted_finite(stars, "reference_distribution.nm_stars")
+        raise CalibrationError("reference_distribution.stars is required")
+    _sorted_finite(stars, "reference_distribution.stars")
     distributions = calibration.get("axis_distributions")
     if not isinstance(distributions, Mapping):
         raise CalibrationError("axis_distributions is required")
@@ -428,6 +464,7 @@ def apply_unified_star_scale(
 __all__ = [
     "AXIS_ORDER",
     "CalibrationError",
+    "canonical_mod_context",
     "DEFAULT_MOD_CONTEXT",
     "DEFAULT_MIN_FORMAL_AXIS_SAMPLES",
     "DEFAULT_MIN_FORMAL_MAPS",

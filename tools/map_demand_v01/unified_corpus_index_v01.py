@@ -59,7 +59,12 @@ SUPPORTED_MODES = frozenset({MODE_INDEX, MODE_MEASURE})
 
 
 def canonical_mod_context(value: Any) -> str:
-    """Normalize a score/index mod spelling into one cache context label."""
+    """Normalize mods into the effective map-demand cache context.
+
+    NC/DC fold to DT/HT and NF/SD/PF fold away because these are map-demand
+    equivalent.  The original requested tokens remain on score evidence rows.
+    Mechanics-changing mods remain distinct and are never coerced to NM.
+    """
 
     if value is None:
         return "NM"
@@ -67,9 +72,9 @@ def canonical_mod_context(value: Any) -> str:
     if not text or text in {"NM", "NOMOD", "NONE"}:
         return "NM"
     normalized = normalize_mods(text)
-    requested = normalized.get("requested_mods") if isinstance(normalized, Mapping) else None
-    if isinstance(requested, list) and requested:
-        return "".join(str(item) for item in requested)
+    effective = normalized.get("effective_mods") if isinstance(normalized, Mapping) else None
+    if normalized.get("status") == "NORMALIZED" and isinstance(effective, list):
+        return "".join(str(item) for item in effective) or "NM"
     # Preserve unsupported/key-mod contexts as explicit data instead of
     # silently dropping them.  The runtime may later mark them unsupported.
     return "".join(ch for ch in text if ch.isalnum()) or "NM"
@@ -223,7 +228,7 @@ def _stratum(star: float | None, reference: list[float]) -> str | None:
         return None
     n = len(reference)
     cuts = [reference[int(q * (n - 1))] for q in (0.25, 0.50, 0.75)]
-    return "nm_q1" if star <= cuts[0] else "nm_q2" if star <= cuts[1] else "nm_q3" if star <= cuts[2] else "nm_q4"
+    return "ppy_q1" if star <= cuts[0] else "ppy_q2" if star <= cuts[1] else "ppy_q3" if star <= cuts[2] else "ppy_q4"
 
 
 def _identity_record(

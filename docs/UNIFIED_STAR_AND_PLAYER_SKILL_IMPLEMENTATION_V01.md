@@ -186,7 +186,14 @@ the map join status. Rows with no replay-derived axis outcomes remain
 `PERFORMANCE_ONLY` and are still counted as ingested pp. Only rows carrying
 explicit axis outcomes plus unified map demand become Skill Rating evidence.
 Use `skill_evidence_records()` or `estimate_player_from_scores()` to feed the
-multi-map estimator.
+multi-map estimator. If a player's ready evidence spans several non-FL
+contexts, the score entry point partitions it into one profile per context;
+it never averages stars from incompatible ppy rulers.
+
+The same path accepts score rows for every mod spelling it can identify. The
+local osu!.db reader supplies each stored osu!standard context except FL; raw
+rows for a context whose v0.40 transform is not available remain retained with
+their source mods and pp, and are not silently re-labeled as NM.
 
 ## Current boundary
 
