@@ -1,0 +1,55 @@
+{
+  "schema_version": "osu_skill_profiler_formal_map_demand_v040",
+  "release_id": "formal-map-demand-v0.40.0",
+  "release_version": "0.40.0",
+  "stage": "DEPLOYABLE_MAP_DEMAND",
+  "artifacts": {
+    "map_demand_algorithm": "MAP_DEMAND_V100",
+    "calibration_relative_path": "training/datasets/map_demand_calibration_v04_unbounded_star_scale_20k",
+    "slider_pressure_runtime": "ppy_slider_pressure_corpus_v036",
+    "independent_classic_corpus_relative_path": "training/ppy_slider_replay_validation_v035/independent_classic_corpus_v040.json",
+    "verification_relative_path": "training/formal_slider_release_v040/verification_v040.json",
+    "slider_pressure_sample_step_norm_px": 2.0,
+    "slider_pressure_max_sample_intervals_per_span": 512
+  },
+  "axis_order": [
+    "jump_aim",
+    "flow_aim",
+    "aim_control",
+    "spatial_precision",
+    "raw_speed",
+    "finger_control",
+    "reading",
+    "stamina",
+    "endurance"
+  ],
+  "admission_contract": {
+    "map_demand_axes": "ADMITTED_MAP_DEMAND only when MAP_DEMAND_V100 emits a finite axis value",
+    "slider_pressure_scalar": "max required cursor velocity over support-gated sustained candidates",
+    "slider_pressure_scalar_unit": "normalized_px_per_ms",
+    "slider_pressure_weighted_sum": false,
+    "player_skill_score_admitted": false,
+    "unverified_when_unproven": true,
+    "full_library_scan_required": false,
+    "user_play_required": false,
+    "audio_playback": false
+  },
+  "replay_boundary": {
+    "map_side_release": "does not require a replay",
+    "player_side_slider_judgement": "remains behind the independent ppy judgement trace contract",
+    "classic_trace_holdout": "two exact parity fixtures, one explicit mismatch fixture, one timeout fixture"
+  },
+  "independent_classic_gate": {
+    "verified_cross_map_rows": 2,
+    "mismatch_rows": 1,
+    "timeout_rows": 1,
+    "map_demand_release_requires_exact_replay_parity": false,
+    "player_judgement_release_requires_exact_replay_parity": true,
+    "mismatch_and_timeout_policy": "UNVERIFIED"
+  },
+  "provenance": [
+    "ppy osu!standard map demand release v1.0.0",
+    "ppy slider geometry and timing signal layer",
+    "v0.36 continuous boundary crossing pressure discovery"
+  ]
+}

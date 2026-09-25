@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('v100', 'v101-experimental', 'v010-beta9.2', 'v010-beta9.1', 'v010-beta9', 'v010-beta8', 'v010-beta7', 'v010-beta6', 'v010-beta5', 'v010-beta4', 'v010-beta3', 'v010-beta2', 'v010-beta1', 'v096')][string]$Algorithm,
+    [ValidateSet('v040-formal', 'v100', 'v101-experimental', 'v010-beta9.2', 'v010-beta9.1', 'v010-beta9', 'v010-beta8', 'v010-beta7', 'v010-beta6', 'v010-beta5', 'v010-beta4', 'v010-beta3', 'v010-beta2', 'v010-beta1', 'v096')][string]$Algorithm,
     [string]$Python = (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313\python.exe')
 )
 $ErrorActionPreference = 'Stop'
@@ -8,8 +8,8 @@ $runtimeDir = Join-Path $repoRoot 'tmp\runtime'
 $selectionFile = Join-Path $repoRoot 'tmp\runtime-release.json'
 $cliPath = Join-Path $repoRoot 'tools\map_demand_v01\cli.py'
 $Python = [IO.Path]::GetFullPath($Python)
-$versionByAlgorithm = @{ 'v100' = '1.0.0'; 'v101-experimental' = '1.0.1-experimental.11'; 'v010-beta9.2' = '0.10.0-beta.9.2'; 'v010-beta9.1' = '0.10.0-beta.9.1'; 'v010-beta9' = '0.10.0-beta.9'; 'v010-beta8' = '0.10.0-beta.8'; 'v010-beta7' = '0.10.0-beta.7'; 'v010-beta6' = '0.10.0-beta.6'; 'v010-beta5' = '0.10.0-beta.5'; 'v010-beta4' = '0.10.0-beta.4'; 'v010-beta3' = '0.10.0-beta.3'; 'v010-beta2' = '0.10.0-beta.2'; 'v010-beta1' = '0.10.0-beta.1'; 'v096' = '0.9.6' }
-$idByAlgorithm = @{ 'v100' = 'MAP_DEMAND_V100'; 'v101-experimental' = 'MAP_DEMAND_V101_EXPERIMENTAL'; 'v010-beta9.2' = 'MAP_DEMAND_FLOW_TARGET_SIZE_V010_BETA92'; 'v010-beta9.1' = 'MAP_DEMAND_RAW_POWERED_FRONTIER_V010_BETA91'; 'v010-beta9' = 'MAP_DEMAND_RATE_PRECISION_AREA_V010_BETA9'; 'v010-beta8' = 'MAP_DEMAND_SUPPORT_FRONTIER_V010_BETA8'; 'v010-beta7' = 'MAP_DEMAND_FULL_EVIDENCE_V010_BETA7'; 'v010-beta6' = 'MAP_DEMAND_AIM_ROUTING_V010_BETA6'; 'v010-beta5' = 'MAP_DEMAND_READING_ORDER_V010_BETA5'; 'v010-beta4' = 'MAP_DEMAND_CONTROL_EXECUTION_V010_BETA4'; 'v010-beta3' = 'MAP_DEMAND_PRECISION_BALANCE_V010_BETA3'; 'v010-beta2' = 'MAP_DEMAND_TOLERANCE_RHYTHM_V010_BETA2'; 'v010-beta1' = 'MAP_DEMAND_DECOUPLED_V010_BETA1'; 'v096' = 'MAP_DEMAND_ATOMIC_V096' }
+$versionByAlgorithm = @{ 'v040-formal' = '0.40.0'; 'v100' = '1.0.0'; 'v101-experimental' = '1.0.1-experimental.11'; 'v010-beta9.2' = '0.10.0-beta.9.2'; 'v010-beta9.1' = '0.10.0-beta.9.1'; 'v010-beta9' = '0.10.0-beta.9'; 'v010-beta8' = '0.10.0-beta.8'; 'v010-beta7' = '0.10.0-beta.7'; 'v010-beta6' = '0.10.0-beta.6'; 'v010-beta5' = '0.10.0-beta.5'; 'v010-beta4' = '0.10.0-beta.4'; 'v010-beta3' = '0.10.0-beta.3'; 'v010-beta2' = '0.10.0-beta.2'; 'v010-beta1' = '0.10.0-beta.1'; 'v096' = '0.9.6' }
+$idByAlgorithm = @{ 'v040-formal' = 'FORMAL_MAP_DEMAND_V040'; 'v100' = 'MAP_DEMAND_V100'; 'v101-experimental' = 'MAP_DEMAND_V101_EXPERIMENTAL'; 'v010-beta9.2' = 'MAP_DEMAND_FLOW_TARGET_SIZE_V010_BETA92'; 'v010-beta9.1' = 'MAP_DEMAND_RAW_POWERED_FRONTIER_V010_BETA91'; 'v010-beta9' = 'MAP_DEMAND_RATE_PRECISION_AREA_V010_BETA9'; 'v010-beta8' = 'MAP_DEMAND_SUPPORT_FRONTIER_V010_BETA8'; 'v010-beta7' = 'MAP_DEMAND_FULL_EVIDENCE_V010_BETA7'; 'v010-beta6' = 'MAP_DEMAND_AIM_ROUTING_V010_BETA6'; 'v010-beta5' = 'MAP_DEMAND_READING_ORDER_V010_BETA5'; 'v010-beta4' = 'MAP_DEMAND_CONTROL_EXECUTION_V010_BETA4'; 'v010-beta3' = 'MAP_DEMAND_PRECISION_BALANCE_V010_BETA3'; 'v010-beta2' = 'MAP_DEMAND_TOLERANCE_RHYTHM_V010_BETA2'; 'v010-beta1' = 'MAP_DEMAND_DECOUPLED_V010_BETA1'; 'v096' = 'MAP_DEMAND_ATOMIC_V096' }
 
 function Resolve-RunningAlgorithm($State) {
     # Only these exact prior experiments may migrate under a shared
@@ -20,7 +20,7 @@ function Resolve-RunningAlgorithm($State) {
         $versionByAlgorithm[$_] -eq $State.map_demand_version -and
         $idByAlgorithm[$_] -eq $State.algorithm_id
     })
-    if ($knownRunningReleases.Count -ne 1) { throw 'Unknown running algorithm/version pair; refusing automatic replacement' }
+    if ($knownRunningReleases.Count -ne 1) { throw 'Unrecognized running algorithm/version pair; refusing automatic replacement' }
     return $knownRunningReleases[0]
 }
 
@@ -49,13 +49,14 @@ function Save-ProfilerSelection([string]$Selected) {
 if (-not (Test-Path -LiteralPath $Python)) { throw "Python missing: $Python" }
 if (-not (Test-Path -LiteralPath $cliPath)) { throw "Profiler CLI missing: $cliPath" }
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
-$previousAlgorithm = 'v100'
+$previousAlgorithm = 'v040-formal'
 if (Test-Path -LiteralPath $selectionFile) {
     $persisted = Get-Content -LiteralPath $selectionFile -Raw | ConvertFrom-Json
     if ($versionByAlgorithm.ContainsKey([string]$persisted.algorithm)) { $previousAlgorithm = [string]$persisted.algorithm }
 }
 # A normal restart retains the persisted selection. Explicit -Algorithm is
-# used for a release switch; a fresh installation still starts at v100.
+# used for a release switch; a fresh installation starts at the formal v0.40
+# map-demand release.
 if (-not $PSBoundParameters.ContainsKey('Algorithm')) { $Algorithm = $previousAlgorithm }
 $listeners = @(Get-NetTCPConnection -LocalPort 8767 -State Listen -ErrorAction SilentlyContinue)
 if ($listeners.Count) {
@@ -104,7 +105,7 @@ try {
     $failure = $_
     # Restarting the same experiment key executes the current files, so it
     # cannot restore a prior in-memory implementation after an upgrade.
-    $recoveryAlgorithm = if ($previousAlgorithm -eq 'v101-experimental') { 'v100' } else { $previousAlgorithm }
+    $recoveryAlgorithm = if ($previousAlgorithm -eq 'v101-experimental') { 'v040-formal' } else { $previousAlgorithm }
     if ($previousAlgorithm -eq 'v101-experimental') {
         Write-Warning 'Requested release failed. Starting frozen v100 recovery; the previous experimental code is not being restored.'
     } else {

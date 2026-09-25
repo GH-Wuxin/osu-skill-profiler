@@ -517,7 +517,7 @@ class PublicBeta6Tests(unittest.TestCase):
                     )
 
     def test_beta6_is_opt_in_and_stable_default_remains_selected(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v040-formal")
         self.assertIs(release.runtime_model("v010-beta5"), previous)
         self.assertIs(release.runtime_model("v010-beta6"), beta)
 
@@ -531,7 +531,7 @@ class PublicBeta6Tests(unittest.TestCase):
             os.environ,
             {"SKILL_PROFILER_ALGORITHM": ""},
         ):
-            self.assertEqual(release.default_algorithm(), "v100")
+            self.assertEqual(release.default_algorithm(), "v040-formal")
             with mock.patch.dict(
                 os.environ,
                 {"SKILL_PROFILER_ALGORITHM": "v010-beta6"},

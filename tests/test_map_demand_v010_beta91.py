@@ -66,7 +66,7 @@ class Beta91IntegrationTests(unittest.TestCase):
     def test_beta91_is_explicit_and_does_not_change_default(self):
         output, components, _warnings = analyze(beta91, self.path)
 
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v040-formal")
         self.assertIs(release.runtime_model("v010-beta9.1"), beta91)
         self.assertEqual(
             output["identity"]["map_demand_version"],

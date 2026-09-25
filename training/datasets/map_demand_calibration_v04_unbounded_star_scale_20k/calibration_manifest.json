@@ -1,0 +1,158 @@
+{
+  "algorithm_id": "MAP_DEMAND_ATOMIC_V04",
+  "artifacts": {
+    "calibration.json": "1490393e8c265692a98b6a12bcb9cc933f7ae7c27a6295498a7b2d6fcd190efc",
+    "calibration_samples.jsonl": "a16a0f64370a9ce0a0fe249ad0e3f2eca6f4697d9dff035ac4129fabf24181cf"
+  },
+  "calibration_id": "mdcal_v04_unbounded_star_scaled_20k+standard-nm-star-scale:3cb12610095815b15318",
+  "component_stats": {
+    "aim_control_angle_change_p90": {
+      "max": 0.03997333940918056,
+      "min": 0.0,
+      "n": 19975,
+      "nonfinite": 0
+    },
+    "aim_control_velocity_change_p90": {
+      "max": 36.48267077215826,
+      "min": 0.0,
+      "n": 19979,
+      "nonfinite": 0
+    },
+    "finger_control_interval_diversity": {
+      "max": 1.0,
+      "min": 0.000972951936174353,
+      "n": 19985,
+      "nonfinite": 0
+    },
+    "finger_control_interval_entropy": {
+      "max": 2.7874387476043467,
+      "min": 0.0,
+      "n": 20000,
+      "nonfinite": 0
+    },
+    "finger_control_interval_ratio": {
+      "max": 26.71598725040568,
+      "min": 0.00971286175454494,
+      "n": 19979,
+      "nonfinite": 0
+    },
+    "flow_aim_chain_length_p90": {
+      "max": 104.0,
+      "min": 0.0,
+      "n": 19975,
+      "nonfinite": 0
+    },
+    "flow_aim_chain_velocity_p90": {
+      "max": 4.0,
+      "min": 0.0,
+      "n": 19975,
+      "nonfinite": 0
+    },
+    "flow_aim_continuity_share": {
+      "max": 0.9365079365079365,
+      "min": 0.0,
+      "n": 19975,
+      "nonfinite": 0
+    },
+    "jump_aim_strain_p90": {
+      "max": 86.07880381298679,
+      "min": 0.0,
+      "n": 19985,
+      "nonfinite": 0
+    },
+    "raw_speed_strain_p90": {
+      "max": 36.800000000000004,
+      "min": 0.0016648353477841042,
+      "n": 19985,
+      "nonfinite": 0
+    },
+    "reading_density": {
+      "max": 999999999.9999999,
+      "min": 0.2,
+      "n": 20000,
+      "nonfinite": 0
+    },
+    "reading_high_ar_pressure": {
+      "max": 0.12626906806902635,
+      "min": 0.0,
+      "n": 20000,
+      "nonfinite": 0
+    },
+    "reading_preempt_median_ms": {
+      "max": 1800.0,
+      "min": 450.0,
+      "n": 20000,
+      "nonfinite": 0
+    },
+    "reading_visual_change": {
+      "max": 1.0,
+      "min": 0.0,
+      "n": 19953,
+      "nonfinite": 0
+    },
+    "spatial_precision_pressure_p90": {
+      "max": 146645.19596886903,
+      "min": 0.0,
+      "n": 19985,
+      "nonfinite": 0
+    },
+    "stamina_density": {
+      "max": 999999999.9999999,
+      "min": 0.2,
+      "n": 20000,
+      "nonfinite": 0
+    },
+    "stamina_duration_share": {
+      "max": 1.0,
+      "min": 0.0,
+      "n": 19991,
+      "nonfinite": 0
+    },
+    "stamina_sustained_ms": {
+      "max": 170000.0,
+      "min": 0.0,
+      "n": 20000,
+      "nonfinite": 0
+    }
+  },
+  "demand_scale": {
+    "extreme_tail": {
+      "lower_quantile": 0.999,
+      "method": "LOG_SURVIVAL_LINEAR_V01",
+      "minimum_survival_count": 0.5,
+      "upper_quantile": 0.9999
+    },
+    "hard_cap_stars": null,
+    "method": "EMPIRICAL_OSU_STANDARD_NM_STAR_EQUIVALENT_UNBOUNDED_V02",
+    "nm_star_count": 126148,
+    "score_normalizer_stars": 10.0
+  },
+  "feature_version": "0.2.0",
+  "generated_at": "2026-08-22T15:43:14+00:00",
+  "local_signal_version": "0.3.0",
+  "map_count": 20000,
+  "percentile_method": "linear_q*(n-1)",
+  "quantile_method": "tie_safe_midrank_with_zero_floor",
+  "schema_version": "map_demand_calibration_manifest_v1",
+  "skipped_nonfinite_count": 0,
+  "source_artifacts": [
+    {
+      "relative_path": "training\\datasets\\feature_qa_v02\\feature_qa_20k.jsonl",
+      "role": "feature_qa_5k",
+      "sha256": "a538ac8e4746ddcc6e8682418bf8756cdac826ee87ce3357f0cde23a5e5aca2e"
+    },
+    {
+      "relative_path": "training\\datasets\\local_signal_qa_v03\\local_signal_qa_20k.jsonl",
+      "role": "local_signal_qa_5k",
+      "sha256": "a8b485479e8cb825f6d8a7a7b0084287be27bb73ea64470fb95ba487a0babfdd"
+    }
+  ],
+  "source_scope": "20k+standard-nm-star-scale",
+  "star_database": {
+    "beatmap_count": 134116,
+    "database_version": 20260711,
+    "nm_star_count": 126148,
+    "path": "osu!.db",
+    "sha256": "5a962a14664571757a142b5b2504f94ee918104bc99fccdb07ce9697209d2ff4"
+  }
+}

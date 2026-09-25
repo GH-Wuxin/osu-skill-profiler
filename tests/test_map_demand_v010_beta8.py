@@ -193,7 +193,7 @@ class Beta8IntegrationTests(unittest.TestCase):
         json.dumps(beta8_output, allow_nan=False)
 
     def test_beta8_is_explicitly_selectable_without_changing_default(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v040-formal")
         self.assertIs(release.runtime_model("v010-beta8"), beta8)
         calibration_dir = Path(self.temp.name) / "calibration"
         calibration_dir.mkdir()

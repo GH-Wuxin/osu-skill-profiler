@@ -1,0 +1,76 @@
+{
+  "aggregate_parity": {
+    "exact": false,
+    "observed": {
+      "100": 6,
+      "300": 527,
+      "50": 0,
+      "miss": 0
+    },
+    "stable_osr_header": {
+      "100": 13,
+      "300": 520,
+      "50": 0,
+      "miss": 0
+    }
+  },
+  "classic_semantics_verified": true,
+  "formal_consequence": {
+    "admission_reason": "classic_semantics_or_independent_geometry_or_aggregate_parity_failed",
+    "map_demand_axis_admission": "SEPARATE_MAP_DEMAND_GATE",
+    "player_skill_score_admitted": false,
+    "trace_can_be_used_as_classic_event_provenance": false
+  },
+  "holdout_role": "holdout_mismatch",
+  "independent_geometry": {
+    "expected_phase_counts": {
+      "head": 358,
+      "repeat": 53,
+      "tail": 358,
+      "tick": 5
+    },
+    "geometry_unavailable_sliders": [],
+    "invalid_event_count": 0,
+    "invalid_events_sample": [],
+    "max_event_time_error_ms": 3.231273149140179e-05,
+    "observed_phase_counts": {
+      "head": 358,
+      "repeat": 53,
+      "tail": 358,
+      "tick": 5
+    },
+    "per_slider_phase_count_match": true,
+    "phase_count_match": true,
+    "signal_version": "0.4.0",
+    "unique_event_ids": true,
+    "unique_object_ids": true
+  },
+  "judgement_semantics": "lazer_classic",
+  "map": {
+    "md5": "11b7d407bdb1718e8b8d387e81ddf077",
+    "md5_match": true,
+    "path": "training\\ppy_slider_realworld_local_v01\\sakuraburst - Glacierfall (Park Remix) [get fxxked up].osu",
+    "slider_count": 358,
+    "trace_classic_slider_objects": 358,
+    "trace_md5": "11b7d407bdb1718e8b8d387e81ddf077"
+  },
+  "mods": [
+    "CL",
+    "HD",
+    "HR"
+  ],
+  "provenance": [
+    "independent_python_map_nested_object_reconstruction",
+    "stable_osr_header_aggregate_comparison",
+    "bounded_lazer_classic_trace_only",
+    "audio_muted_by_source_harness"
+  ],
+  "replay_provenance": {
+    "map_md5_matches_replay_header": true,
+    "score_id_identity_status": "TRANSLATION_PRESENT"
+  },
+  "schema_version": "ppy_slider_independent_verification_v040",
+  "source_kind": "ppy_instrumented_lazer_classic_playback_trace",
+  "source_trace_schema_version": "ppy_instrumented_slider_judgement_trace_v0.1.0",
+  "status": "INDEPENDENT_VERIFICATION_FAILED"
+}

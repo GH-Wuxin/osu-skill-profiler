@@ -25,7 +25,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(code, 0)
             payload = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual(payload["schema_version"], "0.1.0")
-            self.assertEqual(payload["status"], "not_inferred")
+        self.assertEqual(payload["status"], "ok")
 
     def test_extract_features(self):
         code, output = self._quiet(["extract-features", str(FIXTURES / "minimal.osu")])

@@ -1,0 +1,55 @@
+{
+  "gate": {
+    "exact_cross_map_rows": 2,
+    "formal_player_skill_score_admitted": false,
+    "independent_geometry_verification": true,
+    "map_demand_release_usable": true,
+    "mismatch_and_timeout_rows_are_unverified": true,
+    "stable_osr_aggregate_parity_required": true
+  },
+  "mismatch_trace_count": 1,
+  "provenance": [
+    "tools/ppy_v01/verify_classic_trace_v040.py",
+    "python canonical slider geometry",
+    "stable .osr header counts",
+    "lazer Classic traces produced with audio muted"
+  ],
+  "release_id": "formal-map-demand-v0.40.0",
+  "rows": [
+    {
+      "aggregate_exact": true,
+      "holdout_role": "validation",
+      "identity_complete": true,
+      "map": "training/ppy_slider_realworld_local_v01/t+pazolite - Oshama Scramble! (IOException Edit) [Keitaro's Expert].osu",
+      "status": "INDEPENDENT_CLASSIC_PARITY_VERIFIED",
+      "trace": "oshama_1698797130_lazer_classic.json"
+    },
+    {
+      "aggregate_exact": true,
+      "holdout_role": "validation",
+      "identity_complete": true,
+      "map": "training/ppy_slider_realworld_kaede_v01/Ocelot - KAEDE (Hollow Wings) [EX EX].osu",
+      "status": "INDEPENDENT_CLASSIC_PARITY_VERIFIED",
+      "trace": "kaede_1082719366_lazer_classic.json"
+    },
+    {
+      "aggregate_exact": false,
+      "holdout_role": "holdout_mismatch",
+      "identity_complete": false,
+      "map": "training/ppy_slider_realworld_local_v01/sakuraburst - Glacierfall (Park Remix) [get fxxked up].osu",
+      "status": "INDEPENDENT_VERIFICATION_FAILED",
+      "trace": "glacierfall_3522160659_lazer_classic.json"
+    },
+    {
+      "aggregate_exact": false,
+      "holdout_role": "bounded_timeout",
+      "identity_complete": false,
+      "map": "training/ppy_slider_realworld_local_v01/Silentroom - Nhelv [iniquitatem].osu",
+      "status": "TIMEOUT_NO_TRACE",
+      "trace": "nhelv_5934031945_lazer_classic.json"
+    }
+  ],
+  "schema_version": "ppy_slider_independent_classic_corpus_v040",
+  "trace_count": 4,
+  "verified_trace_count": 2
+}

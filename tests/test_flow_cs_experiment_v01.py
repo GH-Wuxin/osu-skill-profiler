@@ -84,7 +84,7 @@ class FlowCsExperimentTests(unittest.TestCase):
         self.assertIsNone(adjusted["experimental_adjustment"])
 
     def test_experiment_is_not_a_runtime_release(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v040-formal")
         self.assertNotIn(
             "v010-beta9.1-flow-cs-exp1", release.RUNTIME_ALGORITHMS
         )

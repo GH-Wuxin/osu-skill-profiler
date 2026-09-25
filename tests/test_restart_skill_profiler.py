@@ -122,8 +122,8 @@ class RestartSelectionTests(unittest.TestCase):
         actual_after = actual_selector.read_bytes() if actual_selector.is_file() else None
         self.assertEqual(actual_after, actual_before, "The real runtime selector must remain untouched")
 
-    def test_fresh_restart_falls_back_to_v100(self):
-        self.assert_selection(persisted=None, explicit=None, expected="v100")
+    def test_fresh_restart_starts_formal_v040(self):
+        self.assert_selection(persisted=None, explicit=None, expected="v040-formal")
 
     def test_normal_restart_retains_persisted_experiment_or_historical_release(self):
         for selected in ("v101-experimental", "v010-beta9.2"):
@@ -137,7 +137,7 @@ class RestartSelectionTests(unittest.TestCase):
         self.assert_selection(persisted="v010-beta9.2", explicit="v101-experimental", expected="v101-experimental")
 
     def test_unknown_persisted_key_uses_restart_fallback(self):
-        self.assert_selection(persisted="unknown-release", explicit=None, expected="v100")
+        self.assert_selection(persisted="unknown-release", explicit=None, expected="v040-formal")
 
 
 if __name__ == "__main__":

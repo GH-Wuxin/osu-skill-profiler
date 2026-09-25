@@ -1,4 +1,4 @@
-"""CLI for Map Demand (stable 1.0.0 default; historical betas replayable)."""
+"""CLI for the formal v0.40 Map Demand release and historical replays."""
 
 from __future__ import annotations
 
@@ -38,7 +38,10 @@ from map_demand_v01 import model_v010_beta91  # noqa: E402
 from map_demand_v01 import model_v010_beta92  # noqa: E402
 from map_demand_v01 import model_v100  # noqa: E402
 from map_demand_v01 import model_v101_experimental  # noqa: E402
+from map_demand_v01 import model_v040_formal  # noqa: E402
 from map_demand_v01.release import default_algorithm  # noqa: E402
+from map_demand_v01.mod_context_v01 import normalize_mods  # noqa: E402
+from map_demand_v01.mod_transform_v01 import transform_beatmap  # noqa: E402
 from map_demand_v01.calibration import (  # noqa: E402
     CALIBRATION_ARTIFACT_DIRNAME,
     build_calibration,
@@ -86,6 +89,7 @@ def cmd_build_calibration(args: argparse.Namespace) -> int:
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     model = {
+        "v040-formal": model_v040_formal,
         "v100": model_v100,
         "v101-experimental": model_v101_experimental,
         "v010-beta9.2": model_v010_beta92,
@@ -147,6 +151,45 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     )
     output["diagnostics"]["component_warnings"] = component_warnings
     output["diagnostics"]["extract_metadata"] = metadata
+    if args.algorithm == "v040-formal":
+        from osu_skill_profiler.formal_release import build_formal_map_demand
+        from osu_skill_profiler.parser.osu_parser import parse_osu_file
+
+        source_beatmap = parse_osu_file(map_path)
+        mod_context = normalize_mods(args.mods)
+        transformed_beatmap, transform_context = transform_beatmap(
+            source_beatmap, mod_context
+        )
+        if transform_context.get("analysis_ready") is not True:
+            print(
+                "v0.40 formal map demand cannot apply the requested Mod context",
+                file=sys.stderr,
+            )
+            return 2
+        formal_map_demand = build_formal_map_demand(
+            str(map_path),
+            transformed_beatmap,
+            requested_mods=mod_context["requested_mods"],
+        )
+        output["formal_map_demand"] = formal_map_demand
+        output["map_demand"] = formal_map_demand
+        output["slider_pressure"] = formal_map_demand.get("slider_pressure")
+        output["player_skill_score_admitted"] = False
+        for axis, formal_axis in formal_map_demand.get("axes", {}).items():
+            if not isinstance(formal_axis, dict):
+                continue
+            item = dict(output.get("axes", {}).get(axis) or {})
+            item.update(
+                {
+                    "status": formal_axis.get("status"),
+                    "stars": formal_axis.get("value"),
+                    "demand_star_equivalent": formal_axis.get("value"),
+                    "unit": formal_axis.get("unit"),
+                    "confidence": "FORMAL_MAP_DEMAND",
+                    "formal_release_id": formal_map_demand.get("release_id"),
+                }
+            )
+            output.setdefault("axes", {})[axis] = item
     text = C.strict_json_dumps(output, indent=2)
     if args.out:
         Path(args.out).write_text(text + "\n", encoding="utf-8")
@@ -351,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--mods", nargs="*", default=[])
     analyze.add_argument(
         "--algorithm",
-        choices=("v100", "v101-experimental", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "decoupled-v01", "v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
+        choices=("v040-formal", "v100", "v101-experimental", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "decoupled-v01", "v096", "v095", "v092", "v091", "v09", "v08", "v07", "v06"),
         default=default_algorithm(),
         help="active runtime release by default; older releases remain replayable",
     )
@@ -440,7 +483,7 @@ def main(argv: list[str] | None = None) -> int:
     bid_ui.add_argument("--port", type=int, default=8767)
     bid_ui.add_argument("--no-open", action="store_true")
     bid_ui.add_argument("--analysis-workers", type=int, choices=range(9), default=3)
-    bid_ui.add_argument("--algorithm", choices=("v100", "v101-experimental", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "v096"), default=default_algorithm())
+    bid_ui.add_argument("--algorithm", choices=("v040-formal", "v100", "v101-experimental", "v010-beta9.2", "v010-beta9.1", "v010-beta9", "v010-beta8", "v010-beta7", "v010-beta6", "v010-beta5", "v010-beta4", "v010-beta3", "v010-beta2", "v010-beta1", "v096"), default=default_algorithm())
     bid_ui.set_defaults(func=cmd_bid_review_ui)
 
     type_ui = sub.add_parser(

@@ -56,9 +56,9 @@ class Experimental101IntegrationTests(unittest.TestCase):
         with mock.patch.object(release, "RUNTIME_SELECTION_PATH", selector), mock.patch.dict(
             os.environ, {"SKILL_PROFILER_ALGORITHM": ""}
         ):
-            self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
-            self.assertEqual(release.default_algorithm(), "v100")
-            self.assertIs(release.runtime_model(), stable)
+            self.assertEqual(release.DEFAULT_ALGORITHM, "v040-formal")
+            self.assertEqual(release.default_algorithm(), "v040-formal")
+            self.assertEqual(release.runtime_model().ALGORITHM_ID, "FORMAL_MAP_DEMAND_V040")
             self.assertIs(release.runtime_model("v101-experimental"), experiment)
             self.assertFalse(selector.exists())
             selector.write_text('{"algorithm":"v010-beta9.2"}', encoding="utf-8")

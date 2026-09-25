@@ -13,6 +13,9 @@ dist/
 # Generated dataset/training artifacts (never commit large or derived data)
 training/datasets/*
 !training/datasets/.gitkeep
+# The v0.40 runtime is reproducible from this bounded packaged calibration.
+!training/datasets/map_demand_calibration_v04_unbounded_star_scale_20k/
+!training/datasets/map_demand_calibration_v04_unbounded_star_scale_20k/*
 training/splits/*
 !training/splits/.gitkeep
 training/weak_labels/*

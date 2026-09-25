@@ -1,0 +1,75 @@
+{
+  "aggregate_parity": {
+    "exact": true,
+    "observed": {
+      "100": 2,
+      "300": 418,
+      "50": 0,
+      "miss": 0
+    },
+    "stable_osr_header": {
+      "100": 2,
+      "300": 418,
+      "50": 0,
+      "miss": 0
+    }
+  },
+  "classic_semantics_verified": true,
+  "formal_consequence": {
+    "admission_reason": null,
+    "map_demand_axis_admission": "SEPARATE_MAP_DEMAND_GATE",
+    "player_skill_score_admitted": false,
+    "trace_can_be_used_as_classic_event_provenance": true
+  },
+  "holdout_role": "validation",
+  "independent_geometry": {
+    "expected_phase_counts": {
+      "head": 311,
+      "repeat": 1813,
+      "tail": 311,
+      "tick": 0
+    },
+    "geometry_unavailable_sliders": [],
+    "invalid_event_count": 0,
+    "invalid_events_sample": [],
+    "max_event_time_error_ms": 4.5259126636665314e-05,
+    "observed_phase_counts": {
+      "head": 311,
+      "repeat": 1813,
+      "tail": 311,
+      "tick": 0
+    },
+    "per_slider_phase_count_match": true,
+    "phase_count_match": true,
+    "signal_version": "0.4.0",
+    "unique_event_ids": true,
+    "unique_object_ids": true
+  },
+  "judgement_semantics": "lazer_classic",
+  "map": {
+    "md5": "224e5575bb9bbf2d3210c8e07198e5bd",
+    "md5_match": true,
+    "path": "training\\ppy_slider_realworld_kaede_v01\\Ocelot - KAEDE (Hollow Wings) [EX EX].osu",
+    "slider_count": 311,
+    "trace_classic_slider_objects": 311,
+    "trace_md5": "224e5575bb9bbf2d3210c8e07198e5bd"
+  },
+  "mods": [
+    "CL",
+    "HD"
+  ],
+  "provenance": [
+    "independent_python_map_nested_object_reconstruction",
+    "stable_osr_header_aggregate_comparison",
+    "bounded_lazer_classic_trace_only",
+    "audio_muted_by_source_harness"
+  ],
+  "replay_provenance": {
+    "map_md5_matches_replay_header": true,
+    "score_id_identity_status": "TRANSLATION_PRESENT"
+  },
+  "schema_version": "ppy_slider_independent_verification_v040",
+  "source_kind": "ppy_instrumented_lazer_classic_playback_trace",
+  "source_trace_schema_version": "ppy_instrumented_slider_judgement_trace_v0.1.0",
+  "status": "INDEPENDENT_CLASSIC_PARITY_VERIFIED"
+}

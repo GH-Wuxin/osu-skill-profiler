@@ -443,7 +443,7 @@ class Beta7IntegrationTests(unittest.TestCase):
                 self.assertEqual(first["axes"], second["axes"])
 
     def test_beta7_is_selectable_with_stable_default(self):
-        self.assertEqual(release.DEFAULT_ALGORITHM, "v100")
+        self.assertEqual(release.DEFAULT_ALGORITHM, "v040-formal")
         self.assertIs(release.runtime_model("v010-beta7"), beta7)
 
         calibration_dir = Path(self.temp.name) / "calibration"

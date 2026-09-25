@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 
 from osu_skill_profiler.parser.normalized import normalize
 from osu_skill_profiler.parser.osu_parser import parse_osu_file
+from osu_skill_profiler.formal_release import build_formal_map_demand
 
 from . import contract as C
 from .release import runtime_model
@@ -453,6 +454,67 @@ def _analyze_record(model, calibration, record, mod_context, local_stars):
                 warnings=list(axis_obj.get("warnings", [])),
                 peak_window={key: peak[key] for key in ("start_ms", "end_ms")} if peak else None,
             )
+    formal_map_demand: dict[str, Any] | None = None
+    if getattr(model, "ALGORITHM_ID", "") == "FORMAL_MAP_DEMAND_V040":
+        # v0.40 is the public map-demand lane used by the bot. Keep the
+        # frozen V100 component computation for diagnostics, then attach the
+        # formal release envelope against the exact local .osu path.
+        source_beatmap = parse_osu_file(map_path)
+        transformed_for_formal, formal_transform = transform_beatmap(
+            source_beatmap, mod_context
+        )
+        if formal_transform.get("analysis_ready") is not True:
+            raise BidReviewError(
+                "UNSUPPORTED_MODS",
+                "v0.40 formal map demand cannot apply the requested Mod context",
+            )
+        formal_map_demand = build_formal_map_demand(
+            str(map_path),
+            transformed_for_formal,
+            requested_mods=mod_context["requested_mods"],
+        )
+        output["formal_map_demand"] = formal_map_demand
+        output["slider_pressure"] = formal_map_demand.get("slider_pressure")
+        output["identity"] = {
+            **dict(output.get("identity") or {}),
+            "algorithm_id": "FORMAL_MAP_DEMAND_V040",
+            "map_demand_version": "0.40.0",
+            "formal_release_id": formal_map_demand.get("release_id"),
+        }
+        output["release"] = {
+            "version": "0.40.0",
+            "stage": "DEPLOYABLE_FORMAL_MAP_DEMAND",
+            "label": "0.40.0 · Formal Map Demand + Slider pressure",
+            "player_skill_score_admitted": False,
+        }
+        analysis_id = C.identity_cache_key(output["identity"])
+        axes = {}
+        formal_axes = formal_map_demand.get("axes", {})
+        for axis in model.AXIS_ORDER:
+            axis_obj = formal_axes.get(axis, {})
+            raw = axis_obj.get("value")
+            if raw is None:
+                display = "—"
+            elif float(raw) >= HUMAN_DISPLAY_CEILING_STARS:
+                display = f"{HUMAN_DISPLAY_CEILING_STARS:g}+"
+            else:
+                display = f"{float(raw):.1f}"
+            axes[axis] = {
+                "status": axis_obj.get("status"),
+                "stars": raw,
+                "display": display,
+                "percentile_rank": None,
+                "confidence": "FORMAL_MAP_DEMAND",
+                "unit": axis_obj.get(
+                    "unit",
+                    "bounded_0_10" if axis in {"stamina", "endurance"} else "star_equivalent",
+                ),
+                "method": axis_obj.get("method"),
+                "scale_method": axis_obj.get("scale_method"),
+                "score_semantics": axis_obj.get("score_semantics"),
+                "evidence_quality": axis_obj.get("evidence_quality"),
+                "formal_release_id": formal_map_demand.get("release_id"),
+            }
     try:
         source_beatmap = parse_osu_file(map_path)
         transformed_beatmap, type_transform = transform_beatmap(
@@ -547,6 +609,14 @@ def _analyze_record(model, calibration, record, mod_context, local_stars):
         "context": output.get("context"),
         "warnings": output.get("warnings", []),
     }
+    if formal_map_demand is not None:
+        result.update(
+            {
+                "map_demand": formal_map_demand,
+                "slider_pressure": formal_map_demand.get("slider_pressure"),
+                "player_skill_score_admitted": False,
+            }
+        )
     return result
 
 

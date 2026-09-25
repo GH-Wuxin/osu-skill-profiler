@@ -16,8 +16,8 @@ class ModelInterfaceTests(unittest.TestCase):
         profile = self.profiler.analyze_map(str(FIXTURES / "sliders.osu"))
         self.assertEqual(validate(profile, OUTPUT_SCHEMA), [])
         self.assertEqual(profile["model_kind"], "baseline")
-        self.assertEqual(profile["status"], "not_inferred")
-        self.assertIn("BASELINE / NOT TRAINED / NOT GROUND TRUTH", profile["disclaimer"])
+        self.assertEqual(profile["status"], "ok")
+        self.assertIn("FORMAL MAP-DEMAND RELEASE / PLAYER ABILITY NOT INFERRED", profile["disclaimer"])
         for skill in profile["skills"].values():
             self.assertIsNone(skill["score"])
             self.assertIsNone(skill["confidence"])

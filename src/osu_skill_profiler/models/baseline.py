@@ -1,8 +1,8 @@
-"""Deterministic baseline profiler.
+"""Deterministic public profiler with the bounded formal map-demand release.
 
-This is a pipeline smoke test, not a skill model. It runs parse -> normalize
--> segment -> aggregate -> weak labels and always reports every skill as
-``not_inferred``. No score is ever fabricated.
+The player-skill fields remain explicitly un-inferred.  For a local ``.osu``
+path the output also contains the versioned ppy-derived map-demand axes and
+the Slider pressure vector/scalar, each with its own admission and provenance.
 """
 
 from __future__ import annotations
@@ -19,16 +19,18 @@ from ..schema.validate import assert_valid
 from ..segments.aggregator import aggregate_features
 from ..segments.fixed_count import FixedObjectCountStrategy
 from ..segments.fixed_time import FixedTimeWindowStrategy
+from ..slider_runtime import build_slider_evidence
+from ..formal_release import build_formal_map_demand
 from ..taxonomy import load_taxonomy, taxonomy_version
 from ..weak_supervision.engine import apply_weak_rules, checksum_normalized
 from ..weak_supervision.rules import CONSERVATIVE_RULES
 
-DISCLAIMER = "BASELINE / NOT TRAINED / NOT GROUND TRUTH"
+DISCLAIMER = "FORMAL MAP-DEMAND RELEASE / PLAYER ABILITY NOT INFERRED / NOT GROUND TRUTH"
 
 
 class DeterministicBaselineProfiler:
     model_kind = "baseline"
-    model_version = "deterministic-baseline-0.1.0"
+    model_version = "formal-map-demand-v0.40.0"
 
     def __init__(
         self,
@@ -88,12 +90,27 @@ class DeterministicBaselineProfiler:
             ]
         beatmap = nmap.beatmap
         difficulty = beatmap.difficulty
+        formal_map_demand = {
+            "status": "NOT_ADMITTED",
+            "formal_axis_admission": "NOT_ADMITTED",
+            "axes": {},
+            "axis_values": {},
+            "slider_pressure": None,
+            "player_skill_score_admitted": False,
+            "provenance": ["formal_release_requires_a_local_osu_path"],
+        }
+        if isinstance(source, (str, Path)):
+            formal_map_demand = build_formal_map_demand(str(source), beatmap)
+        pressure_vector = None
+        if isinstance(formal_map_demand.get("slider_pressure"), dict):
+            pressure_vector = formal_map_demand["slider_pressure"].get("vector")
+        formal_status = str(formal_map_demand.get("status", "NOT_ADMITTED"))
         output = {
             "schema_version": SCHEMA_VERSION,
             "taxonomy_version": self.taxonomy_version,
             "model_version": self.model_version,
             "model_kind": self.model_kind,
-            "status": "not_inferred",
+            "status": "ok" if formal_status in {"ADMITTED", "PARTIAL"} else "not_inferred",
             "disclaimer": DISCLAIMER,
             "beatmap": {
                 "beatmap_id": beatmap.metadata.get("BeatmapID"),
@@ -111,6 +128,15 @@ class DeterministicBaselineProfiler:
                 },
             },
             "features": features,
+            "map_demand": formal_map_demand,
+            # This is a safe, map-side evidence contract.  It intentionally
+            # carries no player score and leaves nested judgement phases
+            # Not admitted until an independent ppy judgement trace is supplied.
+            "slider_evidence": build_slider_evidence(
+                features,
+                pressure_vector=pressure_vector,
+                formal_release=formal_map_demand,
+            ),
             "skills": {
                 skill["id"]: {"score": None, "confidence": None, "status": "not_inferred"}
                 for skill in load_taxonomy()["skills"]

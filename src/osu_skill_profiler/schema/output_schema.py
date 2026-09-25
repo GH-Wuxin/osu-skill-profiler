@@ -49,6 +49,34 @@ SEGMENT_SCHEMA = {
     },
 }
 
+SLIDER_EVIDENCE_SCHEMA = {
+    "type": "object",
+    "required": [
+        "schema_version",
+        "status",
+        "geometry",
+        "judgement_contract",
+        "semantic_routes",
+        "formal_axis_admission",
+        "slider_pressure_scalar_admitted",
+        "player_skill_score_admitted",
+    ],
+    "properties": {
+        "schema_version": {"type": "string"},
+        "status": {"type": "string"},
+        "geometry": {"type": "object"},
+        "pressure_vector": {"type": ["object", "null"]},
+        "replay_observation": {"type": "object"},
+        "score_observation": {"type": "object"},
+        "judgement_contract": {"type": "object"},
+        "semantic_routes": {"type": "object"},
+        "formal_axis_admission": {"type": "string"},
+        "slider_pressure_scalar_admitted": {"type": "boolean"},
+        "player_skill_score_admitted": {"type": "boolean"},
+        "provenance": {"type": "array", "items": {"type": "string"}},
+    },
+}
+
 WEAK_LABEL_SCHEMA = {
     "type": "object",
     "required": [
@@ -87,6 +115,7 @@ OUTPUT_SCHEMA: dict = {
         "status",
         "beatmap",
         "features",
+        "map_demand",
         "skills",
         "segments",
         "weak_labels",
@@ -100,6 +129,8 @@ OUTPUT_SCHEMA: dict = {
         "disclaimer": {"type": "string"},
         "beatmap": BEATMAP_SCHEMA,
         "features": {"type": "object"},
+        "map_demand": {"type": "object"},
+        "slider_evidence": SLIDER_EVIDENCE_SCHEMA,
         "skills": {
             "type": "object",
             "additionalProperties": SKILL_SCHEMA,
@@ -108,4 +139,3 @@ OUTPUT_SCHEMA: dict = {
         "weak_labels": {"type": "array", "items": WEAK_LABEL_SCHEMA},
     },
 }
-

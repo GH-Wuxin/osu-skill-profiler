@@ -1,0 +1,155 @@
+{
+  "schema_version": "osu_skill_profiler_formal_release_verification_v040",
+  "release_id": "formal-map-demand-v0.40.0",
+  "command": "python -m osu_skill_profiler.cli.main profile-map <map.osu> --no-weak-labels --out <profile.json>",
+  "bounded_fixture_count": 5,
+  "fixtures": [
+    {
+      "fixture": "1",
+      "source": "Ocelot - KAEDE (Hollow Wings) [EX EX].osu",
+      "map_checksum": "sha256:dab7f242eb745f0ac1d23c5aa2db6e033aadb7062056962f8ac4557132f9ed32",
+      "status": "ADMITTED",
+      "formal_axis_admission": "ADMITTED_MAP_DEMAND",
+      "axis_values": {
+        "aim_control": 5.371327578998471,
+        "endurance": 3.4258449774933752,
+        "finger_control": 2.318671324759292,
+        "flow_aim": 3.078096158655857,
+        "jump_aim": 3.9329338748715803,
+        "raw_speed": 0.5634896120159876,
+        "reading": 1.6453749396288242,
+        "spatial_precision": 2.856740680560235,
+        "stamina": 0.06574178277973575
+      },
+      "slider_pressure_scalar": 1.868987656,
+      "slider_pressure_unit": "normalized_px_per_ms",
+      "semantic_route_admissions": {
+        "aim_control": "ADMITTED_MAP_DEMAND",
+        "flow": "ADMITTED_MAP_DEMAND",
+        "precision": "ADMITTED_MAP_DEMAND"
+      },
+      "player_skill_score_admitted": false,
+      "output_schema_valid": true,
+      "forbidden_literal_present": false
+    },
+    {
+      "fixture": "2",
+      "source": "t+pazolite - Oshama Scramble! (IOException Edit) [JeZag's Extra].osu",
+      "map_checksum": "sha256:7e6591a78c39637ce303c6f87f1ded721bc862dfa051b924e682f97d3ef3a22a",
+      "status": "ADMITTED",
+      "formal_axis_admission": "ADMITTED_MAP_DEMAND",
+      "axis_values": {
+        "aim_control": 6.800913316998138,
+        "endurance": 4.335049709434446,
+        "finger_control": 4.7273877957521755,
+        "flow_aim": 6.408487871683798,
+        "jump_aim": 3.221259699189664,
+        "raw_speed": 5.890944498539435,
+        "reading": 4.855622325266886,
+        "spatial_precision": 3.7096690516871003,
+        "stamina": 3.237398365090969
+      },
+      "slider_pressure_scalar": 1.524835624,
+      "slider_pressure_unit": "normalized_px_per_ms",
+      "semantic_route_admissions": {
+        "aim_control": "ADMITTED_MAP_DEMAND",
+        "flow": "ADMITTED_MAP_DEMAND",
+        "precision": "ADMITTED_MAP_DEMAND"
+      },
+      "player_skill_score_admitted": false,
+      "output_schema_valid": true,
+      "forbidden_literal_present": false
+    },
+    {
+      "fixture": "3",
+      "source": "sakuraburst - Glacierfall (Park Remix) [celine exp-rt].osu",
+      "map_checksum": "sha256:09b1f4dc1306bf42c446d463e993d84a06d2c295d08e5d2d2a11490d3dc54915",
+      "status": "ADMITTED",
+      "formal_axis_admission": "ADMITTED_MAP_DEMAND",
+      "axis_values": {
+        "aim_control": 6.25383280590198,
+        "endurance": 3.348146768540707,
+        "finger_control": 4.082817677519951,
+        "flow_aim": 5.100215551376653,
+        "jump_aim": 3.751949721631369,
+        "raw_speed": 3.608141228991711,
+        "reading": 3.9857848260158306,
+        "spatial_precision": 3.8523738882013316,
+        "stamina": 1.9202686476245112
+      },
+      "slider_pressure_scalar": 1.248491975,
+      "slider_pressure_unit": "normalized_px_per_ms",
+      "semantic_route_admissions": {
+        "aim_control": "ADMITTED_MAP_DEMAND",
+        "flow": "ADMITTED_MAP_DEMAND",
+        "precision": "ADMITTED_MAP_DEMAND"
+      },
+      "player_skill_score_admitted": false,
+      "output_schema_valid": true,
+      "forbidden_literal_present": false
+    },
+    {
+      "fixture": "4",
+      "source": "sakuraburst - Glacierfall (Park Remix) [get fxxked up].osu",
+      "map_checksum": "sha256:5f9bbfe13b66a9cb666fed212b97cdc03d448315d31891a7b36df585be1d04dc",
+      "status": "ADMITTED",
+      "formal_axis_admission": "ADMITTED_MAP_DEMAND",
+      "axis_values": {
+        "aim_control": 6.418452406626979,
+        "endurance": 3.604479835851068,
+        "finger_control": 4.688763189862085,
+        "flow_aim": 3.7516532214164946,
+        "jump_aim": 4.423063509726641,
+        "raw_speed": 3.0252399452892114,
+        "reading": 4.7092009441798695,
+        "spatial_precision": 3.3070850408169328,
+        "stamina": 1.9110104594679744
+      },
+      "slider_pressure_scalar": 3.945841246,
+      "slider_pressure_unit": "normalized_px_per_ms",
+      "semantic_route_admissions": {
+        "aim_control": "ADMITTED_MAP_DEMAND",
+        "flow": "ADMITTED_MAP_DEMAND",
+        "precision": "ADMITTED_MAP_DEMAND"
+      },
+      "player_skill_score_admitted": false,
+      "output_schema_valid": true,
+      "forbidden_literal_present": false
+    },
+    {
+      "fixture": "5",
+      "source": "Silentroom - Nhelv [iniquitatem].osu",
+      "map_checksum": "sha256:009ff622b2361fa85badceb6b0e4ee8ebff496d982c9394bad4ee9bd97375876",
+      "status": "ADMITTED",
+      "formal_axis_admission": "ADMITTED_MAP_DEMAND",
+      "axis_values": {
+        "aim_control": 6.700643170739175,
+        "endurance": 5.094237922648054,
+        "finger_control": 4.735556139016003,
+        "flow_aim": 6.731607363434603,
+        "jump_aim": 3.665809105162136,
+        "raw_speed": 5.098389982110912,
+        "reading": 5.025921380095131,
+        "spatial_precision": 3.146695149104075,
+        "stamina": 3.5678206548458546
+      },
+      "slider_pressure_scalar": 0.672178685,
+      "slider_pressure_unit": "normalized_px_per_ms",
+      "semantic_route_admissions": {
+        "aim_control": "ADMITTED_MAP_DEMAND",
+        "flow": "ADMITTED_MAP_DEMAND",
+        "precision": "ADMITTED_MAP_DEMAND"
+      },
+      "player_skill_score_admitted": false,
+      "output_schema_valid": true,
+      "forbidden_literal_present": false
+    }
+  ],
+  "all_outputs_schema_valid": true,
+  "forbidden_literal_present": false,
+  "audio_muted": true,
+  "full_library_scan": false,
+  "full_leaderboard_scan": false,
+  "user_play_required": false,
+  "player_skill_score_admitted": false
+}
