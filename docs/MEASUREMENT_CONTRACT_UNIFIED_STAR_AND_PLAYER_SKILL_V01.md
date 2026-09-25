@@ -1,7 +1,7 @@
 # Measurement Contract: Unified Star Scale and Player Skill Rating v0.1
 
-**Status:** CONTRACT BEFORE IMPLEMENTATION  
-**Version:** `measurement-contract-unified-star-player-v0.1`  
+**Status:** CONTRACT BEFORE IMPLEMENTATION
+**Version:** `measurement-contract-unified-star-player-v0.1`
 **Scope:** Skill Profiler only. The v0.40 release remains frozen.
 
 This document defines what the two measurements are allowed to mean. It does
@@ -19,7 +19,8 @@ The system keeps three different objects separate:
 
 ## 2. Meaning of `X★`
 
-`X★` is a value on a **versioned, ppy-referenced demand-equivalence scale**.
+`X★` is a value on a **versioned, ppy-referenced demand-equivalence scale**
+for one osu!standard mod context.
 
 It means:
 
@@ -52,8 +53,8 @@ Different axes may use the same star unit only when each axis has:
 3. an axis-specific monotone mapping into the common reference ruler;
 4. held-out evidence that the mapping preserves within-axis ordering;
 5. coverage across the relevant demand range and map families;
-6. provenance showing the corpus, ppy reference population, ruleset, mods, and
-   calibration version.
+6. provenance showing the corpus, ppy reference population for that exact mod
+   context, ruleset, mods, and calibration version.
 
 The shared unit does not authorize a shared formula. Each axis keeps its own
 mechanism and evidence. If an axis lacks the required evidence, its common-star
@@ -79,6 +80,8 @@ cross-axis aggregation contract has independent evidence.
 ppy total SR may be used for:
 
 - defining and stratifying the reference population;
+- providing context-specific ppy reference star distributions for each non-FL
+  mod context;
 - checking whether a map corpus spans a useful range;
 - reporting external context beside the profiler result;
 - testing broad monotonic sanity where the comparison is appropriate.
@@ -147,6 +150,9 @@ that hides sample size or coverage.
 
 - `FORMAL_MAP_DEMAND_V040` and all v0.40 numeric outputs remain unchanged.
 - The future common-star layer gets an independent version and calibration ID.
+- Each non-FL mod context gets its own calibration artifact; contexts are never
+  mixed into one ruler. FL remains score evidence but is outside the current
+  nine-axis demand contract.
 - The future player layer gets an independent version and evidence schema.
 - No new layer may silently rewrite `demand_star_equivalent` in v0.40.
 - Admission into a future formal release requires a separate report for map
@@ -158,4 +164,3 @@ The next step is an evidence audit against this contract: verify which corpus,
 ppy reference fields, player evidence fields, and time/source joins already
 exist. Only after that audit identifies sufficient data may the implementation
 choose a mapping or estimation method.
-

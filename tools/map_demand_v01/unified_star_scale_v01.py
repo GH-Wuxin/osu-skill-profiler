@@ -2,7 +2,7 @@
 
 This module deliberately does not modify the frozen v0.40 output.  It builds
 an additional, auditable representation by mapping each axis' empirical rank
-to the same ppy osu!standard NoMod star reference distribution.  The ppy
+to the same ppy osu!standard mod-context star reference distribution.  The ppy
 distribution is a ruler, not an axis label or a target for a weighted fit.
 
 The calibration artifact contains only sorted observations and provenance.  No
@@ -22,9 +22,9 @@ from . import contract as C
 from osu_skill_profiler.formal_release import AXES
 
 
-SCHEMA_VERSION = "unified_star_calibration_v0.1"
-SCALE_ID = "ppy-nm-demand-equivalence-v0.1"
-MAPPING_METHOD = "AXIS_EMPIRICAL_CDF_TO_SHARED_PPY_NM_REFERENCE_V01"
+SCHEMA_VERSION = "unified_star_calibration_v0.2"
+SCALE_ID = "ppy-standard-mod-demand-equivalence-v0.2"
+MAPPING_METHOD = "AXIS_EMPIRICAL_CDF_TO_SHARED_PPY_MOD_CONTEXT_REFERENCE_V02"
 AXIS_ORDER = tuple(AXES)
 
 # These are explicit admission gates, not fitted constants.  A caller may use
@@ -32,6 +32,7 @@ AXIS_ORDER = tuple(AXES)
 DEFAULT_MIN_FORMAL_MAPS = 256
 DEFAULT_MIN_FORMAL_AXIS_SAMPLES = 128
 DEFAULT_MIN_FORMAL_STRATA = 4
+DEFAULT_MOD_CONTEXT = "NM"
 
 
 class CalibrationError(ValueError):
@@ -76,7 +77,14 @@ def _record_map_id(record: Mapping[str, Any], index: int) -> str:
 
 
 def _record_ppy_star(record: Mapping[str, Any], index: int) -> float:
-    for key in ("ppy_nm_star", "ppy_nm_stars", "nm_stars", "star_rating"):
+    for key in (
+        "ppy_star",
+        "ppy_mod_star",
+        "ppy_nm_star",
+        "ppy_nm_stars",
+        "nm_stars",
+        "star_rating",
+    ):
         if key in record:
             return _finite_nonnegative(record[key], f"records[{index}].{key}")
     raise CalibrationError(f"records[{index}] requires ppy_nm_star")
@@ -116,6 +124,7 @@ def fit_calibration(
     *,
     source_scope: str,
     corpus_id: str | None = None,
+    mod_context: str = DEFAULT_MOD_CONTEXT,
     min_formal_maps: int = DEFAULT_MIN_FORMAL_MAPS,
     min_formal_axis_samples: int = DEFAULT_MIN_FORMAL_AXIS_SAMPLES,
     min_formal_strata: int = DEFAULT_MIN_FORMAL_STRATA,
@@ -138,6 +147,7 @@ def fit_calibration(
     axis_values: dict[str, list[float]] = {axis: [] for axis in AXIS_ORDER}
     axis_map_ids: dict[str, list[str]] = {axis: [] for axis in AXIS_ORDER}
     strata: set[str] = set()
+    contexts: set[str] = set()
 
     for index, incoming in enumerate(records):
         if not isinstance(incoming, Mapping):
@@ -147,6 +157,8 @@ def fit_calibration(
             raise CalibrationError(f"duplicate map_id: {map_id}")
         seen_map_ids.add(map_id)
         ppy_star = _record_ppy_star(incoming, index)
+        record_context = str(incoming.get("mod_context") or mod_context or DEFAULT_MOD_CONTEXT).upper()
+        contexts.add(record_context)
         stratum = incoming.get("stratum", incoming.get("map_family"))
         if stratum is not None and str(stratum).strip():
             strata.add(str(stratum))
@@ -162,6 +174,8 @@ def fit_calibration(
             {
                 "map_id": map_id,
                 "ppy_nm_star": ppy_star,
+                "ppy_star": ppy_star,
+                "mod_context": record_context,
                 "stratum": None if stratum is None else str(stratum),
                 "axes_present": sorted(parsed_axes),
             }
@@ -169,6 +183,12 @@ def fit_calibration(
 
     if not parsed:
         raise CalibrationError("records must not be empty")
+    if len(contexts) != 1:
+        raise CalibrationError(
+            "a unified-star artifact must contain exactly one mod_context; "
+            "build one calibration per non-FL context"
+        )
+    resolved_mod_context = next(iter(contexts))
     for axis in AXIS_ORDER:
         if not axis_values[axis]:
             raise CalibrationError(f"no raw observations for axis: {axis}")
@@ -176,10 +196,13 @@ def fit_calibration(
 
     map_count = len(parsed)
     axis_counts = {axis: len(axis_values[axis]) for axis in AXIS_ORDER}
+    # Callers may raise gates for a stricter local review, but lowering them
+    # can only make a smaller candidate artifact; it must never manufacture a
+    # formal admission from a fixture-sized corpus.
     formal_ready = (
-        map_count >= min_formal_maps
-        and min(axis_counts.values()) >= min_formal_axis_samples
-        and len(strata) >= min_formal_strata
+        map_count >= max(DEFAULT_MIN_FORMAL_MAPS, min_formal_maps)
+        and min(axis_counts.values()) >= max(DEFAULT_MIN_FORMAL_AXIS_SAMPLES, min_formal_axis_samples)
+        and len(strata) >= max(DEFAULT_MIN_FORMAL_STRATA, min_formal_strata)
     )
     calibration_id = _canonical_hash(
         {
@@ -188,6 +211,7 @@ def fit_calibration(
             "mapping_method": MAPPING_METHOD,
             "source_scope": source_scope,
             "corpus_id": corpus_id,
+            "mod_context": resolved_mod_context,
             "reference_nm_stars": stars,
             "axis_values": axis_values,
             "map_ids": [item["map_id"] for item in parsed],
@@ -196,11 +220,12 @@ def fit_calibration(
     return {
         "schema_version": SCHEMA_VERSION,
         "scale_id": SCALE_ID,
-        "calibration_id": f"unified-star-v01:{calibration_id[7:27]}",
+        "calibration_id": f"unified-star-v02:{calibration_id[7:27]}",
         "status": "FORMAL_READY" if formal_ready else "CANDIDATE",
         "mapping_method": MAPPING_METHOD,
         "source_scope": source_scope,
         "corpus_id": corpus_id,
+        "mod_context": resolved_mod_context,
         "map_count": map_count,
         "strata": sorted(strata),
         "formal_admission_gates": {
@@ -211,9 +236,10 @@ def fit_calibration(
         "axis_counts": axis_counts,
         "axis_distributions": axis_values,
         "reference_distribution": {
-            "source": "ppy_osu_standard_nomod_reference_population",
+            "source": "ppy_osu_standard_mod_context_reference_population",
             "sha256": _canonical_hash(stars),
-            "nm_stars": stars,
+            "stars": stars,
+            "nm_stars": stars if resolved_mod_context == "NM" else None,
             "summary": _reference_summary(stars),
         },
         "corpus_rows": parsed,
@@ -231,10 +257,13 @@ def _validate_calibration(calibration: Mapping[str, Any]) -> None:
         raise CalibrationError("unsupported unified-star calibration schema")
     if calibration.get("mapping_method") != MAPPING_METHOD:
         raise CalibrationError("unsupported unified-star mapping method")
+    mod_context = calibration.get("mod_context", DEFAULT_MOD_CONTEXT)
+    if not isinstance(mod_context, str) or not mod_context.strip():
+        raise CalibrationError("mod_context is required")
     reference = calibration.get("reference_distribution")
     if not isinstance(reference, Mapping):
         raise CalibrationError("reference_distribution is required")
-    stars = reference.get("nm_stars")
+    stars = reference.get("stars", reference.get("nm_stars"))
     if not isinstance(stars, list) or not stars:
         raise CalibrationError("reference_distribution.nm_stars is required")
     _sorted_finite(stars, "reference_distribution.nm_stars")
@@ -307,7 +336,11 @@ def map_axis_value(
         }
     raw = _finite_nonnegative(raw_value, f"{axis}.raw_value")
     distribution = calibration["axis_distributions"][axis]
-    reference = calibration["reference_distribution"]["nm_stars"]
+    reference = calibration["reference_distribution"].get(
+        "stars", calibration["reference_distribution"].get("nm_stars")
+    )
+    if not isinstance(reference, list) or not reference:
+        raise CalibrationError("reference_distribution.stars is required")
     low = float(distribution[0])
     high = float(distribution[-1])
     if raw < low or raw > high:
@@ -384,6 +417,7 @@ def apply_unified_star_scale(
             "count": calibration["reference_distribution"]["summary"]["count"],
         },
         "mapping_method": MAPPING_METHOD,
+        "mod_context": calibration.get("mod_context", DEFAULT_MOD_CONTEXT),
     }
     identity = dict(result.get("identity") or {})
     identity["unified_star_calibration_id"] = calibration.get("calibration_id")
@@ -394,6 +428,7 @@ def apply_unified_star_scale(
 __all__ = [
     "AXIS_ORDER",
     "CalibrationError",
+    "DEFAULT_MOD_CONTEXT",
     "DEFAULT_MIN_FORMAL_AXIS_SAMPLES",
     "DEFAULT_MIN_FORMAL_MAPS",
     "DEFAULT_MIN_FORMAL_STRATA",

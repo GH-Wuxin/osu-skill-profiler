@@ -1,8 +1,10 @@
 """Build a bounded unified-star calibration artifact from prepared records.
 
 The tool never walks the Songs directory.  The caller supplies a JSONL corpus
-whose rows already contain map identity, ppy NM reference context, and raw axis
-values.  A separate reference artifact supplies the sorted ppy NM population.
+whose rows already contain map identity, one ppy reference context, and raw axis
+values.  A separate reference artifact supplies the sorted ppy population for
+that exact context.  Build one artifact per non-FL mod context; never mix HD,
+DT, or other contexts into the NM ruler.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from map_demand_v01.unified_star_scale_v01 import (  # noqa: E402
     fit_calibration,
     save_calibration,
 )
+from map_demand_v01.osu_db_star_scale import read_standard_star_index  # noqa: E402
 
 
 def _load_json(path: Path) -> Any:
@@ -47,15 +50,26 @@ def _load_records(path: Path) -> list[dict[str, Any]]:
     return records
 
 
-def _reference_stars(path: Path) -> list[float]:
+def _reference_stars(path: Path, mod_context: str) -> list[float]:
+    if path.is_dir():
+        path = path / "calibration.json"
+    if path.suffix.lower() == ".db":
+        payload = read_standard_star_index(path)
+        stars = (payload.get("stars_by_mod") or {}).get(str(mod_context).upper())
+        if isinstance(stars, list) and stars:
+            return [float(value) for value in stars]
+        raise ValueError(f"osu!.db has no non-FL star distribution for {mod_context}")
     payload = _load_json(path)
     if isinstance(payload, list):
         return [float(value) for value in payload]
     if not isinstance(payload, dict):
         raise ValueError("reference artifact must be a list or object")
     candidates = [
-        payload.get("nm_stars"),
+        (payload.get("stars_by_mod") or {}).get(str(mod_context).upper()),
+        (payload.get("mod_stars") or {}).get(str(mod_context).upper()),
+        payload.get("nm_stars") if str(mod_context).upper() == "NM" else None,
         (payload.get("demand_scale") or {}).get("nm_stars"),
+        (payload.get("reference_distribution") or {}).get("stars"),
         (payload.get("reference_distribution") or {}).get("nm_stars"),
     ]
     for candidate in candidates:
@@ -66,12 +80,13 @@ def _reference_stars(path: Path) -> list[float]:
 
 def build(args: argparse.Namespace) -> Path:
     records = _load_records(Path(args.records))
-    reference = _reference_stars(Path(args.reference))
+    reference = _reference_stars(Path(args.reference), args.mod_context)
     calibration = fit_calibration(
         records,
         reference,
         source_scope=args.source_scope,
         corpus_id=args.corpus_id,
+        mod_context=args.mod_context,
         min_formal_maps=args.min_formal_maps,
         min_formal_axis_samples=args.min_formal_axis_samples,
         min_formal_strata=args.min_formal_strata,
@@ -84,6 +99,7 @@ def build(args: argparse.Namespace) -> Path:
         "map_count": calibration["map_count"],
         "axis_counts": calibration["axis_counts"],
         "strata": calibration["strata"],
+        "mod_context": calibration["mod_context"],
     }, ensure_ascii=False, sort_keys=True))
     return target
 
@@ -91,10 +107,11 @@ def build(args: argparse.Namespace) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--records", type=Path, required=True, help="prepared map corpus JSONL")
-    parser.add_argument("--reference", type=Path, required=True, help="ppy NM star artifact JSON")
+    parser.add_argument("--reference", type=Path, required=True, help="ppy star artifact JSON for the selected mod context")
     parser.add_argument("--output", type=Path, required=True, help="output calibration.json or directory")
     parser.add_argument("--source-scope", required=True)
     parser.add_argument("--corpus-id")
+    parser.add_argument("--mod-context", default="NM")
     parser.add_argument("--min-formal-maps", type=int, default=256)
     parser.add_argument("--min-formal-axis-samples", type=int, default=128)
     parser.add_argument("--min-formal-strata", type=int, default=4)

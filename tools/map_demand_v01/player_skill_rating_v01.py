@@ -83,6 +83,7 @@ def make_evidence_record(
     axis_outcomes: Mapping[str, Mapping[str, Any]],
     score_id: str | None = None,
     mods: Iterable[str] = (),
+    mod_context: str = "NM",
     normalization_id: str,
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -94,6 +95,8 @@ def make_evidence_record(
         raise PlayerEvidenceError("source is required")
     if not str(normalization_id).strip():
         raise PlayerEvidenceError("normalization_id is required")
+    if not str(mod_context).strip():
+        raise PlayerEvidenceError("mod_context is required")
     if not isinstance(map_demand, Mapping):
         raise PlayerEvidenceError("map_demand must be an object")
     if not isinstance(axis_outcomes, Mapping):
@@ -138,6 +141,7 @@ def make_evidence_record(
         "timestamp": _timestamp(timestamp, "timestamp"),
         "source": str(source),
         "mods": sorted({str(mod).upper() for mod in mods}),
+        "mod_context": str(mod_context).upper(),
         "normalization_id": str(normalization_id),
         "axis_outcomes": normalized_axes,
         "metadata": copy.deepcopy(dict(metadata or {})),
@@ -244,6 +248,7 @@ def estimate_player_skill_profile(
     min_evidence: int = 3,
     min_maps: int = 3,
     min_timepoints: int = 2,
+    mod_context: str | None = None,
 ) -> dict[str, Any]:
     """Estimate axis capacities from normalized interval evidence.
 
@@ -262,6 +267,20 @@ def estimate_player_skill_profile(
             raise PlayerEvidenceError("records must identify exactly one player")
         player_id = next(iter(player_ids))
     materialized = [record for record in materialized if str(record.get("player_id")) == str(player_id)]
+    contexts = {
+        str(record.get("mod_context") or "NM").upper()
+        for record in materialized
+    }
+    if mod_context is None and len(contexts) > 1:
+        raise PlayerEvidenceError(
+            "records contain multiple mod_context values; estimate each context separately"
+        )
+    resolved_mod_context = str(mod_context or next(iter(contexts), "NM")).upper()
+    materialized = [
+        record
+        for record in materialized
+        if str(record.get("mod_context") or "NM").upper() == resolved_mod_context
+    ]
     if normalization_id is not None:
         materialized = [
             record
@@ -295,6 +314,7 @@ def estimate_player_skill_profile(
         "player_id": str(player_id),
         "status": profile_status,
         "scale_id": SCALE_ID,
+        "mod_context": resolved_mod_context,
         "normalization_id": normalization_id,
         "axes": axes,
         "overall": {

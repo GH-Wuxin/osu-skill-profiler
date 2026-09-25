@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import math
 import struct
 from pathlib import Path
 from typing import BinaryIO, Any
@@ -50,7 +51,12 @@ def _string(fh: BinaryIO) -> str | None:
     return _read_exact(fh, _uleb128(fh)).decode("utf-8", errors="replace")
 
 
-def _skip_star_pairs(fh: BinaryIO, *, capture_nm: bool) -> float | None:
+def _skip_star_pairs(
+    fh: BinaryIO,
+    *,
+    capture_nm: bool,
+    stars_by_mod: dict[int, float] | None = None,
+) -> float | None:
     count = _unpack(fh, "i")
     nm: float | None = None
     for _ in range(count):
@@ -71,6 +77,8 @@ def _skip_star_pairs(fh: BinaryIO, *, capture_nm: bool) -> float | None:
             )
         if capture_nm and mods == 0:
             nm = float(stars)
+        if stars_by_mod is not None and math.isfinite(float(stars)):
+            stars_by_mod[int(mods)] = float(stars)
     return nm
 
 
@@ -80,8 +88,11 @@ def _skip_timing_points(fh: BinaryIO) -> None:
 
 
 def _read_record(
-    fh: BinaryIO, version: int
-) -> tuple[str | None, str | None, float | None]:
+    fh: BinaryIO,
+    version: int,
+    *,
+    capture_mods: bool = False,
+) -> tuple[str | None, str | None, float | None] | tuple[str | None, str | None, float | None, dict[int, float]]:
     # Text metadata through beatmap filename.
     for _ in range(7):
         _string(fh)
@@ -96,11 +107,19 @@ def _read_record(
     _read_exact(fh, 8)  # slider velocity
 
     nm_stars: float | None = None
+    stars_by_mod: dict[int, float] | None = {} if capture_mods else None
     if version < 20140609:
         _read_exact(fh, 4 * 4)  # legacy per-ruleset star singles
     else:
         for mode in range(4):
-            candidate = _skip_star_pairs(fh, capture_nm=(mode == 0))
+            candidate = _skip_star_pairs(
+                fh,
+                capture_nm=(mode == 0),
+                # The osu!.db record stores four rulesets in sequence.  The
+                # universal profiler is osu!standard-only, so capture mod
+                # anchors from mode 0 and still consume the other rulesets.
+                stars_by_mod=stars_by_mod if mode == 0 else None,
+            )
             if candidate is not None:
                 nm_stars = candidate
 
@@ -120,6 +139,8 @@ def _read_record(
     relative_path = None
     if folder and filename:
         relative_path = f"{folder}/{filename}"
+    if capture_mods:
+        return md5, relative_path, nm_stars, stars_by_mod or {}
     return md5, relative_path, nm_stars
 
 
@@ -168,3 +189,118 @@ def read_nm_star_distribution(path: str | Path) -> dict[str, Any]:
         "bytes_consumed": fh.tell(),
         "database_bytes": len(data),
     }
+
+
+# Stable osu!standard mod bits used by osu!.db.  The index intentionally keeps
+# every stored context except any context containing FL; FL is a separate
+# visual-difficulty dimension and is outside the current map-demand contract.
+MOD_BITS: dict[str, int] = {
+    "NF": 1,
+    "EZ": 2,
+    "TD": 4,
+    "HD": 8,
+    "HR": 16,
+    "SD": 32,
+    "DT": 64,
+    "RX": 128,
+    "HT": 256,
+    "NC": 512,
+    "FL": 1024,
+    "AT": 2048,
+    "SO": 4096,
+    "AP": 8192,
+    "PF": 16384,
+    "4K": 32768,
+    "5K": 65536,
+    "6K": 131072,
+    "7K": 262144,
+    "8K": 524288,
+    "FI": 1048576,
+    "RD": 2097152,
+    "CN": 4194304,
+    "TP": 8388608,
+    "9K": 16777216,
+    "CO": 33554432,
+    "1K": 67108864,
+    "2K": 134217728,
+    "3K": 268435456,
+}
+_BIT_TO_MOD = {value: key for key, value in MOD_BITS.items()}
+
+
+def mod_bitmask_to_label(bitmask: int) -> str:
+    """Return a stable compact context label for an osu!.db mod bitmask."""
+
+    value = int(bitmask)
+    if value == 0:
+        return "NM"
+    labels = [name for bit, name in sorted(_BIT_TO_MOD.items()) if value & bit]
+    return "".join(labels) if labels else f"BITS{value}"
+
+
+def read_standard_star_index(path: str | Path, *, exclude_flashlight: bool = True) -> dict[str, Any]:
+    """Read ppy star anchors for every stored mod context.
+
+    The existing ``read_nm_star_distribution`` remains the cheap backwards
+    compatible NM-only API.  This opt-in reader is used by the universal map
+    index and preserves per-context values instead of collapsing them to NM.
+    """
+
+    db_path = Path(path).resolve()
+    raw = db_path.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    fh = io.BytesIO(raw)
+    version = _unpack(fh, "i")
+    folder_count = _unpack(fh, "i")
+    account_unlocked = bool(_unpack(fh, "B"))
+    _unpack(fh, "q")
+    player_name = _string(fh)
+    beatmap_count = _unpack(fh, "i")
+    stars_by_mod: dict[str, list[float]] = {}
+    md5_to_stars: dict[str, dict[str, float]] = {}
+    path_to_stars: dict[str, dict[str, float]] = {}
+    for index in range(beatmap_count):
+        try:
+            md5, relative_path, _nm, record_stars = _read_record(
+                fh, version, capture_mods=True
+            )
+        except (UnicodeDecodeError, struct.error, OsuDbFormatError) as exc:
+            raise OsuDbFormatError(f"beatmap record {index}: {exc}") from exc
+        filtered: dict[str, float] = {}
+        for bitmask, star in record_stars.items():
+            if exclude_flashlight and bitmask & MOD_BITS["FL"]:
+                continue
+            if not math.isfinite(star) or star < 0.0:
+                continue
+            context = mod_bitmask_to_label(bitmask)
+            filtered[context] = float(star)
+            stars_by_mod.setdefault(context, []).append(float(star))
+        if md5:
+            md5_to_stars[md5.lower()] = filtered
+        if relative_path:
+            path_to_stars[relative_path.replace("\\", "/").casefold()] = filtered
+    for values in stars_by_mod.values():
+        values.sort()
+    return {
+        "database_version": version,
+        "folder_count": folder_count,
+        "account_unlocked": account_unlocked,
+        "player_name": player_name,
+        "beatmap_count": beatmap_count,
+        "stars_by_mod": stars_by_mod,
+        "md5_to_stars_by_mod": md5_to_stars,
+        "relative_path_to_stars_by_mod": path_to_stars,
+        "excluded_mods": ["FL"] if exclude_flashlight else [],
+        "database_sha256": digest,
+        "bytes_consumed": fh.tell(),
+        "database_bytes": len(raw),
+    }
+
+
+__all__ = [
+    "MOD_BITS",
+    "OsuDbFormatError",
+    "mod_bitmask_to_label",
+    "read_nm_star_distribution",
+    "read_standard_star_index",
+]
